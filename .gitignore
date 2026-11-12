@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment files (keep the checked-in examples)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Expo / React Native / native build output
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+ios/build/
+android/build/
+android/.gradle/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Logs and OS junk
+*.log
+.DS_Store
