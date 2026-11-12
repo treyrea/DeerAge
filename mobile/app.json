@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "DeerAge",
+    "slug": "deerage",
+    "scheme": "vibecode",
+    "version": "1.0.8",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "usesIapKit": true,
+      "bundleIdentifier": "com.vibecode.deerage-qj3cfq",
+      "buildNumber": "13",
+      "infoPlist": {
+        "NSCameraUsageDescription": "DeerAge uses the camera to capture new photos inside the app for your projects.",
+        "NSPhotoLibraryUsageDescription": "DeerAge accesses your photo library so you can move media between the app and your library.",
+        "NSPhotoLibraryAddUsageDescription": "DeerAge saves media you export from the app into your photo library.",
+        "NSLocationWhenInUseUsageDescription": "DeerAge uses your location to show nearby content and services while you use the app."
+      }
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "extra": {},
+    "icon": "./icon.png"
+  }
+}

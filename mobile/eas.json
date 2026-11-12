@@ -1,0 +1,41 @@
+{
+  "cli": {
+    "version": "16.17.4"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_VIBECODE_GROK_API_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_GOOGLE_API_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_ELEVENLABS_API_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_REVENUECAT_TEST_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_REVENUECAT_APPLE_KEY": "",
+        "EXPO_PUBLIC_VIBECODE_ANTHROPIC_API_KEY": ""
+      },
+      "ios": {
+        "distribution": "store"
+      },
+      "android": {
+        "distribution": "store"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6755117006"
+      }
+    }
+  }
+}
