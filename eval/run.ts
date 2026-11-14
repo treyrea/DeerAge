@@ -59,6 +59,7 @@ interface Bucket {
   latencyN: number;
   latencySum: number;
   latencySamples: number[];
+  costSamples: number[];
 }
 
 interface Prediction {
@@ -68,6 +69,8 @@ interface Prediction {
   netScore?: number;
   latencyMs: number;
   latencies?: number[];
+  estimatedCostUsd?: number;
+  costs?: number[];
   error?: string;
 }
 
@@ -222,6 +225,7 @@ function emptyBucket(): Bucket {
     latencyN: 0,
     latencySum: 0,
     latencySamples: [],
+    costSamples: [],
   };
 }
 
@@ -257,6 +261,9 @@ function addPrediction(bucket: Bucket, label: Label, prediction: Prediction | nu
     bucket.latencySum += sample;
     bucket.latencySamples.push(sample);
   }
+  for (const cost of prediction.costs ?? []) {
+    if (cost >= 0) bucket.costSamples.push(cost);
+  }
 }
 
 function percent(part: number, whole: number): number | null {
@@ -280,7 +287,19 @@ function summarize(bucket: Bucket) {
     scoreN: bucket.scoreN,
     meanLatencyMs: bucket.latencyN ? Math.round(bucket.latencySum / bucket.latencyN) : null,
     p50LatencyMs: p50,
+    meanCostUsd: bucket.costSamples.length
+      ? Number((bucket.costSamples.reduce((sum, cost) => sum + cost, 0) / bucket.costSamples.length).toFixed(6))
+      : null,
+    p95CostUsd: percentile(bucket.costSamples, 0.95),
+    costN: bucket.costSamples.length,
   };
+}
+
+function percentile(samples: number[], p: number): number | null {
+  if (samples.length === 0) return null;
+  const sorted = [...samples].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1));
+  return Number(sorted[index].toFixed(6));
 }
 
 function assertParse() {
@@ -345,6 +364,7 @@ async function predict(label: Label, proxy: string, token: string, mode: "age" |
     ok?: boolean;
     result?: { estimatedAgeYears?: number; ageYears?: number; ageCall?: string; grossScore?: number; netScore?: number };
     latencyMs?: number;
+    estimatedCostUsd?: number;
     message?: string;
   };
   const latencyMs = body.latencyMs ?? Date.now() - started;
@@ -352,6 +372,7 @@ async function predict(label: Label, proxy: string, token: string, mode: "age" |
     return { latencyMs, error: body.message ?? `proxy ${response.status}` };
   }
   const ageYears = body.result.estimatedAgeYears ?? body.result.ageYears;
+  const estimatedCostUsd = typeof body.estimatedCostUsd === "number" ? body.estimatedCostUsd : undefined;
   return {
     ageYears,
     mature: body.result.ageCall ? body.result.ageCall === "mature" : (ageYears ?? 0) >= 4.5,
@@ -359,6 +380,8 @@ async function predict(label: Label, proxy: string, token: string, mode: "age" |
     netScore: body.result.netScore,
     latencyMs,
     latencies: [latencyMs],
+    estimatedCostUsd,
+    costs: estimatedCostUsd == null ? [] : [estimatedCostUsd],
   };
 }
 
@@ -377,6 +400,7 @@ async function predictRow(label: Label, proxy: string, token: string, ageEligibl
     netScore: scoreCall?.netScore,
     latencyMs: Math.max(...calls.map((call) => call.latencyMs)),
     latencies: calls.flatMap((call) => call.latencies ?? []),
+    costs: calls.flatMap((call) => call.costs ?? []),
     error: failed?.error,
   };
 }
@@ -388,6 +412,9 @@ function printSummary(title: string, summary: ReturnType<typeof summarize>) {
   console.log(`  young vs mature (4.5+) ${summary.youngVsMaturePct ?? "n/a"}%`);
   console.log(`  score MAE ${summary.meanAbsoluteScoreError ?? "n/a"} in  error ${summary.meanScoreErrorPct ?? "n/a"}%  (n=${summary.scoreN})`);
   console.log(`  latency mean ${summary.meanLatencyMs ?? "n/a"} ms  p50 ${summary.p50LatencyMs ?? "n/a"} ms`);
+  const meanCost = summary.meanCostUsd == null ? "n/a" : `$${summary.meanCostUsd}`;
+  const p95Cost = summary.p95CostUsd == null ? "n/a" : `$${summary.p95CostUsd}`;
+  console.log(`  cost mean ${meanCost}  p95 ${p95Cost}  (n=${summary.costN})`);
 }
 
 async function main() {

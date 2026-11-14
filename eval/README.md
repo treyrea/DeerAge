@@ -51,11 +51,12 @@ DEERAGE_EVAL_TOKEN=... PROXY_URL=http://localhost:3000 \
 
 `--baseline` sends the same photos through a plain "how old is this buck, and what is the gross score" prompt. `--limit 5` caps the rows. `--include-weak` keeps flagged rows. `--proxy` overrides `PROXY_URL`.
 
-The scorecard reports, overall and by ecoregion:
+The scorecard reports, overall, by ecoregion, and by fence type:
 
 - age exact and within one year
 - young versus mature, with mature at 4.5 years and older
 - mean absolute score error and the error as a percent of the true score
 - mean and median latency
+- average and p95 estimated OpenAI cost per scan, from `estimatedCostUsd` on the proxy response
 
 The release bar is: match or beat the baseline on young-versus-mature, score error of 10% or less, and a mean result in 20 seconds or less. A dry run does not claim that bar.

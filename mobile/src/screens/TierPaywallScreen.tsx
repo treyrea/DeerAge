@@ -27,6 +27,7 @@ import {
   type PaywallResultSummary,
 } from "../lib/products";
 import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -71,6 +72,7 @@ export const TierPaywallScreen = () => {
   const summary = route.params?.resultSummary;
   const applyCustomerInfo = useSubscriptionStore((s) => s.applyCustomerInfo);
   const restore = useSubscriptionStore((s) => s.restore);
+  const fairUsePerDay = useFairUseAllowance();
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
@@ -227,7 +229,7 @@ export const TierPaywallScreen = () => {
 
           <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>Keep aging deer</Text>
           <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: 18 }}>
-            Three free analyses are included. A plan keeps Quick Check, Age, and Score available all season.
+            Three free analyses are included. A plan is everyday use: {fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.
           </Text>
 
           {loading ? <ActivityIndicator color="#D4AF37" /> : null}

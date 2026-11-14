@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 
 // Custom rack ruler icon for Score My Rack
 const RackRulerIcon = require("../../assets/image-1765760310.png");
@@ -32,8 +33,10 @@ export const ModeSelectScreen = () => {
     ? "Estimate deer maturity from body characteristics"
     : "Measure rack and calculate Boone & Crockett score";
 
+  const entitled = useSubscriptionStore((s) => s.entitled);
   const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
   const remaining = useSubscriptionStore((s) => s.remainingFree());
+  const fairUsePerDay = useFairUseAllowance();
 
   const handleProceed = (destination: "Camera" | "PhotoSelect") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -45,8 +48,11 @@ export const ModeSelectScreen = () => {
   };
 
   const getStatusDisplay = () => {
-    if (remaining === "unlimited") {
-      return { text: "Unlimited analyses", subtext: null as string | null };
+    if (entitled) {
+      return {
+        text: `${fairUsePerDay} a day`,
+        subtext: "Everyday use. The fair-use cap resets tomorrow.",
+      };
     }
     if (remaining > 0) {
       return {

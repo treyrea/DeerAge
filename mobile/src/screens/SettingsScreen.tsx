@@ -13,6 +13,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useDistanceStore } from "../state/distanceStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
@@ -65,6 +66,7 @@ export const SettingsScreen = () => {
   const restore = useSubscriptionStore((s) => s.restore);
   const profile = useHunterProfile();
   const isPro = entitled;
+  const fairUsePerDay = useFairUseAllowance();
 
   const [minimumAge, setMinimumAge] = useState(propertyRules.minimumShooterAge.toString());
   const [savedFeedback, setSavedFeedback] = useState(false);
@@ -133,7 +135,9 @@ export const SettingsScreen = () => {
                   )}
                 </View>
                 <Text className="text-sm mt-1" style={{ color: isPro ? "#bbf7d0" : "#E5D4B8" }}>
-                  {isPro ? "Quick Check, Age, and Score" : `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`}
+                  {isPro
+                    ? `${fairUsePerDay} analyses a day. The fair-use cap resets tomorrow.`
+                    : `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`}
                 </Text>
               </View>
             </View>

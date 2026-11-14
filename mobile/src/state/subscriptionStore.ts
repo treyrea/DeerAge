@@ -23,8 +23,8 @@ interface SubscriptionState {
   refreshEntitlement: () => Promise<boolean>;
   restore: () => Promise<{ ok: boolean; entitled: boolean }>;
   canStartAnalysis: () => boolean;
-  remainingFree: () => number | "unlimited";
-  noteServerUsage: (remaining: number | "unlimited") => void;
+  remainingFree: () => number;
+  noteServerUsage: (remaining: number | null) => void;
   markPendingPaywall: () => void;
   clearPendingPaywall: () => void;
   ensureLocalUserId: () => string;
@@ -85,13 +85,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       },
 
       remainingFree: () => {
-        if (get().entitled) return "unlimited";
         return Math.max(0, FREE_LIFETIME_ANALYSES - get().lifetimeAnalysesUsed);
       },
 
       noteServerUsage: (remaining) => {
-        if (remaining === "unlimited") {
-          if (!get().entitled) set({ pendingPaywall: false });
+        if (remaining == null) {
+          set({ pendingPaywall: false });
           return;
         }
         const used = Math.max(0, Math.min(FREE_LIFETIME_ANALYSES, FREE_LIFETIME_ANALYSES - remaining));

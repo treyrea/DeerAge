@@ -1,8 +1,20 @@
+import { costUsd, emptyUsage, reserveUsd, type TokenUsage } from "./cost";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config";
 import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement";
+import {
+  LimitStoreError,
+  allowRate,
+  fairUsePerDay,
+  fairUsePerMonth,
+  rateLimitPerMinute,
+  reconcileSpend,
+  redisConfigured,
+  releaseFairUse,
+  reserveFairUse,
+  reserveSpend,
+} from "./limits";
 import { UpstreamError, visionJson } from "./openai";
 import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts";
-import { allow } from "./rateLimit";
 import { consensusRack, median, num, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring";
 
 export interface AnalyzeBody {
@@ -28,7 +40,9 @@ type FailureCode =
   | "no_antlers"
   | "poor_quality"
   | "timeout"
-  | "upstream";
+  | "upstream"
+  | "fair_use"
+  | "busy";
 
 function fail(status: number, code: FailureCode, message: string) {
   return { status, body: { ok: false, code, message } };
@@ -77,7 +91,9 @@ export async function getAccess(appUserId: string) {
         ok: true,
         entitled: access.entitled,
         entitlementIds: access.entitlementIds,
-        freeUsesRemaining: access.freeUsesRemaining,
+        freeUsesRemaining: access.entitled ? null : access.freeUsesRemaining,
+        fairUsePerDay: fairUsePerDay(),
+        fairUsePerMonth: fairUsePerMonth(),
         freeLifetimeAnalyses: FREE_LIFETIME_ANALYSES,
       },
     };
@@ -107,9 +123,19 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     return fail(400, "invalid_request", "The baseline prompt is only for the eval harness.");
   }
 
-  const limit = isEval ? 120 : 8;
-  if (!allow(appUserId, limit, 60_000)) {
-    return fail(429, "rate_limited", "Too many requests. Wait a moment and try again.");
+  if (!redisConfigured()) {
+    return fail(503, "not_configured", "Usage limits are not configured.");
+  }
+  try {
+    const allowed = await allowRate(appUserId, rateLimitPerMinute(isEval));
+    if (!allowed) {
+      return fail(429, "rate_limited", "Too many requests. Wait a moment and try again.");
+    }
+  } catch (error) {
+    if (error instanceof LimitStoreError) {
+      return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
+    }
+    throw error;
   }
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
@@ -147,22 +173,51 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     }
   };
 
+  let fairUseHeld = false;
+  let spendReserved = 0;
+  const usage = emptyUsage();
+  const calls = mode === "quick" ? 2 : images.length;
+  const maxOutput = mode === "quick" ? 500 : mode === "score" ? 900 : mode === "age" ? 700 : 200;
+
   try {
+    if (access?.entitled) {
+      const fair = await reserveFairUse(appUserId);
+      if (fair === "daily") {
+        return fail(429, "fair_use", "You've used today's analyses. The cap resets tomorrow.");
+      }
+      if (fair === "monthly") {
+        return fail(429, "fair_use", "You've used this month's analyses. The daily cap still resets tomorrow, and the monthly cap resets at the start of next month.");
+      }
+      fairUseHeld = true;
+    }
+
+    spendReserved = reserveUsd(body.baseline ? 1 : calls, maxOutput);
+    const underCap = await reserveSpend(spendReserved);
+    if (!underCap) {
+      if (fairUseHeld) await releaseFairUse(appUserId);
+      fairUseHeld = false;
+      spendReserved = 0;
+      return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
+    }
+
     const context = contextOf(body);
     const result = body.baseline
-      ? await runBaseline(images[0])
+      ? await runBaseline(images[0], usage)
       : mode === "quick"
-        ? await runQuick(images[0], context)
+        ? await runQuick(images[0], context, usage)
         : mode === "age"
-          ? await runAge(images, context)
-          : await runScore(images, context);
+          ? await runAge(images, context, usage)
+          : await runScore(images, context, usage);
+
+    const estimatedCostUsd = await settleCost(usage, spendReserved, mode, appUserId);
+    spendReserved = 0;
 
     if (result && typeof result === "object" && "invalid" in result) {
       await refund();
       return fail(result.status, result.code, result.message);
     }
 
-    const remaining = !access || access.entitled || isEval ? "unlimited" : Math.max(0, FREE_LIFETIME_ANALYSES - (access.freeUsesUsed + 1));
+    const remaining = !access || access.entitled || isEval ? null : Math.max(0, FREE_LIFETIME_ANALYSES - (access.freeUsesUsed + 1));
     return {
       status: 200,
       body: {
@@ -173,11 +228,23 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
         latencyMs: Date.now() - started,
         entitled: Boolean(access?.entitled),
         freeUsesRemaining: remaining,
+        fairUsePerDay: fairUsePerDay(),
+        estimatedCostUsd,
         result,
       },
     };
   } catch (error) {
+    if (spendReserved > 0) {
+      await settleCost(usage, spendReserved, mode, appUserId).catch(() => undefined);
+      spendReserved = 0;
+    }
+    if (fairUseHeld && usage.promptTokens + usage.completionTokens === 0) {
+      await releaseFairUse(appUserId).catch(() => undefined);
+    }
     await refund();
+    if (error instanceof LimitStoreError) {
+      return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
+    }
     if (error instanceof UpstreamError) {
       if (error.status === 504) return fail(504, "timeout", "Analysis took too long. Try a clearer photo.");
       if (error.status === 429) return fail(429, "rate_limited", "The analysis service is busy. Wait a moment and try again.");
@@ -185,6 +252,23 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     }
     return fail(502, "upstream", "Analysis failed. Try again in a moment.");
   }
+}
+
+async function settleCost(usage: TokenUsage, reserved: number, mode: string, appUserId: string): Promise<number> {
+  const estimatedCostUsd = costUsd(usage);
+  await reconcileSpend(reserved, estimatedCostUsd);
+  console.log(JSON.stringify({
+    event: "analysis_cost",
+    mode,
+    model: modelName(),
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
+    estimatedCostUsd: Number(estimatedCostUsd.toFixed(6)),
+    inputUsdPerMillion: Number(process.env.OPENAI_INPUT_USD_PER_MILLION) || 0.4,
+    outputUsdPerMillion: Number(process.env.OPENAI_OUTPUT_USD_PER_MILLION) || 1.6,
+    appUserIdPrefix: appUserId.slice(0, 16),
+  }));
+  return Number(estimatedCostUsd.toFixed(6));
 }
 
 interface InvalidPhoto {
@@ -207,7 +291,7 @@ function invalidFrom(reason: string | undefined, fallback: string): InvalidPhoto
   return { invalid: true, status: 422, code: "not_deer", message: fallback };
 }
 
-async function runQuick(image: string, context: HuntContext) {
+async function runQuick(image: string, context: HuntContext, usage: TokenUsage) {
   const raw = await visionJson({
     prompt: quickPrompt(context),
     images: [image],
@@ -215,6 +299,7 @@ async function runQuick(image: string, context: HuntContext) {
     maxTokens: 500,
     timeoutMs: 10_000,
     retries: 1,
+    usage,
   });
   if (raw.isValidImage === false) {
     return invalidFrom(typeof raw.invalidImageReason === "string" ? raw.invalidImageReason : "not_deer", "This photo doesn't show a deer.");
@@ -259,13 +344,14 @@ function ageBand(years: number): string {
   return "5.5+ years";
 }
 
-async function oneAge(image: string, context: HuntContext): Promise<AgeFrame | InvalidPhoto> {
+async function oneAge(image: string, context: HuntContext, usage: TokenUsage): Promise<AgeFrame | InvalidPhoto> {
   const raw = await visionJson({
     prompt: agePrompt(context),
     images: [image],
     detail: "low",
     maxTokens: 700,
     timeoutMs: 10_000,
+    usage,
   });
   if (raw.isValidDeer === false) {
     return invalidFrom(typeof raw.invalidReason === "string" ? raw.invalidReason : "not_deer", "This photo doesn't show a deer.");
@@ -286,10 +372,10 @@ async function oneAge(image: string, context: HuntContext): Promise<AgeFrame | I
   };
 }
 
-async function runAge(images: string[], context: HuntContext) {
+async function runAge(images: string[], context: HuntContext, usage: TokenUsage) {
   const settled = await Promise.all(images.map(async (image) => {
     try {
-      return await oneAge(image, context);
+      return await oneAge(image, context, usage);
     } catch (error) {
       return error;
     }
@@ -330,7 +416,7 @@ async function runAge(images: string[], context: HuntContext) {
   };
 }
 
-async function runScore(images: string[], context: HuntContext) {
+async function runScore(images: string[], context: HuntContext, usage: TokenUsage) {
   const settled = await Promise.all(images.map(async (image) => {
     try {
       const raw = await visionJson({
@@ -339,6 +425,7 @@ async function runScore(images: string[], context: HuntContext) {
         detail: "auto",
         maxTokens: 900,
         timeoutMs: 14_000,
+        usage,
       });
       return scoreRack(raw);
     } catch (error) {
@@ -358,13 +445,14 @@ async function runScore(images: string[], context: HuntContext) {
   return { ...merged, frameCount: usable.length, consensus: "median-measurements" };
 }
 
-async function runBaseline(image: string) {
+async function runBaseline(image: string, usage: TokenUsage) {
   const raw = await visionJson({
     prompt: baselinePrompt(),
     images: [image],
     detail: "low",
     maxTokens: 200,
     timeoutMs: 15_000,
+    usage,
   });
   if (raw.isValidDeer === false) {
     return invalidFrom("not_deer", "This photo doesn't show a deer.");

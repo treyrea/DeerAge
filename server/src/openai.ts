@@ -1,3 +1,4 @@
+import { addUsage, type TokenUsage } from "./cost";
 import { modelName } from "./config";
 
 export class UpstreamError extends Error {
@@ -23,6 +24,7 @@ export async function visionJson(options: {
   maxTokens: number;
   timeoutMs: number;
   retries?: number;
+  usage: TokenUsage;
 }): Promise<Record<string, unknown>> {
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) {
@@ -63,7 +65,9 @@ export async function visionJson(options: {
       }
       const payload = (await response.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
+      addUsage(options.usage, Number(payload.usage?.prompt_tokens) || 0, Number(payload.usage?.completion_tokens) || 0);
       const text = payload.choices?.[0]?.message?.content ?? "";
       return parseJson(text);
     } catch (error) {

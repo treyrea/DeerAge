@@ -6,7 +6,7 @@ const ATTRIBUTE = "deerage_free_uses";
 export interface AccessSnapshot {
   entitled: boolean;
   freeUsesUsed: number;
-  freeUsesRemaining: number | "unlimited";
+  freeUsesRemaining: number | null;
   entitlementIds: string[];
 }
 
@@ -71,7 +71,7 @@ export async function readAccess(appUserId: string): Promise<AccessSnapshot> {
   const raw = subscriber.subscriber_attributes?.[ATTRIBUTE]?.value ?? "0";
   const freeUsesUsed = Math.max(0, Number.parseInt(raw, 10) || 0);
   if (entitlementIds.length > 0) {
-    return { entitled: true, freeUsesUsed, freeUsesRemaining: "unlimited", entitlementIds: [...entitlementIds] };
+    return { entitled: true, freeUsesUsed, freeUsesRemaining: null, entitlementIds: [...entitlementIds] };
   }
   return {
     entitled: false,

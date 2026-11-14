@@ -3,6 +3,8 @@ export type AnalysisErrorCode =
   | "not_configured"
   | "rate_limited"
   | "quota"
+  | "fair_use"
+  | "busy"
   | "not_deer"
   | "no_body"
   | "no_antlers"
@@ -18,6 +20,8 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
   not_configured: "DeerAge isn't connected to the analysis service yet.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   quota: "You've used your 3 free analyses.",
+  fair_use: "You've used today's analyses. The cap resets tomorrow.",
+  busy: "DeerAge is busy right now. Try again in a little while.",
   not_deer: "This photo doesn't show a deer.",
   no_body: "The deer's body isn't visible enough to age. Use a broadside photo of the whole deer.",
   no_antlers: "No antlers are visible in this photo.",

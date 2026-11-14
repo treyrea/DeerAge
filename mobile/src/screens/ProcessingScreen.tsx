@@ -46,6 +46,12 @@ const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "sco
   if (category === "rate_limited") {
     return base("TOO MANY REQUESTS", messageForCode("rate_limited"), ["Wait a few seconds, then try again"], "hourglass", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
+  if (category === "fair_use") {
+    return base("TODAY'S ANALYSES USED", messageForCode("fair_use"), ["Everyday use resets tomorrow"], "calendar", "#D4AF37", ["#3D4A2F", "#1a1f16", "#1a1a1a"]);
+  }
+  if (category === "busy") {
+    return base("DEERAGE IS BUSY", messageForCode("busy"), ["Wait a little while and try the same photo again"], "hourglass", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
+  }
   if (category === "quota") {
     return base("FREE ANALYSES USED", messageForCode("quota"), ["A Season Pass keeps Quick Check, Age, and Score available"], "lock-closed", "#D4AF37", ["#3D4A2F", "#1a1f16", "#1a1a1a"]);
   }

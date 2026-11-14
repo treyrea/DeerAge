@@ -9,7 +9,8 @@ export interface ProxySuccess {
   mode: string;
   model: string;
   latencyMs: number;
-  freeUsesRemaining: number | "unlimited";
+  freeUsesRemaining: number | null;
+  estimatedCostUsd: number;
   result: Record<string, unknown>;
 }
 
@@ -18,6 +19,8 @@ const CODES = new Set<AnalysisErrorCode>([
   "not_configured",
   "rate_limited",
   "quota",
+  "fair_use",
+  "busy",
   "not_deer",
   "no_body",
   "no_antlers",
@@ -116,7 +119,9 @@ export async function analyzeImages(input: {
     result?: Record<string, unknown>;
     model?: string;
     latencyMs?: number;
-    freeUsesRemaining?: number | "unlimited";
+    freeUsesRemaining?: number | null;
+    estimatedCostUsd?: number;
+    entitled?: boolean;
     mode?: string;
   } | null;
 
@@ -128,13 +133,14 @@ export async function analyzeImages(input: {
     throw new AnalysisError(code, payload?.message);
   }
 
-  const remaining = payload.freeUsesRemaining ?? "unlimited";
+  const remaining = payload.entitled || payload.freeUsesRemaining == null ? null : payload.freeUsesRemaining;
   useSubscriptionStore.getState().noteServerUsage(remaining);
   return {
     mode: payload.mode ?? input.mode,
     model: payload.model ?? "",
     latencyMs: payload.latencyMs ?? 0,
     freeUsesRemaining: remaining,
+    estimatedCostUsd: payload.estimatedCostUsd ?? 0,
     result: payload.result,
   };
 }

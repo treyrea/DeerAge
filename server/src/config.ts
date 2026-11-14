@@ -1,3 +1,5 @@
+import { fairUsePerDay, fairUsePerMonth } from "./limits";
+
 export const FREE_LIFETIME_ANALYSES = 3;
 
 export const ACCESS_ENTITLEMENTS = [
@@ -16,6 +18,8 @@ export function publicConfig() {
     latestVersion: process.env.LATEST_APP_VERSION?.trim() || "1.0.8",
     model: process.env.OPENAI_MODEL?.trim() || "gpt-4.1-mini",
     freeLifetimeAnalyses: FREE_LIFETIME_ANALYSES,
+    fairUsePerDay: fairUsePerDay(),
+    fairUsePerMonth: fairUsePerMonth(),
   };
 }
 
