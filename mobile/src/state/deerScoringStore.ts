@@ -17,7 +17,8 @@ import {
   PropertyRules,
   ExplainableAgeEstimation,
 } from "../types/deer-scoring";
-import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyScale } from "../api/deer-analysis";
+import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyScale } from "../api/deer-analysis";
+import { formatAgeClass } from "../utils/age-class";
 import { calculateBooneAndCrockettScore } from "../utils/boone-crockett-calculator";
 import {
   estimateScaleFromMultiView,
@@ -341,8 +342,20 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       // Step 5: Generate explainable rack scoring
       const explainableRackScore = generateExplainableRackScoring(score, measurements);
 
-      // Step 6: Estimate age
-      const age = estimateDeerAge(measurements);
+      const age = lastProxyAgeYears
+        ? {
+            estimatedAge: formatAgeClass(lastProxyAgeYears).endsWith("+")
+              ? "5.5+ years" as const
+              : `${formatAgeClass(lastProxyAgeYears).replace("–", "-")} years` as AgeEstimation["estimatedAge"],
+            confidence: score.overallConfidence,
+            factors: {
+              bodySize: "Med" as const,
+              antlerMass: "Med" as const,
+              beamDiameter: "Med" as const,
+              neckSize: "Med" as const,
+            },
+          }
+        : estimateDeerAge(measurements);
 
       // Step 7: Count frames used - use total captured frames since we don't update detectedAntlers flag
       const fusedFrameCount = capturedFrames.length;

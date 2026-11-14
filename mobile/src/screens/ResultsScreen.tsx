@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ShareableResultCard } from "../components/ShareableResultCard";
+import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
@@ -148,12 +149,11 @@ export const ResultsScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
 
-  const ageLabel = currentResult?.age?.estimatedAge ?? "";
-  const mature = ageLabel.includes("4.5") || ageLabel.includes("5.5");
+  const ageLabel = formatAgeClass(currentResult?.explainableAge?.estimatedAge ?? currentResult?.age?.estimatedAge);
   useResultFollowUp(Boolean(currentResult), currentResult ? {
     imageUri: currentResult.capturedFrames?.[0]?.imageUri,
-    headline: ageLabel || "Scored",
-    call: mature ? "Mature" : ageLabel.includes("3.5") ? "Middle-aged" : "Young",
+    headline: ageLabel,
+    call: ageCallFromClass(ageLabel),
     confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : undefined,
   } : null);
 
@@ -229,7 +229,7 @@ export const ResultsScreen = () => {
     message += `Mode: ${analysisMode === "age" ? "Age My Deer" : "Score My Rack"}\n\n`;
 
     message += `📊 RESULTS\n`;
-    message += `• Estimated Age: ${age.estimatedAge}\n`;
+    message += `• Age class: ${formatAgeClass(age.estimatedAge)}\n`;
     message += `• Rack Score (B&C): ${scoreToShow}″`;
     if (adjustedScore !== null) {
       message += ` (Adjusted)\n`;
@@ -281,9 +281,8 @@ export const ResultsScreen = () => {
     }
   };
 
-  // Calculate age in years (extract numeric value)
-  const ageYears = age.estimatedAge.split("-")[0] || age.estimatedAge;
-  const isYoung = age.estimatedAge.includes("1.5-2.5") || age.estimatedAge.includes("2.5-3.5");
+  const displayedAge = formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge);
+  const isYoung = ageCallFromClass(displayedAge) === "Young";
   const shooterSuggestion = isYoung ? "Pass - Let him grow" : "Shooter - Mature buck";
 
   return (
@@ -389,7 +388,7 @@ export const ResultsScreen = () => {
             {/* Age */}
             <View className="mb-4">
               <Text className="text-sm mb-1" style={{ color: "#E5D4B8" }}>Estimated Age</Text>
-              <Text className="text-3xl font-bold text-white">{age.estimatedAge}</Text>
+              <Text className="text-3xl font-bold text-white">{displayedAge}</Text>
             </View>
 
             {/* Rack Score */}

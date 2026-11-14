@@ -23,15 +23,22 @@ const OUT = resolve(HERE, "scorecard.json");
 const RELIABLE_AGE = new Set(["lab", "known history", "known (pen)", "check station"]);
 const OFFICIAL_SCORE = new Set(["official", "contest-official"]);
 
+interface ParsedAge {
+  point: number | null;
+  mature: boolean | null;
+}
+
 interface Label {
   id: string;
   photoUrl: string;
-  age: number | null;
+  age: ParsedAge;
   ageMethod: string;
   ageClass: string;
-  score: number | null;
+  gross: number | null;
+  net: number | null;
   scoreClass: string;
   ecoregion: string;
+  fenceType: string;
   region: string;
   flag: string;
   species: string;
@@ -39,6 +46,8 @@ interface Label {
 
 interface Bucket {
   rows: number;
+  ageEligible: number;
+  scoreEligible: number;
   ageN: number;
   ageExact: number;
   ageWithin1: number;
@@ -56,7 +65,9 @@ interface Prediction {
   ageYears?: number;
   mature?: boolean;
   grossScore?: number;
+  netScore?: number;
   latencyMs: number;
+  latencies?: number[];
   error?: string;
 }
 
@@ -124,8 +135,49 @@ export function parseInches(raw: string): number | null {
 }
 
 export function parseAge(raw: string): number | null {
-  const match = raw.trim().match(/^(\d+(?:\.\d+)?)/);
+  const match = raw.trim().match(/^(?:about\s+)?(\d+(?:\.\d+)?)/i);
   return match ? Number(match[1]) : null;
+}
+
+/** A labeled score may lead with net and put gross in parentheses. Prefer gross when both exist. */
+export function parseLabeledScore(raw: string): { gross: number | null; net: number | null } {
+  const text = raw.trim();
+  const grab = (kind: "gross" | "net"): number | null => {
+    const match = text.match(new RegExp(`(\\d+(?:\\.\\d+)?(?:\\s+\\d+\\s*/\\s*\\d+)?)\\s*${kind}`, "i"));
+    return match ? parseInches(match[1]) : null;
+  };
+  const gross = grab("gross");
+  const net = grab("net");
+  if (gross == null && net == null) return { gross: parseInches(text), net: null };
+  return { gross, net };
+}
+
+export function parseAgeLabel(raw: string): ParsedAge {
+  const text = raw.trim();
+  if (!text || /through/i.test(text)) return { point: null, mature: null };
+  const span = text.match(/(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)/);
+  if (span && !/stated/i.test(text)) {
+    const low = Number(span[1]);
+    const high = Number(span[2]);
+    if (low >= 4.5) return { point: null, mature: true };
+    if (high < 4.5) return { point: null, mature: false };
+    return { point: null, mature: null };
+  }
+  if (/^\d+(?:\.\d+)?\s*\+/.test(text)) {
+    const value = Number(text.match(/(\d+(?:\.\d+)?)/)?.[1]);
+    return { point: null, mature: value >= 4.5 };
+  }
+  const point = parseAge(text);
+  if (point == null) return { point: null, mature: null };
+  return { point, mature: point >= 4.5 };
+}
+
+function fenceGroup(value: string): string {
+  const text = value.trim().toLowerCase();
+  if (!text) return "not recorded";
+  if (text.startsWith("high (research")) return "high (research pen)";
+  if (text === "high" || text === "low" || text === "unknown") return text;
+  return text;
 }
 
 function firstPhoto(raw: string): string {
@@ -138,12 +190,16 @@ function loadLabels(): Label[] {
   return records.map((row) => ({
     id: row.id,
     photoUrl: firstPhoto(row.photo_url ?? ""),
-    age: parseAge(row.claimed_age ?? ""),
+    age: parseAgeLabel(row.claimed_age ?? ""),
     ageMethod: row.age_method ?? "",
     ageClass: (row.age_class ?? "").toLowerCase(),
-    score: parseInches(row.score_in ?? ""),
+    ...(() => {
+      const scored = parseLabeledScore(row.score_in ?? "");
+      return { gross: scored.gross, net: scored.net };
+    })(),
     scoreClass: (row.score_class ?? "").toLowerCase(),
     ecoregion: row.ecoregion || "Unknown",
+    fenceType: fenceGroup(row.fence_type ?? ""),
     region: row.location || row.state || "",
     flag: row.flag ?? "",
     species: row.species ?? "",
@@ -153,6 +209,8 @@ function loadLabels(): Label[] {
 function emptyBucket(): Bucket {
   return {
     rows: 0,
+    ageEligible: 0,
+    scoreEligible: 0,
     ageN: 0,
     ageExact: 0,
     ageWithin1: 0,
@@ -169,27 +227,35 @@ function emptyBucket(): Bucket {
 
 function addPrediction(bucket: Bucket, label: Label, prediction: Prediction | null, ageEligible: boolean, scoreEligible: boolean) {
   bucket.rows += 1;
+  if (ageEligible) bucket.ageEligible += 1;
+  if (scoreEligible) bucket.scoreEligible += 1;
   if (!prediction || prediction.error) return;
-  if (ageEligible && label.age != null && prediction.ageYears != null) {
-    const delta = Math.abs(prediction.ageYears - label.age);
-    bucket.ageN += 1;
-    if (delta <= 0.25) bucket.ageExact += 1;
-    if (delta <= 1) bucket.ageWithin1 += 1;
-    bucket.youngMatureN += 1;
-    const truthMature = label.age >= 4.5;
-    const predMature = prediction.mature ?? prediction.ageYears >= 4.5;
-    if (truthMature === predMature) bucket.youngMatureCorrect += 1;
+  if (ageEligible && prediction.ageYears != null && (label.age.point != null || label.age.mature != null)) {
+    if (label.age.point != null) {
+      const delta = Math.abs(prediction.ageYears - label.age.point);
+      bucket.ageN += 1;
+      if (delta <= 0.25) bucket.ageExact += 1;
+      if (delta <= 1) bucket.ageWithin1 += 1;
+    }
+    if (label.age.mature != null) {
+      bucket.youngMatureN += 1;
+      const predMature = prediction.mature ?? prediction.ageYears >= 4.5;
+      if (label.age.mature === predMature) bucket.youngMatureCorrect += 1;
+    }
   }
-  if (scoreEligible && label.score != null && prediction.grossScore != null && label.score > 0) {
-    const abs = Math.abs(prediction.grossScore - label.score);
+  const truth = label.gross ?? label.net;
+  const predicted = label.gross != null ? prediction.grossScore : prediction.netScore;
+  if (scoreEligible && truth != null && predicted != null && truth > 0) {
+    const abs = Math.abs(predicted - truth);
     bucket.scoreN += 1;
     bucket.scoreAbsSum += abs;
-    bucket.scorePctSum += abs / label.score;
+    bucket.scorePctSum += abs / truth;
   }
-  if (prediction.latencyMs > 0) {
+  const samples = prediction.latencies ?? (prediction.latencyMs > 0 ? [prediction.latencyMs] : []);
+  for (const sample of samples) {
     bucket.latencyN += 1;
-    bucket.latencySum += prediction.latencyMs;
-    bucket.latencySamples.push(prediction.latencyMs);
+    bucket.latencySum += sample;
+    bucket.latencySamples.push(sample);
   }
 }
 
@@ -203,6 +269,8 @@ function summarize(bucket: Bucket) {
   const p50 = samples.length ? samples[Math.floor((samples.length - 1) / 2)] : null;
   return {
     rows: bucket.rows,
+    ageEligible: bucket.ageEligible,
+    scoreEligible: bucket.scoreEligible,
     ageExactPct: percent(bucket.ageExact, bucket.ageN),
     ageWithin1YearPct: percent(bucket.ageWithin1, bucket.ageN),
     youngVsMaturePct: percent(bucket.youngMatureCorrect, bucket.youngMatureN),
@@ -216,25 +284,36 @@ function summarize(bucket: Bucket) {
 }
 
 function assertParse() {
-  const checks: Array<[string, number | null, number | null]> = [
-    ["161", 161, null],
-    ["146 5/8", 146.625, null],
-    ["195 4/8 gross", 195.5, null],
-    ["upper 150s", null, null],
-    ["213 5/8 net typical", 213.625, null],
+  const inches: Array<[string, number | null]> = [
+    ["161", 161],
+    ["146 5/8", 146.625],
+    ["195 4/8 gross", 195.5],
+    ["upper 150s", null],
+    ["213 5/8 net typical", 213.625],
   ];
-  for (const [raw, inches] of checks) {
+  for (const [raw, expected] of inches) {
     const got = parseInches(raw);
-    if (got !== inches && !(got == null && inches == null)) {
-      throw new Error(`parseInches(${raw}) = ${got}, expected ${inches}`);
+    if (got !== expected) throw new Error(`parseInches(${raw}) = ${got}, expected ${expected}`);
+  }
+  const labeled: Array<[string, number | null, number | null]> = [
+    ["178 net typical (184 7/8 gross)", 184.875, 178],
+    ["213 5/8 net typical (world record)", null, 213.625],
+    ["158 4/8", 158.5, null],
+  ];
+  for (const [raw, gross, net] of labeled) {
+    const got = parseLabeledScore(raw);
+    if (got.gross !== gross || got.net !== net) {
+      throw new Error(`parseLabeledScore(${raw}) = ${JSON.stringify(got)}`);
     }
   }
-  if (parseAge("6.5") !== 6.5 || parseAge("5") !== 5 || parseAge("") !== null && parseAge("") !== null) {
-    if (parseAge("") !== null) throw new Error("empty age should be null");
-  }
+  const span = parseAgeLabel("1.5 through 6.5 (two bucks)");
+  if (span.point != null || span.mature != null) throw new Error("a span of ages is not one class");
+  const plus = parseAgeLabel("7.5+");
+  if (plus.point != null || plus.mature !== true) throw new Error("7.5+ should be mature without an exact year");
+  if (parseAgeLabel("4.5").point !== 4.5) throw new Error("4.5 should stay a point for the age eval");
 }
 
-async function predict(label: Label, proxy: string, token: string, baseline: boolean): Promise<Prediction> {
+async function predict(label: Label, proxy: string, token: string, mode: "age" | "score", baseline: boolean): Promise<Prediction> {
   if (!label.photoUrl) return { latencyMs: 0, error: "no photo url" };
   const started = Date.now();
   const imageResponse = await fetch(label.photoUrl);
@@ -248,13 +327,15 @@ async function predict(label: Label, proxy: string, token: string, baseline: boo
       "x-deerage-eval-token": token,
     },
     body: JSON.stringify({
-      mode: "age",
+      mode: baseline ? "age" : mode,
       baseline,
       appUserId: `eval-${label.id}`,
       images: [bytes.toString("base64")],
       context: {
         ecoregion: label.ecoregion,
         state: label.region,
+        fenceType: label.fenceType === "not recorded" ? undefined : label.fenceType,
+        landType: label.fenceType.startsWith("high") ? "high_fence" : label.fenceType,
         species: label.species.toLowerCase().includes("mule") ? "mule_deer" : "whitetail",
         minimumShooterAge: 4.5,
       },
@@ -262,7 +343,7 @@ async function predict(label: Label, proxy: string, token: string, baseline: boo
   });
   const body = await response.json() as {
     ok?: boolean;
-    result?: { estimatedAgeYears?: number; ageYears?: number; ageCall?: string; grossScore?: number };
+    result?: { estimatedAgeYears?: number; ageYears?: number; ageCall?: string; grossScore?: number; netScore?: number };
     latencyMs?: number;
     message?: string;
   };
@@ -275,13 +356,34 @@ async function predict(label: Label, proxy: string, token: string, baseline: boo
     ageYears,
     mature: body.result.ageCall ? body.result.ageCall === "mature" : (ageYears ?? 0) >= 4.5,
     grossScore: body.result.grossScore,
+    netScore: body.result.netScore,
     latencyMs,
+    latencies: [latencyMs],
+  };
+}
+
+async function predictRow(label: Label, proxy: string, token: string, ageEligible: boolean, scoreEligible: boolean): Promise<Prediction> {
+  const calls: Prediction[] = [];
+  if (ageEligible) calls.push(await predict(label, proxy, token, "age", false));
+  if (scoreEligible) calls.push(await predict(label, proxy, token, "score", false));
+  if (calls.length === 0) return { latencyMs: 0, error: "not in the age or score set" };
+  const failed = calls.find((call) => call.error);
+  const ageCall = ageEligible ? calls[0] : undefined;
+  const scoreCall = scoreEligible ? calls[calls.length - 1] : undefined;
+  return {
+    ageYears: ageCall?.ageYears,
+    mature: ageCall?.mature,
+    grossScore: scoreCall?.grossScore,
+    netScore: scoreCall?.netScore,
+    latencyMs: Math.max(...calls.map((call) => call.latencyMs)),
+    latencies: calls.flatMap((call) => call.latencies ?? []),
+    error: failed?.error,
   };
 }
 
 function printSummary(title: string, summary: ReturnType<typeof summarize>) {
   console.log(`\n${title}`);
-  console.log(`  rows ${summary.rows}`);
+  console.log(`  rows ${summary.rows}  age-eligible ${summary.ageEligible}  score-eligible ${summary.scoreEligible}`);
   console.log(`  age exact ${summary.ageExactPct ?? "n/a"}%  within 1 year ${summary.ageWithin1YearPct ?? "n/a"}%  (n=${summary.ageN})`);
   console.log(`  young vs mature (4.5+) ${summary.youngVsMaturePct ?? "n/a"}%`);
   console.log(`  score MAE ${summary.meanAbsoluteScoreError ?? "n/a"} in  error ${summary.meanScoreErrorPct ?? "n/a"}%  (n=${summary.scoreN})`);
@@ -304,6 +406,7 @@ async function main() {
 
   const overall = emptyBucket();
   const byRegion = new Map<string, Bucket>();
+  const byFence = new Map<string, Bucket>();
   const skipped: Array<{ id: string; reason: string }> = [];
 
   if (!dryRun && !proxy) {
@@ -317,14 +420,14 @@ async function main() {
 
   for (const label of labels) {
     const blocksAge = /mount only|antlers only|no live body/i.test(label.flag);
-    const ageEligible = label.age != null && RELIABLE_AGE.has(label.ageClass) && !blocksAge;
-    const scoreEligible = label.score != null && OFFICIAL_SCORE.has(label.scoreClass);
+    const ageEligible = RELIABLE_AGE.has(label.ageClass) && !blocksAge && (label.age.point != null || label.age.mature != null);
+    const scoreEligible = OFFICIAL_SCORE.has(label.scoreClass) && (label.gross != null || label.net != null);
     let prediction: Prediction | null = null;
     if (dryRun) {
       if (!label.photoUrl) skipped.push({ id: label.id, reason: "no fetchable photo" });
-    } else {
+    } else if (ageEligible || scoreEligible) {
       try {
-        prediction = await predict(label, proxy, token, false);
+        prediction = await predictRow(label, proxy, token, ageEligible, scoreEligible);
         if (prediction.error) skipped.push({ id: label.id, reason: prediction.error });
       } catch (error) {
         const reason = error instanceof Error ? error.message : "request failed";
@@ -332,10 +435,13 @@ async function main() {
         prediction = { latencyMs: 0, error: reason };
       }
     }
-    const bucket = byRegion.get(label.ecoregion) ?? emptyBucket();
-    addPrediction(bucket, label, prediction, ageEligible, scoreEligible);
+    const regionBucket = byRegion.get(label.ecoregion) ?? emptyBucket();
+    const fenceBucket = byFence.get(label.fenceType) ?? emptyBucket();
+    addPrediction(regionBucket, label, prediction, ageEligible, scoreEligible);
+    addPrediction(fenceBucket, label, prediction, ageEligible, scoreEligible);
     addPrediction(overall, label, prediction, ageEligible, scoreEligible);
-    byRegion.set(label.ecoregion, bucket);
+    byRegion.set(label.ecoregion, regionBucket);
+    byFence.set(label.fenceType, fenceBucket);
   }
 
   let baselineSummary = null;
@@ -343,9 +449,9 @@ async function main() {
     const baselineBucket = emptyBucket();
     for (const label of labels) {
       const blocksAge = /mount only|antlers only|no live body/i.test(label.flag);
-      const ageEligible = label.age != null && RELIABLE_AGE.has(label.ageClass) && !blocksAge;
+      const ageEligible = RELIABLE_AGE.has(label.ageClass) && !blocksAge && (label.age.point != null || label.age.mature != null);
       try {
-        const prediction = await predict(label, proxy, token, true);
+        const prediction = await predict(label, proxy, token, "age", true);
         addPrediction(baselineBucket, label, prediction, ageEligible, false);
       } catch {
         skipped.push({ id: label.id, reason: "baseline failed" });
@@ -355,6 +461,7 @@ async function main() {
   }
 
   const regions = Object.fromEntries([...byRegion.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, bucket]) => [name, summarize(bucket)]));
+  const fences = Object.fromEntries([...byFence.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, bucket]) => [name, summarize(bucket)]));
   const model = summarize(overall);
   const scorecard = {
     generatedAt: new Date().toISOString(),
@@ -369,6 +476,8 @@ async function main() {
     model,
     baseline: baselineSummary,
     byEcoregion: regions,
+    byFenceType: fences,
+    photos: "URLs in labels.csv are references only. This harness does not save image files.",
     skipped,
     releaseBar: dryRun ? {
       evaluated: false,
@@ -391,6 +500,10 @@ async function main() {
   if (baselineSummary) printSummary("Baseline prompt", baselineSummary);
   console.log("\nBy ecoregion");
   for (const [name, summary] of Object.entries(regions)) {
+    printSummary(name, summary);
+  }
+  console.log("\nBy fence type");
+  for (const [name, summary] of Object.entries(fences)) {
     printSummary(name, summary);
   }
   if (skipped.length) console.log(`\nSkipped or failed: ${skipped.length}`);

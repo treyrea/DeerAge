@@ -19,6 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { EmailPrompt } from "../components/EmailPrompt";
@@ -56,10 +57,11 @@ export const AgeResultScreen = () => {
   const [manualNotes, setManualNotes] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const explainable = currentResult?.explainableAge;
-  const ageCall = (explainable?.estimatedAgeYears ?? 0) >= 4.5 ? "Mature" : (explainable?.estimatedAgeYears ?? 0) >= 3.5 ? "Middle-aged" : "Young";
+  const ageClassLabel = formatAgeClass(explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
+  const ageCall = ageCallFromClass(ageClassLabel);
   useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
-    headline: explainable.estimatedAge,
+    headline: ageClassLabel,
     call: ageCall,
     confidence: explainable.overallConfidence,
   } : null);
@@ -135,7 +137,7 @@ export const AgeResultScreen = () => {
 
     const message = `DeerAge – Age My Deer Analysis
 
-Estimated Age: ${explainableAge.estimatedAge} (${explainableAge.estimatedAgeYears} years)
+Estimated age: ${formatAgeClass(explainableAge.estimatedAge)} (${ageCall})
 Confidence: ${explainableAge.overallConfidence}%
 ${explainableAge.shooterPassLabel}: ${explainableAge.shooterPassReason}
 
@@ -263,10 +265,10 @@ Powered by RackScore™ AI`;
 
             <View className="mb-4">
               <Text className="text-4xl font-bold text-white mb-2">
-                {explainableAge.estimatedAge}
+                {formatAgeClass(explainableAge.estimatedAge)}
               </Text>
               <Text className="text-lg" style={{ color: "#E5D4B8" }}>
-                ({explainableAge.estimatedAgeYears} years old)
+                {ageCall}
               </Text>
             </View>
 
@@ -808,8 +810,8 @@ Powered by RackScore™ AI`;
                 data={{
                   type: "age",
                   imageUri,
-                  ageEstimate: explainableAge.estimatedAge,
-                  ageRange: explainableAge.estimatedAge,
+                  ageEstimate: formatAgeClass(explainableAge.estimatedAge),
+                  ageRange: formatAgeClass(explainableAge.estimatedAge),
                   confidence: explainableAge.overallConfidence,
                   decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
                   call: ageCall,

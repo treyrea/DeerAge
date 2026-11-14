@@ -7,6 +7,7 @@ export interface HuntContext {
   species?: string;
   month?: number;
   distanceYards?: number;
+  fenceType?: string;
 }
 
 const REGIONAL_PRIOR = `
@@ -26,6 +27,7 @@ export function contextBlock(context: HuntContext | undefined): string {
     `State: ${context.state || "unknown"}`,
     `Ecoregion: ${context.ecoregion || "unknown"}`,
     `Land: ${context.landType || "unknown"}`,
+    `Fence: ${context.fenceType || "unknown"}`,
     `Species: ${context.species || "whitetail"}`,
     `Month: ${month}`,
     `Hunter's shooter goal: ${context.minimumShooterAge ?? 4.5}+ years`,
@@ -56,7 +58,7 @@ Age from the body, broadside if possible: back line, belly sag, where the neck m
 
 Reject the photo when it is not a deer, only a head or mount, or too poor to see the body. Set isValidDeer false and invalidReason to one of: not_deer, head_only, poor_quality, no_body.
 
-Age years use halves (1.5, 2.5, 3.5, 4.5, 5.5, 6.5). ageCall is "young" under 3.5, "middle-aged" at 3.5, and "mature" at 4.5 or older.
+ageYears is only the midpoint of a class, used to combine frames. The hunter is shown the class (1.5–2.5, 2.5–3.5, 3.5–4.5, 4.5–5.5, or 5.5+), never a single year. ageCall is "young" under 3.5, "middle-aged" at 3.5, and "mature" at 4.5 or older.
 meetsMinimum is true when ageYears is at least the hunter's shooter goal.
 topCues is up to 3 short body observations a hunter can check.
 cues is the same observations with name chosen from: neck_thickness, chest_depth, brisket, backline, belly, leg_proportion, face_shape, rump_ham, waist_tuck, muscle_definition.

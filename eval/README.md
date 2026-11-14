@@ -2,7 +2,13 @@
 
 Internal benchmark only. The photos belong to the people who posted them. Do not republish, train on, or show them without written permission. Keep the source URL on every row.
 
-`labels.csv` is the Nov 14, 2026 candidate set (87 rows). Rows whose `flag` starts with `weak` stay in the file and are skipped unless you pass `--include-weak`. Other flags (a photo the script could not fetch, a mount with no body) stay in the run. A missing photo is reported as skipped, and mount-only or antler-only rows are left out of the age metrics.
+`labels.csv` is the Nov 14, 2026 candidate set (362 rows). It replaces the 87-row set. Rows whose `flag` starts with `weak` stay in the file and are skipped unless you pass `--include-weak`. Photo URLs are references only. The harness does not download images into the repo.
+
+Age metrics use only a reliable age: `age_class` of `lab`, `known history`, `known (pen)`, or `check station`, and a claimed age that is one class. A span such as "1.5 through 6.5" is not scored. `7.5+` counts for young-versus-mature and not for an exact year. Agency examples, tooth wear, estimates, and self-reported ages are not in the age eval.
+
+Score metrics use `official` and `contest-official` rows even when age is unknown. That is how the Texas Big Game Awards rows are used: they have a certified score and no age. When a row lists both net and gross, the score error uses gross. A net-only row is compared with the model's net. Green scores stay out of that error.
+
+The scorecard reports the same numbers overall, by ecoregion, and by `fence_type` (`low`, `high`, `high (research pen)`, `unknown`, or `not recorded` when the older rows left the column blank). High-fence scores should be read on their own.
 
 ## Columns
 
@@ -16,6 +22,7 @@ Internal benchmark only. The photos belong to the people who posted them. Do not
 | `score_in` | Gross score as published. Fractions like `146 5/8` are parsed. Ranges such as `upper 150s` are not scored. |
 | `score_class` | `official`, `contest-official`, `green`, `self-reported`, `none`. |
 | `ecoregion` | The region the scorecard groups by. Antler size varies here. Body shape does not, as much. |
+| `fence_type` | `low`, `high`, `high (research pen)`, or `unknown`. Blank on the older rows. The scorecard also groups by this column. |
 | `state`, `county`, `location` | Finer place names. The model is given state and ecoregion, not the county. |
 | `flag` | Why a row is weak. Empty means the row is in the default run. |
 

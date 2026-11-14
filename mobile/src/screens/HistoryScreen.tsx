@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore } from "../utils/boone-crockett-calculator";
 import { DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
+import { formatAgeClass } from "../utils/age-class";
 import { ErrorModal } from "../components/ErrorModal";
 import { DistanceChip } from "../components/DistanceDisplay";
 import * as Haptics from "expo-haptics";
@@ -286,7 +287,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                       <>
                         <View className="flex-row items-baseline mb-1">
                           <Text className="text-white text-lg font-bold">
-                            {result.explainableAge?.estimatedAge || result.age.estimatedAge}
+                            {formatAgeClass(result.explainableAge?.estimatedAge || result.age.estimatedAge)}
                           </Text>
                           {result.explainableAge?.overallConfidence ? (
                             <Text className="text-gray-400 text-sm ml-2">
@@ -336,7 +337,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                           {result.score.recommendedCategory}
                         </Text>
                         <Text className="text-gray-500 text-xs mt-1">
-                          Est age: {result.age.estimatedAge}
+                          Age class: {formatAgeClass(result.explainableAge?.estimatedAge || result.age.estimatedAge)}
                         </Text>
                       </>
                     )}

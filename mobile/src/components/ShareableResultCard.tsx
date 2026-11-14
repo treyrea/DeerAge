@@ -24,6 +24,7 @@ import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
 import { recordShare } from "../lib/review";
+import { formatAgeClass } from "../utils/age-class";
 
 // ============================================================================
 // TYPES
@@ -209,10 +210,10 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
         <View className="flex-row items-center justify-between mb-3">
           <View>
             <Text className="text-2xl font-bold" style={{ color: "#F5F5DC" }}>
-              {data.ageEstimate}
+              {formatAgeClass(data.ageRange || data.ageEstimate)}
             </Text>
             <Text className="text-sm" style={{ color: "#8B7355" }}>
-              {data.ageRange || "Estimated age"}
+              Age class
             </Text>
             {data.call ? (
               <Text className="text-base font-bold mt-1" style={{ color: "#bbf7d0" }}>{data.call}</Text>
@@ -350,7 +351,7 @@ const BrandingWatermark: React.FC = () => {
 
 const getShareText = (data: ShareableResultData): string => {
   if (data.type === "age") {
-    return `🦌 DeerAge Analysis\n\nAge: ${data.ageEstimate}\nDecision: ${data.decision}\nConfidence: ${data.confidence}%\n\nKnow before you pull the trigger.\nPowered by RackScore™ AI`;
+    return `DeerAge\n\nAge class: ${formatAgeClass(data.ageRange || data.ageEstimate)}\n${data.call ? data.call + "\n" : ""}Confidence: ${data.confidence}%\n\nAged with DeerAge`;
   }
 
   return `🦌 DeerAge B&C Score\n\n${data.pointCount} Points\nNet Score: ${data.netScore.toFixed(1)}"\nGross Score: ${data.grossScore.toFixed(1)}"\nCategory: ${data.category}\n${data.meetsMinimum ? "✓ Meets B&C Minimum!" : ""}\n\nKnow before you pull the trigger.\nPowered by RackScore™ AI`;

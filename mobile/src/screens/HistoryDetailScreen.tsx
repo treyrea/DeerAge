@@ -11,6 +11,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
 import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
+import { formatAgeClass } from "../utils/age-class";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -49,7 +50,7 @@ export const HistoryDetailScreen = () => {
     const imageUri = capturedFrames[0]?.imageUri;
 
     if (isAgeMode) {
-      const message = `Deer Age Analysis:\nEstimated Age: ${explainableAge?.estimatedAge || age.estimatedAge}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nRecommendation: ${explainableAge?.shooterPassLabel || "N/A"}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
+      const message = `Deer Age Analysis:\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nRecommendation: ${explainableAge?.shooterPassLabel || "N/A"}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
 
       try {
         await Share.share({
@@ -60,7 +61,7 @@ export const HistoryDetailScreen = () => {
         console.error("Share failed:", error);
       }
     } else {
-      const message = `Deer Score Summary:\nNet Typical: ${formatScore(score.netTypical)}\nNet Non-Typical: ${formatScore(score.netNonTypical)}\nTotal Points: ${displayedPointCount}\nEstimated Age: ${age.estimatedAge}\nConfidence: ${score.overallConfidence}`;
+      const message = `Deer Score Summary:\nNet Typical: ${formatScore(score.netTypical)}\nNet Non-Typical: ${formatScore(score.netNonTypical)}\nTotal Points: ${displayedPointCount}\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${score.overallConfidence}`;
 
       try {
         await Share.share({
@@ -142,7 +143,7 @@ export const HistoryDetailScreen = () => {
                   )}
                 </View>
                 <Text className="text-white text-5xl font-bold mb-3">
-                  {explainableAge?.estimatedAge || age.estimatedAge}
+                  {formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
                 </Text>
                 {explainableAge?.shooterPassLabel && (
                   <View className="flex-row items-center mt-2">
@@ -313,7 +314,7 @@ export const HistoryDetailScreen = () => {
                 <Text className="text-white text-lg font-bold mb-4">Quick Age Estimate</Text>
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-400 text-sm">Estimated Age</Text>
-                  <Text className="text-white text-2xl font-bold">{age.estimatedAge}</Text>
+                  <Text className="text-white text-2xl font-bold">{formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}</Text>
                 </View>
                 <Text className="text-gray-500 text-xs mt-3">
                   Note: For precise age estimation, use &quot;Age My Deer&quot; mode

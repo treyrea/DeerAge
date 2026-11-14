@@ -14,6 +14,7 @@ import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ShareableResultCard } from "../components/ShareableResultCard";
+import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -37,10 +38,11 @@ export const QuickCheckResultScreen = () => {
 
   const isShoot = result.decision === "SHOOT";
   const isInvalidImage = result.isValidImage === false;
-  const ageCall = (result.ageYears ?? 0) >= 4.5 ? "Mature" : (result.ageYears ?? 0) >= 3.5 ? "Middle-aged" : "Young";
+  const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
+  const ageCall = ageCallFromClass(ageClassLabel);
   useResultFollowUp(!isInvalidImage, {
     imageUri,
-    headline: result.estimatedAgeClass,
+    headline: ageClassLabel,
     call: ageCall,
     confidence: result.confidence,
   });
@@ -178,7 +180,7 @@ export const QuickCheckResultScreen = () => {
   }
 
   // Age class display (NOT exact age - TPWD compliant)
-  const ageClassDisplay = `${result.estimatedAgeClass} years`;
+  const ageClassDisplay = ageClassLabel;
 
   // Format key feature for display
   const keyFeatureDisplay = result.keyFeature === "neck_brisket"
@@ -281,8 +283,8 @@ export const QuickCheckResultScreen = () => {
                 data={{
                   type: "age",
                   imageUri,
-                  ageEstimate: result.estimatedAgeClass,
-                  ageRange: result.estimatedAgeClass,
+                  ageEstimate: ageClassLabel,
+                  ageRange: ageClassLabel,
                   confidence: result.confidence,
                   decision: result.decision,
                   call: ageCall,

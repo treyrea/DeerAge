@@ -17,6 +17,7 @@ import { useHunterProfile } from "../state/hunterProfile";
 export { generateExplainableRackScoring } from "./explainable-rack";
 
 export let lastProxyScale: ScaleEstimation | null = null;
+export let lastProxyAgeYears: number | null = null;
 
 export function rememberScale(scale: ScaleEstimation | null) {
   lastProxyScale = scale;
@@ -87,6 +88,8 @@ function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
   }
 
   lastProxyScale = toScale(result.scale);
+  const ageYears = asNumber(result.ageYears);
+  lastProxyAgeYears = ageYears > 0 ? ageYears : null;
 
   return {
     rightMainBeam: { length: rightBeam, side: "right" },

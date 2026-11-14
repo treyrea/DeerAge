@@ -91,6 +91,7 @@ export async function analyzeImages(input: {
           state: profile.stateCode,
           ecoregion: profile.ecoregion,
           landType: profile.landType,
+          fenceType: profile.landType === "high_fence" ? "high" : profile.landType,
           goal: profile.goal,
           minimumShooterAge: input.minimumShooterAge,
           species: input.species,
