@@ -3,7 +3,6 @@
 
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
-const { withVibecodeMetro } = require("@vibecodeapp/sdk/metro");
 const path = require("path");
 const fs = require("fs");
 
@@ -35,9 +34,9 @@ config.resolver.useWatchman = false;
 // Configure asset and source extensions.
 const { assetExts, sourceExts } = config.resolver;
 
-// SVG transformer is configured by withVibecodeMetro
 config.transformer = {
   ...config.transformer,
+  babelTransformerPath: require.resolve("react-native-svg-transformer"),
   getTransformOptions: async () => ({
     transform: {
       experimentalImportSupport: false,
@@ -63,7 +62,6 @@ config.resolver = {
     },
     nodeModulesPaths: [
       path.resolve(__dirname, "node_modules"),
-      path.resolve(__dirname, "../backend/node_modules"),
     ],
   }),
   resolveRequest: (context, moduleName, platform) => {
@@ -158,4 +156,4 @@ config.resolver = {
 };
 
 // Integrate NativeWind with the Metro configuration.
-module.exports = withNativeWind(withVibecodeMetro(config), { input: "./global.css" });
+module.exports = withNativeWind(config, { input: "./global.css" });

@@ -1,5 +1,7 @@
 # DeerAge – AI Deer Age & Rack Estimator
 
+Analysis runs on the proxy in `server/`. The app only needs `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_API_BASE_URL`. Do not add an OpenAI key to the app. See the repo README.
+
 **Tagline:** *Know before you pull the trigger.*
 **Powered by:** RackScore™ AI
 

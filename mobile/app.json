@@ -9,20 +9,29 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "usesIapKit": true,
       "bundleIdentifier": "com.vibecode.deerage-qj3cfq",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "infoPlist": {
-        "NSCameraUsageDescription": "DeerAge uses the camera to capture new photos inside the app for your projects.",
-        "NSPhotoLibraryUsageDescription": "DeerAge accesses your photo library so you can move media between the app and your library.",
-        "NSPhotoLibraryAddUsageDescription": "DeerAge saves media you export from the app into your photo library.",
-        "NSLocationWhenInUseUsageDescription": "DeerAge uses your location to show nearby content and services while you use the app."
+        "NSCameraUsageDescription": "DeerAge uses the camera to photograph deer so it can estimate age and score the rack.",
+        "NSPhotoLibraryUsageDescription": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score.",
+        "NSPhotoLibraryAddUsageDescription": "DeerAge saves the result card you share into your photo library.",
+        "NSLocationWhenInUseUsageDescription": "DeerAge can save the spot of a result you keep. The state used for the age estimate is the one you pick, and this location stays on your phone."
       }
     },
     "android": {
       "edgeToEdgeEnabled": true
     },
     "extra": {},
-    "icon": "./icon.png"
+    "icon": "./icon.png",
+    "plugins": [
+      "expo-asset",
+      "expo-build-properties",
+      "expo-font",
+      "expo-mail-composer",
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-video",
+      "expo-web-browser"
+    ]
   }
 }

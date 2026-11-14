@@ -11,8 +11,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { useSubscriptionStore } from "../state/subscriptionStoreV2";
-import { TIERS, APPROVED_COPY, getLimitReachedCopy, getMinimumTierForFeature, type FeatureType } from "../lib/CONSTITUTION";
+import { useSubscriptionStore } from "../state/subscriptionStore";
+import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 
 // Custom rack ruler icon for Score My Rack
 const RackRulerIcon = require("../../assets/image-1765760310.png");
@@ -32,58 +32,29 @@ export const ModeSelectScreen = () => {
     ? "Estimate deer maturity from body characteristics"
     : "Measure rack and calculate Boone & Crockett score";
 
-  // Subscription status (V2 tier system)
-  const currentTier = useSubscriptionStore((s) => s.currentTier);
-  const canUseFeature = useSubscriptionStore((s) => s.canUseFeature);
-  const getRemainingUses = useSubscriptionStore((s) => s.getRemainingUses);
-
-  const featureType: FeatureType = isAgeMode ? "age_my_deer" : "score_my_rack";
-  const tier = TIERS[currentTier];
-  const isPaid = !tier.isFreeTier;
-
-  const canProceed = canUseFeature(featureType);
-  const remaining = getRemainingUses(featureType);
-  const limit = isAgeMode ? tier.limits.ageMyDeer : tier.limits.scoreMyRack;
-  const recommendedTier = getMinimumTierForFeature(featureType, 1);
-  const limitCopy = getLimitReachedCopy(featureType, currentTier);
+  const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
+  const remaining = useSubscriptionStore((s) => s.remainingFree());
 
   const handleProceed = (destination: "Camera" | "PhotoSelect") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    // Check if user can proceed
     if (!canProceed) {
-      // Show tier paywall with appropriate framing
-      navigation.navigate("TierPaywall", {
-        reason: isAgeMode ? "age_limit" : "score_limit",
-        feature: featureType,
-        recommendedTier: recommendedTier,
-      });
+      navigation.navigate("TierPaywall", { reason: "free_limit" });
       return;
     }
-
     navigation.navigate(destination);
   };
 
-  // Get display text based on status
   const getStatusDisplay = () => {
-    if (canProceed) {
-      if (remaining === "unlimited") {
-        return {
-          text: `Unlimited ${isAgeMode ? "age" : "score"} analyses`,
-          subtext: null,
-        };
-      }
+    if (remaining === "unlimited") {
+      return { text: "Unlimited analyses", subtext: null as string | null };
+    }
+    if (remaining > 0) {
       return {
-        text: `${remaining} ${isAgeMode ? "age" : "score"} ${remaining === 1 ? "analysis" : "analyses"} ${tier.limitType === "lifetime" ? "remaining" : "this month"}`,
-        subtext: null,
+        text: `${remaining} of ${FREE_LIFETIME_ANALYSES} free analyses left`,
+        subtext: "Quick Check and Age share this count",
       };
     }
-
-    // Limit reached - use approved copy
-    return {
-      text: limitCopy.title,
-      subtext: limitCopy.subtitle,
-    };
+    return { text: "Free analyses used", subtext: "A Season Pass keeps them coming" };
   };
 
   const statusDisplay = getStatusDisplay();
@@ -170,11 +141,7 @@ export const ModeSelectScreen = () => {
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate("TierPaywall", {
-                  reason: isAgeMode ? "age_limit" : "score_limit",
-                  feature: featureType,
-                  recommendedTier: recommendedTier,
-                });
+                navigation.navigate("TierPaywall", { reason: "free_limit" });
               }}
               className="px-3 py-2 rounded-lg"
               style={{ backgroundColor: "#D4AF37" }}

@@ -17,13 +17,16 @@ import {
   PropertyRules,
   ExplainableAgeEstimation,
 } from "../types/deer-scoring";
-import { fuseMultiFrameMeasurements, refineWithCloudProcessing, generateExplainableRackScoring } from "../api/deer-analysis";
+import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyScale } from "../api/deer-analysis";
 import { calculateBooneAndCrockettScore } from "../utils/boone-crockett-calculator";
 import {
   estimateScaleFromMultiView,
   estimateDeerAge,
 } from "../utils/scale-and-age-estimation";
 import { analyzeExplainableAge } from "../api/explainable-age-analysis";
+import { AnalysisError, type AnalysisErrorCode } from "../api/errors";
+import { useSubscriptionStore } from "./subscriptionStore";
+import { useNetworkStore } from "./networkStore";
 import { useDistanceStore } from "./distanceStore";
 import { computeDistanceAdjustment, calculateOverallConfidence } from "../utils/distance-adjustment";
 
@@ -67,6 +70,7 @@ interface DeerScoringState {
   capturedFrames: DeerAnalysisFrame[];
   currentResult: DeerScoringResult | null;
   error: string | null;
+  errorCode: AnalysisErrorCode | null;
   history: DeerScoringResult[];
   analysisMode: "age" | "score";
 
@@ -106,6 +110,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
   capturedFrames: [],
   currentResult: null,
   error: null,
+  errorCode: null,
   history: [],
   analysisMode: "score" as "age" | "score",
   propertyRules: {
@@ -152,6 +157,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       isCapturing: true,
       capturedFrames: [],
       error: null,
+      errorCode: null,
       currentResult: null,
     });
   },
@@ -174,15 +180,39 @@ export const useDeerScoringStore = create<DeerScoringState>()(
     console.log("[Store] processFrames called");
 
     // Set processing state immediately (synchronously) before any async operations
-    set({ isProcessing: true, error: null });
+    set({ isProcessing: true, error: null, errorCode: null });
 
     const { capturedFrames, analysisMode, propertyRules } = get();
 
     console.log("[Store] Frame count:", capturedFrames.length, "Mode:", analysisMode);
 
     if (capturedFrames.length === 0) {
-      console.log("[Store] No frames to process");
-      set({ error: "No frames captured", isProcessing: false });
+      set({
+        error: "The burst didn't capture any frames. Hold the phone steady and try again.",
+        errorCode: "zero_frames",
+        isProcessing: false,
+      });
+      return;
+    }
+
+    const network = useNetworkStore.getState();
+    if (!network.isConnected || network.isInternetReachable === false) {
+      set({
+        error: analysisMode === "age"
+          ? "Age mode is offline. DeerAge needs a connection to estimate age."
+          : "You're offline. DeerAge needs a connection to score the rack.",
+        errorCode: "network",
+        isProcessing: false,
+      });
+      return;
+    }
+
+    if (!useSubscriptionStore.getState().canStartAnalysis()) {
+      set({
+        error: "You've used your 3 free analyses.",
+        errorCode: "quota",
+        isProcessing: false,
+      });
       return;
     }
 
@@ -191,67 +221,38 @@ export const useDeerScoringStore = create<DeerScoringState>()(
 
       // FOR AGE MODE: Use explainable age analysis
       if (analysisMode === "age") {
-        const imageUri = capturedFrames[0].imageUri;
-
-        // Get pending distance from distance store FIRST so we can use it for scale estimation
         const distanceState = useDistanceStore.getState();
         const pendingDistanceAge = distanceState.pendingDistance;
         const pendingZoomMetaAge = distanceState.pendingZoomMeta;
 
-        // Pass distance info to scale estimation for improved confidence
+        const explainableAge = await analyzeExplainableAge(
+          capturedFrames[0].imageUri,
+          propertyRules.minimumShooterAge,
+          propertyRules,
+          capturedFrames.slice(1).map((frame) => frame.imageUri),
+        );
+
         const distanceInfoForScale = pendingDistanceAge ? {
           distanceYards: pendingDistanceAge.distanceYards,
           confidence: pendingDistanceAge.confidence,
         } : undefined;
+        const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0
+          ? lastProxyScale
+          : estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
 
-        const scale = estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
-
-        // Run age analysis and rack analysis in PARALLEL for faster results
-        console.log("[Store] Starting parallel age + rack analysis");
-
-        const agePromise = analyzeExplainableAge(
-          imageUri,
-          propertyRules.minimumShooterAge,
-          propertyRules
-        ).catch((error) => {
-          console.log("[Store] Explainable age analysis failed:", error);
-          throw error; // Re-throw - age analysis is required
-        });
-
-        const rackPromise = fuseMultiFrameMeasurements(capturedFrames, scale).catch((error) => {
-          console.log("[Store] Quick rack analysis failed, will use mock data:", error);
-          return null; // Return null to signal failure - will use mock data
-        });
-
-        // Wait for both to complete
-        const [explainableAge, rackResult] = await Promise.all([agePromise, rackPromise]);
-
-        console.log("[Store] Parallel analysis complete");
-
-        // Use rack result or mock data
-        let measurements: AntlerMeasurements;
-        let score: BooneAndCrockettScore;
-
-        if (rackResult) {
-          measurements = rackResult;
-          score = calculateBooneAndCrockettScore(measurements);
-          console.log("[Store] Rack analysis succeeded - points:", measurements.totalPoints + measurements.totalAbnormalPoints);
-        } else {
-          // Use mock measurements if rack analysis failed
-          measurements = {
-            rightMainBeam: { length: 0, side: "right" },
-            leftMainBeam: { length: 0, side: "left" },
-            abnormalPoints: [],
-            rightCircumferences: {},
-            leftCircumferences: {},
-            insideSpread: 0,
-            totalPoints: 0,
-            leftSidePoints: 0,
-            rightSidePoints: 0,
-            totalAbnormalPoints: 0,
-          };
-          score = calculateBooneAndCrockettScore(measurements);
-        }
+        const measurements: AntlerMeasurements = {
+          rightMainBeam: { length: 0, side: "right" },
+          leftMainBeam: { length: 0, side: "left" },
+          abnormalPoints: [],
+          rightCircumferences: {},
+          leftCircumferences: {},
+          insideSpread: 0,
+          totalPoints: 0,
+          leftSidePoints: 0,
+          rightSidePoints: 0,
+          totalAbnormalPoints: 0,
+        };
+        const score: BooneAndCrockettScore = calculateBooneAndCrockettScore(measurements);
 
         const age = estimateDeerAge(measurements);
         const processingTime = Date.now() - startTime;
@@ -272,7 +273,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           timestamp: new Date(),
           analysisMode: "age",
           capturedFrames,
-          fusedFrameCount: 1,
+          fusedFrameCount: capturedFrames.length,
           score,
           scale,
           age,
@@ -326,29 +327,16 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       } : undefined;
 
       // Step 1: Estimate scale from multi-view (or single frame) with distance info
-      const scale = estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
+      const fallbackScale = estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
 
-      // Step 2: Fuse measurements from all frames
-      let measurements = await fuseMultiFrameMeasurements(capturedFrames, scale);
+      // Step 2: Fuse measurements from the sampled frames on the proxy
+      let measurements = await fuseMultiFrameMeasurements(capturedFrames, fallbackScale);
+      const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0 ? lastProxyScale : fallbackScale;
 
       // Step 3: Calculate B&C score
       let score = calculateBooneAndCrockettScore(measurements);
 
-      // Step 4: Check if cloud refinement is needed
-      // For single images, we're more lenient with confidence
-      let cloudRefinementUsed = false;
-      const isSingleImage = capturedFrames.length === 1;
-
-      if (score.overallConfidence === "Low" && !isSingleImage) {
-        console.log("Low confidence detected, initiating cloud refinement...");
-        try {
-          measurements = await refineWithCloudProcessing(measurements, capturedFrames, scale);
-          score = calculateBooneAndCrockettScore(measurements);
-          cloudRefinementUsed = true;
-        } catch (refinementError) {
-          console.warn("Cloud refinement failed, using original measurements");
-        }
-      }
+      const cloudRefinementUsed = true;
 
       // Step 5: Generate explainable rack scoring
       const explainableRackScore = generateExplainableRackScoring(score, measurements);
@@ -417,33 +405,12 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         isProcessing: false,
       });
     } catch (error) {
-      // Extract error message
-      let errorMessage = "Failed to analyze image. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      // Only log technical errors (not expected user errors like no antlers or timeouts)
-      const isUserError = errorMessage.includes("No antlers") ||
-                         errorMessage.includes("antlers visible") ||
-                         errorMessage.includes("No frames captured") ||
-                         errorMessage.includes("clearly shows") ||
-                         errorMessage.includes("Please ensure the photo") ||
-                         errorMessage.includes("timed out");
-
-      // JSON parse errors and API failures are technical errors (but not timeouts) - log them
-      const isTechnicalError = errorMessage.includes("JSON Parse") ||
-                              errorMessage.includes("Unable to parse") ||
-                              (errorMessage.includes("API") && !errorMessage.includes("timeout"));
-
-      if (!isUserError && isTechnicalError) {
-        console.error("Processing error:", error);
-      }
-
+      const analysisError = error instanceof AnalysisError ? error : null;
+      const errorMessage = analysisError?.message
+        || (error instanceof Error ? error.message : "Failed to analyze image. Please try again.");
       set({
         error: errorMessage,
+        errorCode: analysisError?.code ?? "unknown",
         isProcessing: false,
       });
     }
@@ -451,7 +418,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
 
   // Clear current result
   clearCurrentResult: () => {
-    set({ currentResult: null, capturedFrames: [], error: null });
+    set({ currentResult: null, capturedFrames: [], error: null, errorCode: null });
   },
 
   // Save result to history

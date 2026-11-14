@@ -3,7 +3,7 @@
  * Includes distance capture settings and rangefinder integration scaffold
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, Platform, Linking, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -11,8 +11,9 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useDistanceStore } from "../state/distanceStore";
-import { useSubscriptionStore } from "../state/subscriptionStoreV2";
-import { TIERS } from "../lib/CONSTITUTION";
+import { useSubscriptionStore } from "../state/subscriptionStore";
+import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { useHunterProfile } from "../state/hunterProfile";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
 
@@ -58,30 +59,12 @@ export const SettingsScreen = () => {
     };
   }, [telemetryData]);
 
-  // Subscription state (V2 store - tier-based)
-  const currentTier = useSubscriptionStore((s) => s.currentTier);
-  const checkAndUpdateTier = useSubscriptionStore((s) => s.checkAndUpdateTier);
-  const getRemainingUses = useSubscriptionStore((s) => s.getRemainingUses);
-  const getLimit = useSubscriptionStore((s) => s.getLimit);
-
-  // Derived: isPro = any paid tier (not explorer)
-  const isPro = currentTier !== "explorer";
-  const tierInfo = TIERS[currentTier];
-
-  // Check subscription on mount
-  useEffect(() => {
-    checkAndUpdateTier();
-  }, []);
-
-  const remainingAgeRaw = getRemainingUses("age_my_deer");
-  const remainingScoreRaw = getRemainingUses("score_my_rack");
-  const remainingAge = remainingAgeRaw === "unlimited" ? Infinity : remainingAgeRaw;
-  const remainingScore = remainingScoreRaw === "unlimited" ? Infinity : remainingScoreRaw;
-
-  const ageLimitRaw = getLimit("age_my_deer");
-  const scoreLimitRaw = getLimit("score_my_rack");
-  const ageLimit = ageLimitRaw === "unlimited" ? Infinity : ageLimitRaw;
-  const scoreLimit = scoreLimitRaw === "unlimited" ? Infinity : scoreLimitRaw;
+  const planLabel = useSubscriptionStore((s) => s.planLabel);
+  const entitled = useSubscriptionStore((s) => s.entitled);
+  const remainingFree = useSubscriptionStore((s) => s.remainingFree());
+  const restore = useSubscriptionStore((s) => s.restore);
+  const profile = useHunterProfile();
+  const isPro = entitled;
 
   const [minimumAge, setMinimumAge] = useState(propertyRules.minimumShooterAge.toString());
   const [savedFeedback, setSavedFeedback] = useState(false);
@@ -141,7 +124,7 @@ export const SettingsScreen = () => {
               <View className="flex-1">
                 <View className="flex-row items-center">
                   <Text className="text-xl font-bold text-white">
-                    {tierInfo.displayName}
+                    {planLabel}
                   </Text>
                   {isPro && (
                     <View className="ml-2 px-2 py-1 rounded-lg" style={{ backgroundColor: "#D4AF37" }}>
@@ -150,55 +133,32 @@ export const SettingsScreen = () => {
                   )}
                 </View>
                 <Text className="text-sm mt-1" style={{ color: isPro ? "#bbf7d0" : "#E5D4B8" }}>
-                  {tierInfo.identityDescription}
+                  {isPro ? "Quick Check, Age, and Score" : `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`}
                 </Text>
               </View>
             </View>
 
-            {/* Usage meters - show for all tiers */}
-            <View className="mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Age My Deer</Text>
-                <Text className="text-sm font-semibold" style={{ color: remainingAge > 0 || ageLimit === Infinity ? "#22c55e" : "#ef4444" }}>
-                  {ageLimit === Infinity ? "Unlimited" : `${remainingAge} of ${ageLimit} ${tierInfo.isFreeTier ? "total" : "/month"}`}
-                </Text>
-              </View>
-              {ageLimit !== Infinity && (
-                <View className="h-2 rounded-full" style={{ backgroundColor: "#5A6447" }}>
-                  <View
-                    className="h-2 rounded-full"
-                    style={{
-                      backgroundColor: remainingAge > 0 ? "#22c55e" : "#ef4444",
-                      width: `${Math.min(100, (remainingAge / ageLimit) * 100)}%`,
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-
-            <View className="mb-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Score My Rack</Text>
-                <Text className="text-sm font-semibold" style={{ color: scoreLimit === 0 ? "#8B7355" : (remainingScore > 0 || scoreLimit === Infinity ? "#22c55e" : "#ef4444") }}>
-                  {scoreLimit === 0 ? "Trophy tier+" : scoreLimit === Infinity ? "Unlimited" : `${remainingScore} of ${scoreLimit}/month`}
-                </Text>
-              </View>
-              {scoreLimit > 0 && scoreLimit !== Infinity && (
-                <View className="h-2 rounded-full" style={{ backgroundColor: "#5A6447" }}>
-                  <View
-                    className="h-2 rounded-full"
-                    style={{
-                      backgroundColor: remainingScore > 0 ? "#22c55e" : "#ef4444",
-                      width: `${Math.min(100, (remainingScore / scoreLimit) * 100)}%`,
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-
-            <Text className="text-xs mb-4 text-center" style={{ color: "#8B7355" }}>
-              {tierInfo.isFreeTier ? "Lifetime limits" : "Resets monthly"} • Quick Check always available
+            <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
+              {profile.completed ? `${profile.stateName} · ${profile.ecoregion}` : "Hunting profile not set"}
             </Text>
+
+            <Pressable
+              onPress={() => navigation.navigate("Home", { screen: "Onboarding", params: { edit: true } })}
+              className="rounded-xl py-3 items-center mb-3"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit hunting profile</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                void restore();
+              }}
+              className="rounded-xl py-3 items-center mb-3"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: "#D4AF37" }}>Restore purchases</Text>
+            </Pressable>
 
             {!isPro ? (
               <Pressable

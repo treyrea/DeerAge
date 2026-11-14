@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
+import { recordShare } from "../lib/review";
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,8 @@ export interface AgeResultData {
   confidence: number;
   decision: "SHOOT" | "LET WALK";
   keyFeature?: string;
+  call?: string;
+  topCues?: string[];
 }
 
 export interface ScoreResultData {
@@ -81,11 +84,12 @@ export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
             dialogTitle: "Share your DeerAge result",
           });
           onShare?.();
+          void recordShare();
         } else {
-          // Fallback to text share
           const text = getShareText(data);
           await Share.share({ message: text });
           onShare?.();
+          void recordShare();
         }
       }
     } catch (error) {
@@ -208,8 +212,11 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               {data.ageEstimate}
             </Text>
             <Text className="text-sm" style={{ color: "#8B7355" }}>
-              Estimated Age
+              {data.ageRange || "Estimated age"}
             </Text>
+            {data.call ? (
+              <Text className="text-base font-bold mt-1" style={{ color: "#bbf7d0" }}>{data.call}</Text>
+            ) : null}
           </View>
           <View className="items-end">
             <Text className="text-xl font-bold" style={{ color: "#D4AF37" }}>
@@ -221,18 +228,15 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
           </View>
         </View>
 
-        {data.keyFeature && (
-          <View
-            className="rounded-lg p-3 mb-3"
-            style={{ backgroundColor: "#2B3420" }}
-          >
-            <Text className="text-sm" style={{ color: "#E5D4B8" }}>
-              Key indicator: {data.keyFeature}
-            </Text>
+        {(data.topCues ?? []).slice(0, 3).map((cue) => (
+          <Text key={cue} className="text-sm mb-1" style={{ color: "#E5D4B8" }}>{cue}</Text>
+        ))}
+        {data.keyFeature && !data.topCues?.length ? (
+          <View className="rounded-lg p-3 mb-3" style={{ backgroundColor: "#2B3420" }}>
+            <Text className="text-sm" style={{ color: "#E5D4B8" }}>Key indicator: {data.keyFeature}</Text>
           </View>
-        )}
+        ) : null}
 
-        {/* Branding watermark */}
         <BrandingWatermark />
       </View>
     </View>
@@ -334,7 +338,7 @@ const BrandingWatermark: React.FC = () => {
     <View className="flex-row items-center justify-center pt-2 border-t border-white/10">
       <Text style={{ fontSize: 14 }}>🦌</Text>
       <Text className="text-xs ml-1" style={{ color: "#8B7355" }}>
-        DeerAge • Powered by RackScore™ AI
+        Aged with DeerAge
       </Text>
     </View>
   );

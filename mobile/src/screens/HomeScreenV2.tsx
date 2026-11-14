@@ -18,7 +18,9 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
-import { useSubscriptionStore } from "../state/subscriptionStoreV2";
+import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useHunterProfile } from "../state/hunterProfile";
+import { UpdateAvailableBanner } from "../components/UpdateAvailableBanner";
 import * as Haptics from "expo-haptics";
 
 // Custom rack ruler icon for Score My Rack
@@ -36,14 +38,15 @@ export const HomeScreen = () => {
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
   const isOnline = isConnected && isInternetReachable !== false;
 
-  // Subscription status (V2 - tier based)
-  const currentTier = useSubscriptionStore((s) => s.currentTier);
-  const checkAndUpdateTier = useSubscriptionStore((s) => s.checkAndUpdateTier);
+  const canStartAnalysis = useSubscriptionStore((s) => s.canStartAnalysis);
+  const onboardingDone = useHunterProfile((s) => s.completed);
+  const profileHydrated = useHunterProfile((s) => s.hydrated);
 
-  // Refresh tier on mount
   useEffect(() => {
-    checkAndUpdateTier();
-  }, []);
+    if (profileHydrated && !onboardingDone) {
+      navigation.replace("Onboarding");
+    }
+  }, [profileHydrated, onboardingDone, navigation]);
 
   const handleModeSelect = (mode: "age" | "score") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -55,6 +58,7 @@ export const HomeScreen = () => {
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top, paddingBottom: insets.bottom }}>
       <ScrollView>
         <View className="px-6 py-8">
+          <UpdateAvailableBanner />
           {/* Offline Alert Banner - Only show when offline */}
           {!isOnline && (
             <Pressable
@@ -107,6 +111,10 @@ export const HomeScreen = () => {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              if (!canStartAnalysis()) {
+                navigation.navigate("TierPaywall", { reason: "free_limit" });
+                return;
+              }
               navigation.navigate("QuickCheckCamera");
             }}
             className="mb-4"

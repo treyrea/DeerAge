@@ -2,43 +2,51 @@
 
 **Know before you pull the trigger.**
 
-DeerAge is an Expo SDK 54 / React Native iOS app that helps hunters estimate a deer's age and rack before and after the shot. It is already published on the App Store. This repository is the cleaned Vibecode export: the mobile app plus the Bun backend that shipped with it.
+DeerAge is the live iOS app (`com.vibecode.deerage-qj3cfq`, version 1.0.8) for estimating a buck's age and rack. This repo is the Expo SDK 54 app plus a small Vercel proxy. The phone never holds an OpenAI key.
 
 ## Layout
 
-- `mobile/` — Expo app (camera, age and rack analysis, subscriptions)
-- `backend/` — Bun and Hono API. Startup can sync a Prisma schema when `prisma/schema.prisma` exists; this export does not include one.
-- `changelog.txt` — change log from the Vibecode export
+- `mobile/` — Expo app
+- `server/` — Vercel proxy (`POST /api/analyze`). See `server/README.md` for deploy steps and environment variable names.
+- `eval/` — accuracy harness and `labels.csv`. `node --experimental-strip-types eval/run.ts --dry-run` runs without keys.
 - `privacy-policy` — App Store privacy policy
 
-`mobile/README.md` has the longer product write-up. This file is how to run the code.
-
-## Mobile app
+## Mobile
 
 ```bash
 cd mobile
 cp .env.example .env
-bun install   # or: npm install
+npm install
 npx expo start
 ```
 
-Copy `mobile/.env.example` to `mobile/.env` and fill in the values locally. Every key is named `EXPO_PUBLIC_VIBECODE_*` because the app was moved off Vibecode. Those names can stay, but the values should be replaced with the owner's own provider keys (OpenAI, Anthropic, Grok, Google, ElevenLabs, RevenueCat, and any others you enable).
+`.env` needs two public values:
 
-`npx expo start` reads `.env` for local development. Production and store builds do not. Set the same `EXPO_PUBLIC_*` values as EAS environment variables or secrets. Leave them blank in `mobile/eas.json` rather than hardcoding keys there.
+- `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` — RevenueCat Apple public SDK key
+- `EXPO_PUBLIC_API_BASE_URL` — proxy origin, no trailing slash
 
-## Backend
+Store builds read the same names from EAS secrets. `eas.json` does not set them. An empty value in `eas.json` would override the secret.
 
-```bash
-cd backend
-cp .env.example .env
-bun install
-bun run dev
-```
+Do not run `eas submit` from this repo until the owner asks. Version 1.0.8, iOS build 14, is for review and TestFlight only when the owner ships it.
 
-`bun run dev` starts the API with hot reload. The port comes from `PORT` in `.env` (default `3000`). `backend/.env.example` lists optional provider key names with empty values; copy it to `backend/.env` and fill in only what you use.
+## Plans
 
-`backend/scripts/start` is the hosted startup script (install, Prisma sync if a schema is present, then the server). For local work, `bun run dev` is enough.
+The paywall reads prices from the RevenueCat **current** offering. It does not hardcode a price.
+
+Intended new products, created later in App Store Connect:
+
+- `season_annual` — Season Pass, $19.99/year, 7-day free trial, entitlement `deerage_pro`
+- `deerage_monthly` — Monthly, $4.99/month, entitlement `deerage_pro`
+
+Existing subscribers keep access through `scout`, `hunter`, `trophy`, `outfitter`, or `pro`. Those products (`scout_monthly`, `hunter_monthly`, `trophy_monthly`, `outfitter_monthly` in the `tiers` offering) show under More plans only when the offering still contains them.
+
+Free hunters get 3 lifetime analyses, shared by Quick Check, Age, and Score. The count lives on the RevenueCat subscriber as `deerage_free_uses`. The server checks it. A missing key fails closed.
 
 ## Secrets
 
-Real `.env` files are not in this repo. `.env`, `.env.local`, dependencies, and Expo/native build output are gitignored at the repo root and inside `backend/` and `mobile/`.
+| Where | Names |
+| --- | --- |
+| EAS | `EXPO_PUBLIC_REVENUECAT_APPLE_KEY`, `EXPO_PUBLIC_API_BASE_URL` |
+| Vercel | `OPENAI_API_KEY`, `REVENUECAT_SECRET_API_KEY`, optional `OPENAI_MODEL`, `DEERAGE_EVAL_TOKEN`, `MIN_APP_VERSION`, `LATEST_APP_VERSION` |
+
+Never commit a filled-in `.env`. The repo stays public.

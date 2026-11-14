@@ -7,46 +7,20 @@ import { SplashScreen } from "./src/screens/SplashScreen";
 import { useState, useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { useNetworkStore } from "./src/state/networkStore";
-import { useSubscriptionStore } from "./src/state/subscriptionStoreV2";
+import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-// TEMPORARY: Import test component for point counting analysis
-import TestPointCount from "./TestPointCount";
-
-// Set to true to run point count test, false for normal app
-const RUN_POINT_COUNT_TEST = false;
-
-/*
-IMPORTANT NOTICE: DO NOT REMOVE
-There are already environment keys in the project.
-Before telling the user to add them, check if you already have access to the required keys through bash.
-Directly access them with process.env.${key}
-
-Correct usage:
-process.env.EXPO_PUBLIC_VIBECODE_{key}
-//directly access the key
-
-Incorrect usage:
-import { OPENAI_API_KEY } from '@env';
-//don't use @env, its depreicated
-
-Incorrect usage:
-import Constants from 'expo-constants';
-const openai_api_key = Constants.expoConfig.extra.apikey;
-//don't use expo-constants, its depreicated
-
-*/
-
-// TEMPORARY: Export test component when testing
-export default RUN_POINT_COUNT_TEST ? TestPointCount : MainApp;
+// AI keys stay on the server. The app only reads the RevenueCat public SDK key and the proxy URL.
+export default MainApp;
 
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
-  const checkAndUpdateTier = useSubscriptionStore((s) => s.checkAndUpdateTier);
+  const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
+  const applyCustomerInfo = useSubscriptionStore((s) => s.applyCustomerInfo);
 
   // Monitor network connectivity
   useEffect(() => {
@@ -63,14 +37,11 @@ function MainApp() {
 
   // Check subscription status on app launch and listen for updates
   useEffect(() => {
-    // Check subscription on launch (handles promo codes, restores, etc.)
-    console.log("[App] Checking subscription status on launch...");
-    checkAndUpdateTier();
+    // Read CustomerInfo only. Restore runs when the hunter taps Restore.
+    void refreshEntitlement();
 
-    // Listen for real-time entitlement updates (purchases, promo code redemptions, etc.)
     const unsubscribe = addCustomerInfoUpdateListener((customerInfo) => {
-      console.log("[App] Customer info updated, refreshing tier...");
-      checkAndUpdateTier();
+      applyCustomerInfo(customerInfo);
     });
 
     return () => unsubscribe();

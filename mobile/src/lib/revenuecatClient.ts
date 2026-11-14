@@ -4,16 +4,11 @@
  * This module provides a centralized RevenueCat SDK wrapper that gracefully handles
  * missing configuration. The app will work fine whether or not RevenueCat is configured.
  *
- * Environment Variables:
- * - EXPO_PUBLIC_VIBECODE_REVENUECAT_TEST_KEY: Used in development/test builds
- * - EXPO_PUBLIC_VIBECODE_REVENUECAT_APPLE_KEY: Used in production builds
- * These are automatically injected into the workspace by the Vibecode service once the user sets up RevenueCat in the Payments tab.
+ * Environment variables (public client values only):
+ * - EXPO_PUBLIC_REVENUECAT_APPLE_KEY: RevenueCat Apple public SDK key
  *
- * Platform Support:
- * - iOS/Android: Fully supported via app stores
- * - Web: Disabled (RevenueCat only supports native app stores)
- *
- * The module automatically selects the correct key based on __DEV__ mode.
+ * The same public key is used for local and store builds. Sandbox purchases use it too.
+ * Never put the RevenueCat secret key or an OpenAI key in the app.
  * 
  * This module is used to get the current customer info, offerings, and purchase packages.
  * These exported functions are found at the bottom of the file.
@@ -29,12 +24,7 @@ import Purchases, {
 // Check if running on web
 const isWeb = Platform.OS === "web";
 
-// Check for environment keys
-const testKey = process.env.EXPO_PUBLIC_VIBECODE_REVENUECAT_TEST_KEY;
-const prodKey = process.env.EXPO_PUBLIC_VIBECODE_REVENUECAT_APPLE_KEY;
-
-// Use __DEV__ to determine which key to use (standard React Native pattern)
-const apiKey = isWeb ? undefined : __DEV__ ? testKey : prodKey;
+const apiKey = isWeb ? undefined : process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY?.trim() || undefined;
 
 // Track if RevenueCat is enabled
 const isEnabled = !!apiKey && !isWeb;
@@ -145,6 +135,40 @@ export const addCustomerInfoUpdateListener = (
  */
 export const isRevenueCatEnabled = (): boolean => {
   return isEnabled;
+};
+
+/** RevenueCat app user id, used as the proxy's subscriber key. Empty when the SDK is off. */
+export const getRevenueCatAppUserId = async (): Promise<string> => {
+  if (!isEnabled) return "";
+  try {
+    return await Purchases.getAppUserID();
+  } catch (error) {
+    console.log(`${LOG_PREFIX} getAppUserID failed:`, error);
+    return "";
+  }
+};
+
+/**
+ * Records a custom paywall view so the view-to-purchase funnel shows in RevenueCat.
+ * Requires react-native-purchases 11 (Purchases.trackCustomPaywallImpression).
+ */
+export const trackPaywallImpression = async (offering?: PurchasesOfferings["current"]): Promise<void> => {
+  if (!isEnabled) return;
+  const tracker = Purchases as unknown as {
+    trackCustomPaywallImpression?: (params?: { offering?: unknown; paywallId?: string }) => Promise<void>;
+  };
+  if (typeof tracker.trackCustomPaywallImpression !== "function") {
+    console.log(`${LOG_PREFIX} trackCustomPaywallImpression is not on this SDK`);
+    return;
+  }
+  try {
+    await tracker.trackCustomPaywallImpression({
+      paywallId: "deerage-season",
+      offering: offering ?? undefined,
+    });
+  } catch (error) {
+    console.log(`${LOG_PREFIX} paywall impression failed:`, error);
+  }
 };
 
 /**

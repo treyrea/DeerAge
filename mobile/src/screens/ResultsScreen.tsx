@@ -8,6 +8,8 @@ import { View, Text, ScrollView, Pressable, Share, Image as RNImage, Modal } fro
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { ShareableResultCard } from "../components/ShareableResultCard";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
@@ -145,6 +147,15 @@ export const ResultsScreen = () => {
       return () => clearTimeout(timer);
     }
   }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
+
+  const ageLabel = currentResult?.age?.estimatedAge ?? "";
+  const mature = ageLabel.includes("4.5") || ageLabel.includes("5.5");
+  useResultFollowUp(Boolean(currentResult), currentResult ? {
+    imageUri: currentResult.capturedFrames?.[0]?.imageUri,
+    headline: ageLabel || "Scored",
+    call: mature ? "Mature" : ageLabel.includes("3.5") ? "Middle-aged" : "Young",
+    confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : undefined,
+  } : null);
 
   if (!currentResult) {
     return null;
@@ -311,6 +322,21 @@ export const ResultsScreen = () => {
 
       <ScrollView ref={scrollViewRef} className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="px-6 py-6">
+          {currentResult.capturedFrames?.[0]?.imageUri ? (
+            <ShareableResultCard
+              compact
+              data={{
+                type: "score",
+                imageUri: currentResult.capturedFrames[0].imageUri,
+                grossScore: typeof score.grossTypical === "number" ? score.grossTypical : score.grossTypical.average,
+                netScore: typeof score.netTypical === "number" ? score.netTypical : score.netTypical.average,
+                pointCount: score.measurements.totalPoints + score.measurements.totalAbnormalPoints,
+                category: score.category,
+                confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : 70,
+                meetsMinimum: (typeof score.netTypical === "number" ? score.netTypical : score.netTypical.average) >= 160,
+              }}
+            />
+          ) : null}
           {/* Deer Image with Pinch-to-Zoom */}
           {currentResult.capturedFrames && currentResult.capturedFrames.length > 0 && currentResult.capturedFrames[0].imageUri && (
             <View className="mb-6">

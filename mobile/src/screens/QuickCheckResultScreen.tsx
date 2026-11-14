@@ -12,6 +12,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { ShareableResultCard } from "../components/ShareableResultCard";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -35,6 +37,13 @@ export const QuickCheckResultScreen = () => {
 
   const isShoot = result.decision === "SHOOT";
   const isInvalidImage = result.isValidImage === false;
+  const ageCall = (result.ageYears ?? 0) >= 4.5 ? "Mature" : (result.ageYears ?? 0) >= 3.5 ? "Middle-aged" : "Young";
+  useResultFollowUp(!isInvalidImage, {
+    imageUri,
+    headline: result.estimatedAgeClass,
+    call: ageCall,
+    confidence: result.confidence,
+  });
 
   // Haptic feedback on mount
   React.useEffect(() => {
@@ -264,6 +273,24 @@ export const QuickCheckResultScreen = () => {
               <Text className="text-white/60 text-xs mt-1">Detailed 7-feature body assessment</Text>
             </Pressable>
           )}
+
+          {!isInvalidImage ? (
+            <View className="mb-3">
+              <ShareableResultCard
+                compact
+                data={{
+                  type: "age",
+                  imageUri,
+                  ageEstimate: result.estimatedAgeClass,
+                  ageRange: result.estimatedAgeClass,
+                  confidence: result.confidence,
+                  decision: result.decision,
+                  call: ageCall,
+                  topCues: result.topCues ?? [result.explanation],
+                }}
+              />
+            </View>
+          ) : null}
 
           {/* New Quick Check */}
           <Pressable

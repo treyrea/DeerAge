@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,7 +12,10 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
 import { quickAgeCheck } from "../api/quick-age-check";
+import { isAnalysisError } from "../api/errors";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useNetworkStore } from "../state/networkStore";
+import { useSubscriptionStore } from "../state/subscriptionStore";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -55,6 +58,16 @@ export const QuickCheckCameraScreen = () => {
   const handleQuickCapture = async () => {
     if (!cameraRef.current || isCapturing || isAnalyzing) return;
 
+    const network = useNetworkStore.getState();
+    if (!network.isConnected || network.isInternetReachable === false) {
+      Alert.alert("Age mode is offline", "Quick Check needs a connection. DeerAge sends the photo to estimate age.");
+      return;
+    }
+    if (!useSubscriptionStore.getState().canStartAnalysis()) {
+      navigation.navigate("TierPaywall", { reason: "free_limit" });
+      return;
+    }
+
     setIsCapturing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -86,6 +99,11 @@ export const QuickCheckCameraScreen = () => {
       setIsCapturing(false);
       setIsAnalyzing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      const message = isAnalysisError(error) ? error.message : "Quick Check didn't finish. Check your connection and try again.";
+      Alert.alert(isAnalysisError(error) && error.code === "quota" ? "Free analyses used" : "Quick Check failed", message, isAnalysisError(error) && error.code === "quota" ? [
+        { text: "Not now", style: "cancel" },
+        { text: "See plans", onPress: () => navigation.navigate("TierPaywall", { reason: "free_limit" }) },
+      ] : undefined);
     }
   };
 

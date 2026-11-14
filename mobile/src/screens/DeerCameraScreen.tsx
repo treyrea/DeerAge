@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, Pressable, ActivityIndicator, Dimensions, Image } from "react-native";
+import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions, Image } from "react-native";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -65,8 +65,6 @@ export const DeerCameraScreen = () => {
   // Network state
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
-  const addToQueue = useNetworkStore((s) => s.addToQueue);
-  const propertyRules = useDeerScoringStore((s) => s.propertyRules);
 
   const [showProTips, setShowProTips] = useState(false);
 
@@ -114,26 +112,16 @@ export const DeerCameraScreen = () => {
     // Check if we're offline
     const isOffline = !isConnected || isInternetReachable === false;
 
-    // For Age mode: Block if offline (requires real-time analysis)
-    if (analysisMode === "age" && isOffline) {
-      console.log("Age mode offline - cannot proceed");
+    if (isOffline) {
+      Alert.alert(
+        analysisMode === "age" ? "Age mode is offline" : "You're offline",
+        "DeerAge needs a connection to estimate age and score. The manual field guide on Home works without a signal.",
+      );
       return;
     }
 
-    // For Rack mode: Queue if offline, process if online
-    if (analysisMode === "score" && isOffline) {
-      console.log("Rack mode offline - adding to queue");
-      addToQueue({
-        type: "score",
-        imageUris: frames.map(f => f.imageUri),
-        propertyRules: {
-          minimumShooterAge: propertyRules.minimumShooterAge,
-        },
-      });
-
-      navigation.navigate("OfflineQueued", {
-        frameCount: frames.length,
-      });
+    if (frames.length === 0) {
+      Alert.alert("No frames captured", "The burst didn't capture any frames. Hold the phone steady and try again.");
       return;
     }
 
@@ -255,7 +243,7 @@ export const DeerCameraScreen = () => {
 
       // Only proceed if we captured at least 1 frame
       if (capturedFrames.length === 0) {
-        console.error("No frames captured successfully");
+        Alert.alert("No frames captured", "The burst didn't capture any frames. Hold the phone steady and try again.");
         return;
       }
 
@@ -272,8 +260,8 @@ export const DeerCameraScreen = () => {
       setIsBurstCapturing(false);
       setCaptureProgress(0);
       stopCapture();
-      // Haptic feedback for error
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Couldn't capture", "The burst didn't finish. Hold the phone steady and try again.");
     }
   };
 

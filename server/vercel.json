@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/analyze.ts": { "maxDuration": 60 },
+    "api/config.ts": { "maxDuration": 10 },
+    "api/access.ts": { "maxDuration": 10 }
+  }
+}

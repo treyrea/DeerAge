@@ -20,18 +20,19 @@ import { HistoryScreen } from "../screens/HistoryScreen";
 import { HistoryDetailScreen } from "../screens/HistoryDetailScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { OfflineAgeGuideScreen } from "../screens/OfflineAgeGuideScreen";
-import { OfflineQueuedScreen } from "../screens/OfflineQueuedScreen";
+import { OnboardingScreen } from "../screens/OnboardingScreen";
 import { QuickCheckCameraScreen } from "../screens/QuickCheckCameraScreen";
 import { QuickCheckResultScreen } from "../screens/QuickCheckResultScreen";
 import { DeerScoringResult } from "../types/deer-scoring";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { TierPaywallScreen } from "../screens/TierPaywallScreen";
-import type { TierId, FeatureType } from "../lib/CONSTITUTION";
+import type { PaywallResultSummary } from "../lib/products";
 
 // Stack param lists
 export type HomeStackParamList = {
   HomeMain: undefined;
+  Onboarding: { edit?: boolean } | undefined;
   ModeSelect: { mode: "age" | "score" };
   Camera: undefined;
   PhotoSelect: undefined;
@@ -39,10 +40,9 @@ export type HomeStackParamList = {
   Results: undefined;
   AgeResults: undefined;
   OfflineAgeGuide: undefined;
-  OfflineQueued: { frameCount: number };
   QuickCheckCamera: undefined;
   QuickCheckResult: { result: QuickAgeResult; imageUri: string };
-  TierPaywall: { reason?: "quick_check_limit" | "age_limit" | "score_limit" | "upgrade" | "score_locked"; feature?: FeatureType; recommendedTier?: TierId };
+  TierPaywall: { reason?: string; resultSummary?: PaywallResultSummary };
 };
 
 export type HistoryStackParamList = {
@@ -77,6 +77,7 @@ const HomeStackNavigator = () => {
       }}
     >
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="Onboarding" component={OnboardingScreen} />
       <HomeStack.Screen name="ModeSelect" component={ModeSelectScreen} />
       <HomeStack.Screen name="Camera" component={DeerCameraScreen} />
       <HomeStack.Screen name="PhotoSelect" component={PhotoSelectScreen} />
@@ -84,7 +85,6 @@ const HomeStackNavigator = () => {
       <HomeStack.Screen name="Results" component={ResultsScreen} />
       <HomeStack.Screen name="AgeResults" component={AgeResultScreen} />
       <HomeStack.Screen name="OfflineAgeGuide" component={OfflineAgeGuideScreen} />
-      <HomeStack.Screen name="OfflineQueued" component={OfflineQueuedScreen} />
       <HomeStack.Screen name="QuickCheckCamera" component={QuickCheckCameraScreen} />
       <HomeStack.Screen name="QuickCheckResult" component={QuickCheckResultScreen} />
       <HomeStack.Screen
@@ -181,7 +181,7 @@ export const RootNavigator = () => {
               "Results",
               "AgeResults",
               "OfflineAgeGuide",
-              "OfflineQueued",
+              "Onboarding",
               "QuickCheckCamera",
               "QuickCheckResult",
               "TierPaywall",

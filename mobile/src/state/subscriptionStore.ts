@@ -1,170 +1,127 @@
 /**
- * Subscription & Usage Store
- * Tracks subscription status and free tier usage limits
+ * Access and the shared free-analysis counter.
+ *
+ * A paid plan is recorded only from RevenueCat CustomerInfo.
+ * Missing products, failed purchases, and a missing SDK key leave the user on the free plan.
  */
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { hasEntitlement, hasActiveSubscription } from "../lib/revenuecatClient";
-
-// Free tier limits
-export const FREE_TIER_LIMITS = {
-  ageAnalysisPerMonth: 3,
-  scoreAnalysisPerMonth: 1,
-  historyLimit: 5,
-};
-
-interface UsageRecord {
-  ageAnalysisCount: number;
-  scoreAnalysisCount: number;
-  lastResetDate: string; // ISO date string for the month (YYYY-MM)
-}
+import type { CustomerInfo } from "react-native-purchases";
+import { getCustomerInfo, restorePurchases } from "../lib/revenuecatClient";
+import { ACCESS_ENTITLEMENT_IDS, FREE_LIFETIME_ANALYSES, planLabelFor, type PlanLabel } from "../lib/products";
 
 interface SubscriptionState {
-  // Subscription status
-  isPro: boolean;
-  lastSubscriptionCheck: number | null;
-
-  // Usage tracking
-  usage: UsageRecord;
-
-  // Actions
-  checkSubscription: () => Promise<boolean>;
-  incrementAgeAnalysis: () => void;
-  incrementScoreAnalysis: () => void;
-  canUseAgeAnalysis: () => boolean;
-  canUseScoreAnalysis: () => boolean;
-  getRemainingAgeAnalyses: () => number;
-  getRemainingScoreAnalyses: () => number;
-  resetMonthlyUsageIfNeeded: () => void;
-  setIsPro: (isPro: boolean) => void;
+  entitled: boolean;
+  planLabel: PlanLabel;
+  activeEntitlementIds: string[];
+  lifetimeAnalysesUsed: number;
+  pendingPaywall: boolean;
+  localUserId: string | null;
+  applyCustomerInfo: (info: CustomerInfo) => boolean;
+  refreshEntitlement: () => Promise<boolean>;
+  restore: () => Promise<{ ok: boolean; entitled: boolean }>;
+  canStartAnalysis: () => boolean;
+  remainingFree: () => number | "unlimited";
+  noteServerUsage: (remaining: number | "unlimited") => void;
+  markPendingPaywall: () => void;
+  clearPendingPaywall: () => void;
+  ensureLocalUserId: () => string;
 }
 
-const getCurrentMonth = (): string => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-};
+function productIdFrom(info: CustomerInfo, entitlementIds: string[]): string | null {
+  for (const id of entitlementIds) {
+    const product = info.entitlements.active[id]?.productIdentifier;
+    if (product) return product;
+  }
+  return null;
+}
 
 export const useSubscriptionStore = create<SubscriptionState>()(
   persist(
     (set, get) => ({
-      isPro: false,
-      lastSubscriptionCheck: null,
+      entitled: false,
+      planLabel: "Free",
+      activeEntitlementIds: [],
+      lifetimeAnalysesUsed: 0,
+      pendingPaywall: false,
+      localUserId: null,
 
-      usage: {
-        ageAnalysisCount: 0,
-        scoreAnalysisCount: 0,
-        lastResetDate: getCurrentMonth(),
+      applyCustomerInfo: (info) => {
+        const active = info.entitlements.active ?? {};
+        const activeEntitlementIds = ACCESS_ENTITLEMENT_IDS.filter((id) => Boolean(active[id]));
+        const entitled = activeEntitlementIds.length > 0;
+        set({
+          entitled,
+          activeEntitlementIds: [...activeEntitlementIds],
+          planLabel: planLabelFor(activeEntitlementIds, productIdFrom(info, [...activeEntitlementIds])),
+          pendingPaywall: entitled ? false : get().pendingPaywall,
+        });
+        return entitled;
       },
 
-      checkSubscription: async () => {
-        try {
-          const result = await hasEntitlement("pro");
-          if (result.ok) {
-            set({ isPro: result.data, lastSubscriptionCheck: Date.now() });
-            return result.data;
-          } else {
-            // RevenueCat not configured or error - keep existing state
-            console.log("[Subscription] Check failed:", result.reason);
-            return get().isPro;
+      refreshEntitlement: async () => {
+        const result = await getCustomerInfo();
+        if (!result.ok) {
+          if (result.reason === "not_configured" || result.reason === "web_not_supported") {
+            set({ entitled: false, planLabel: "Free", activeEntitlementIds: [] });
+            return false;
           }
-        } catch (error) {
-          console.log("[Subscription] Failed to check subscription:", error);
-          return get().isPro;
+          return get().entitled;
         }
+        return get().applyCustomerInfo(result.data);
       },
 
-      setIsPro: (isPro: boolean) => {
-        set({ isPro, lastSubscriptionCheck: Date.now() });
+      restore: async () => {
+        const result = await restorePurchases();
+        if (!result.ok) return { ok: false, entitled: get().entitled };
+        return { ok: true, entitled: get().applyCustomerInfo(result.data) };
       },
 
-      resetMonthlyUsageIfNeeded: () => {
-        const currentMonth = getCurrentMonth();
-        const { usage } = get();
+      canStartAnalysis: () => {
+        if (get().entitled) return true;
+        return get().lifetimeAnalysesUsed < FREE_LIFETIME_ANALYSES;
+      },
 
-        if (usage.lastResetDate !== currentMonth) {
-          set({
-            usage: {
-              ageAnalysisCount: 0,
-              scoreAnalysisCount: 0,
-              lastResetDate: currentMonth,
-            },
-          });
-          console.log("[Subscription] Monthly usage reset for", currentMonth);
+      remainingFree: () => {
+        if (get().entitled) return "unlimited";
+        return Math.max(0, FREE_LIFETIME_ANALYSES - get().lifetimeAnalysesUsed);
+      },
+
+      noteServerUsage: (remaining) => {
+        if (remaining === "unlimited") {
+          if (!get().entitled) set({ pendingPaywall: false });
+          return;
         }
-      },
-
-      incrementAgeAnalysis: () => {
-        const { usage, isPro } = get();
-        if (isPro) return; // Pro users don't track usage
-
-        get().resetMonthlyUsageIfNeeded();
-
+        const used = Math.max(0, Math.min(FREE_LIFETIME_ANALYSES, FREE_LIFETIME_ANALYSES - remaining));
         set({
-          usage: {
-            ...get().usage,
-            ageAnalysisCount: get().usage.ageAnalysisCount + 1,
-          },
+          lifetimeAnalysesUsed: used,
+          pendingPaywall: !get().entitled && remaining <= 0,
         });
-        console.log("[Subscription] Age analysis count:", get().usage.ageAnalysisCount);
       },
 
-      incrementScoreAnalysis: () => {
-        const { usage, isPro } = get();
-        if (isPro) return; // Pro users don't track usage
+      markPendingPaywall: () => set({ pendingPaywall: true }),
+      clearPendingPaywall: () => set({ pendingPaywall: false }),
 
-        get().resetMonthlyUsageIfNeeded();
-
-        set({
-          usage: {
-            ...get().usage,
-            scoreAnalysisCount: get().usage.scoreAnalysisCount + 1,
-          },
-        });
-        console.log("[Subscription] Score analysis count:", get().usage.scoreAnalysisCount);
-      },
-
-      canUseAgeAnalysis: () => {
-        const { isPro, usage } = get();
-        if (isPro) return true;
-
-        get().resetMonthlyUsageIfNeeded();
-        return get().usage.ageAnalysisCount < FREE_TIER_LIMITS.ageAnalysisPerMonth;
-      },
-
-      canUseScoreAnalysis: () => {
-        const { isPro, usage } = get();
-        if (isPro) return true;
-
-        get().resetMonthlyUsageIfNeeded();
-        return get().usage.scoreAnalysisCount < FREE_TIER_LIMITS.scoreAnalysisPerMonth;
-      },
-
-      getRemainingAgeAnalyses: () => {
-        const { isPro, usage } = get();
-        if (isPro) return Infinity;
-
-        get().resetMonthlyUsageIfNeeded();
-        return Math.max(0, FREE_TIER_LIMITS.ageAnalysisPerMonth - get().usage.ageAnalysisCount);
-      },
-
-      getRemainingScoreAnalyses: () => {
-        const { isPro, usage } = get();
-        if (isPro) return Infinity;
-
-        get().resetMonthlyUsageIfNeeded();
-        return Math.max(0, FREE_TIER_LIMITS.scoreAnalysisPerMonth - get().usage.scoreAnalysisCount);
+      ensureLocalUserId: () => {
+        const existing = get().localUserId;
+        if (existing) return existing;
+        const created = `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        set({ localUserId: created });
+        return created;
       },
     }),
     {
-      name: "deerage-subscription-storage",
+      name: "deerage-access-v3",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        isPro: state.isPro,
-        lastSubscriptionCheck: state.lastSubscriptionCheck,
-        usage: state.usage,
+        entitled: state.entitled,
+        planLabel: state.planLabel,
+        activeEntitlementIds: state.activeEntitlementIds,
+        lifetimeAnalysesUsed: state.lifetimeAnalysesUsed,
+        localUserId: state.localUserId,
       }),
-    }
-  )
+    },
+  ),
 );

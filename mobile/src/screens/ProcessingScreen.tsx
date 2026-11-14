@@ -3,12 +3,11 @@
  * Includes graceful error handling with helpful tips
  */
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View, Text, ActivityIndicator, ScrollView, Pressable, Image, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
-import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,283 +17,42 @@ type NavigationProp = NativeStackNavigationProp<any>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-/**
- * Categorize error type for appropriate UI display
- */
-type ErrorCategory = "not_deer" | "no_antlers" | "poor_quality" | "network" | "timeout" | "unknown";
+import { type AnalysisErrorCode, messageForCode } from "../api/errors";
 
-const categorizeError = (errorMessage: string): ErrorCategory => {
-  const lowerError = errorMessage.toLowerCase();
+type ErrorCategory = AnalysisErrorCode;
 
-  // Check for non-deer image (more comprehensive matching)
-  // This includes cases where the AI identifies what the object actually is
-  // Also includes icons, illustrations, cartoons, and other non-photograph images
-  if (lowerError.includes("not a deer") ||
-      lowerError.includes("no deer") ||
-      lowerError.includes("not deer") ||
-      lowerError.includes("does not appear to contain a deer") ||
-      lowerError.includes("not contain a deer") ||
-      lowerError.includes("this appears to be") ||
-      lowerError.includes("this is a") ||
-      lowerError.includes("this shows") ||
-      lowerError.includes("furniture") ||
-      lowerError.includes("tree branch") ||
-      lowerError.includes("not an animal") ||
-      // Non-photograph image types (icons, illustrations, etc.)
-      lowerError.includes("not a photograph") ||
-      lowerError.includes("icon") ||
-      lowerError.includes("logo") ||
-      lowerError.includes("illustration") ||
-      lowerError.includes("cartoon") ||
-      lowerError.includes("drawing") ||
-      lowerError.includes("sketch") ||
-      lowerError.includes("digital art") ||
-      lowerError.includes("silhouette") ||
-      lowerError.includes("graphic") ||
-      lowerError.includes("clip art") ||
-      lowerError.includes("clipart") ||
-      lowerError.includes("ai-generated") ||
-      lowerError.includes("not real") ||
-      lowerError.includes("real deer antlers") ||
-      // Non-deer subjects (people, other animals, objects)
-      lowerError.includes("person") ||
-      lowerError.includes("human") ||
-      lowerError.includes("man") ||
-      lowerError.includes("woman") ||
-      lowerError.includes("people") ||
-      lowerError.includes("cat") ||
-      lowerError.includes("dog") ||
-      lowerError.includes("horse") ||
-      lowerError.includes("cow") ||
-      lowerError.includes("elk") ||
-      lowerError.includes("moose")) {
-    return "not_deer";
+const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "score") => {
+  const base = (title: string, subtitle: string, tips: string[], icon: string, iconColor: string, bgColors: [string, string, string]) => ({
+    icon, iconColor, bgColors, title, subtitle, tips,
+  });
+  if (category === "not_deer") {
+    return base("NOT A DEER", messageForCode("not_deer"), ["Use a photo of a deer", "Keep the whole animal in the frame"], "paw", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
-
-  // Check for body not visible (for age analysis) - only when it's about a DEER's body
-  // These patterns should only match deer-specific body visibility issues
-  if ((lowerError.includes("deer's body") ||
-       lowerError.includes("deer body") ||
-       lowerError.includes("body is not clearly visible") ||
-       lowerError.includes("head_only") ||
-       lowerError.includes("only the head") ||
-       lowerError.includes("head is visible but") ||
-       lowerError.includes("full body") ||
-       lowerError.includes("need body visible") ||
-       lowerError.includes("no body visible")) &&
-      // Make sure it's actually about a deer, not a person or other subject
-      !lowerError.includes("person") &&
-      !lowerError.includes("human") &&
-      !lowerError.includes("woman") &&
-      !lowerError.includes("man") &&
-      !lowerError.includes("not a deer") &&
-      !lowerError.includes("not deer")) {
-    return "no_antlers"; // Reuse this category for body visibility issues
+  if (category === "no_body") {
+    return base(analysisMode === "age" ? "NEED THE WHOLE BODY" : "CAN'T SEE THE RACK", messageForCode("no_body"), ["Step back so the legs, belly, and back are in frame"], "body", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
-
-  // Check for no antlers visible
-  if (lowerError.includes("no antlers") ||
-      lowerError.includes("antlers detected") ||
-      lowerError.includes("antlers visible") ||
-      lowerError.includes("clearly shows") ||
-      lowerError.includes("may be a doe")) {
-    return "no_antlers";
+  if (category === "no_antlers") {
+    return base("NO ANTLERS VISIBLE", messageForCode("no_antlers"), ["Frame the rack", "A front three-quarter photo scores best"], "alert-circle", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
-
-  // Check for network issues
-  if (lowerError.includes("network") ||
-      lowerError.includes("connection") ||
-      lowerError.includes("502") ||
-      lowerError.includes("503") ||
-      lowerError.includes("proxy")) {
-    return "network";
+  if (category === "poor_quality") {
+    return base("PHOTO IS HARD TO READ", messageForCode("poor_quality"), ["Use daylight and hold still"], "image", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
-
-  // Check for timeout
-  if (lowerError.includes("timeout") ||
-      lowerError.includes("timed out") ||
-      lowerError.includes("taking longer") ||
-      lowerError.includes("took too long")) {
-    return "timeout";
+  if (category === "network" || category === "not_configured") {
+    return base(analysisMode === "age" ? "AGE MODE IS OFFLINE" : "YOU'RE OFFLINE", messageForCode(category === "not_configured" ? "not_configured" : "network"), ["DeerAge needs a connection to estimate age", "The field guide on Home works without a signal"], "cloud-offline", "#f87171", ["#7f1d1d", "#450a0a", "#1a1a1a"]);
   }
-
-  // Check for poor quality
-  if (lowerError.includes("quality") ||
-      lowerError.includes("unclear") ||
-      lowerError.includes("parse") ||
-      lowerError.includes("incomplete") ||
-      lowerError.includes("too poor")) {
-    return "poor_quality";
+  if (category === "timeout") {
+    return base("TOOK TOO LONG", messageForCode("timeout"), ["Try one clearer photo"], "time", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
-
-  return "unknown";
-};
-
-/**
- * Get display info for each error category
- */
-const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "score", errorMessage?: string) => {
-  // Extract what object was detected if the AI told us
-  const extractDetectedObject = (msg: string): string | null => {
-    if (!msg) return null;
-    const lowerMsg = msg.toLowerCase();
-
-    // Try to extract what the AI identified
-    const patterns = [
-      /this appears to be[:\s]+(.+?)(?:\.|$)/i,
-      /this is[:\s]+a?\s*(.+?)(?:\.|,|$)/i,
-      /this shows[:\s]+a?\s*(.+?)(?:\.|,|$)/i,
-      /not a deer[:\s-]+(.+?)(?:\.|$)/i,
-      /detected[:\s]+(.+?)(?:\.|$)/i,
-    ];
-
-    for (const pattern of patterns) {
-      const match = msg.match(pattern);
-      if (match && match[1]) {
-        return match[1].trim();
-      }
-    }
-    return null;
-  };
-
-  // Check if the error is about a non-photograph image type
-  const isNonPhotograph = (msg: string): boolean => {
-    if (!msg) return false;
-    const lowerMsg = msg.toLowerCase();
-    return lowerMsg.includes("not a photograph") ||
-           lowerMsg.includes("icon") ||
-           lowerMsg.includes("logo") ||
-           lowerMsg.includes("illustration") ||
-           lowerMsg.includes("cartoon") ||
-           lowerMsg.includes("drawing") ||
-           lowerMsg.includes("sketch") ||
-           lowerMsg.includes("digital art") ||
-           lowerMsg.includes("silhouette") ||
-           lowerMsg.includes("graphic") ||
-           lowerMsg.includes("clip art") ||
-           lowerMsg.includes("clipart") ||
-           lowerMsg.includes("ai-generated");
-  };
-
-  const detectedObject = errorMessage ? extractDetectedObject(errorMessage) : null;
-  const isNonPhoto = errorMessage ? isNonPhotograph(errorMessage) : false;
-
-  switch (category) {
-    case "not_deer":
-      // Customize title and tips based on error type
-      // "NOT A REAL PHOTO" for icons/illustrations, "NO DEER DETECTED" for real photos of non-deer subjects
-      const notDeerTitle = isNonPhoto ? "NOT A DEER PHOTO" : "NO DEER DETECTED";
-      const notDeerSubtitle = isNonPhoto
-        ? detectedObject
-          ? `Detected: ${detectedObject}`
-          : "Please use a photograph of a real deer"
-        : detectedObject
-          ? `Detected: ${detectedObject}`
-          : "This image does not contain a deer";
-      const notDeerTips = isNonPhoto
-        ? [
-            "Use a real photograph, not icons or illustrations",
-            "Avoid cartoons, drawings, or digital art",
-            "Take a photo of an actual deer in the field",
-            "Screenshots of logos or graphics will not work",
-          ]
-        : [
-            "This app analyzes whitetail deer only",
-            "Take or upload a photo of a deer",
-            "Ensure the deer is clearly visible",
-            "For scoring, antlers must be in frame",
-          ];
-
-      return {
-        icon: "alert-circle" as const,
-        iconColor: "#fbbf24",
-        bgColors: ["#78350f", "#451a03", "#1a1a1a"] as [string, string, string],
-        title: notDeerTitle,
-        subtitle: notDeerSubtitle,
-        tips: notDeerTips,
-      };
-    case "no_antlers":
-      return {
-        icon: "scan-outline" as const,
-        iconColor: "#fbbf24",
-        bgColors: ["#78350f", "#451a03", "#1a1a1a"] as [string, string, string],
-        title: analysisMode === "age" ? "BODY NOT VISIBLE" : "NO ANTLERS VISIBLE",
-        subtitle: analysisMode === "age"
-          ? "Could not detect the deer's full body for age analysis"
-          : errorMessage?.toLowerCase().includes("doe")
-            ? "This appears to be a doe (female deer) without antlers"
-            : "Could not detect visible antlers in this image",
-        tips: analysisMode === "age"
-          ? [
-              "Show the full body from a side (broadside) view",
-              "Ensure neck, chest, belly, and legs are visible",
-              "Avoid head-only or mounted trophy photos",
-              "Good lighting helps identify body characteristics",
-            ]
-          : [
-              "Ensure the antlers are clearly visible in the photo",
-              "Try a different angle showing more of the rack",
-              "Avoid photos where antlers are hidden by brush",
-              "Does (female deer) do not have antlers to score",
-            ],
-      };
-    case "network":
-      return {
-        icon: "cloud-offline" as const,
-        iconColor: "#ef4444",
-        bgColors: ["#7f1d1d", "#450a0a", "#1a1a1a"] as [string, string, string],
-        title: "CONNECTION ERROR",
-        subtitle: "Unable to connect to the analysis service",
-        tips: [
-          "Check your internet connection",
-          "Move to an area with better signal",
-          "Try again in a few moments",
-          "Wi-Fi may provide a more stable connection",
-        ],
-      };
-    case "timeout":
-      return {
-        icon: "time-outline" as const,
-        iconColor: "#f97316",
-        bgColors: ["#7c2d12", "#431407", "#1a1a1a"] as [string, string, string],
-        title: "ANALYSIS TIMEOUT",
-        subtitle: "The analysis took longer than expected",
-        tips: [
-          "Try using a simpler, clearer photo",
-          "Avoid very high-resolution images",
-          "Ensure you have a stable connection",
-          "Try again - temporary server load can cause this",
-        ],
-      };
-    case "poor_quality":
-      return {
-        icon: "image-outline" as const,
-        iconColor: "#fbbf24",
-        bgColors: ["#78350f", "#451a03", "#1a1a1a"] as [string, string, string],
-        title: "IMAGE QUALITY ISSUE",
-        subtitle: "The image could not be properly analyzed",
-        tips: [
-          "Use a clearer, well-lit photo",
-          "Avoid blurry or dark images",
-          "Ensure the deer is in focus",
-          "Try taking a new photo with better lighting",
-        ],
-      };
-    default:
-      return {
-        icon: "alert-circle" as const,
-        iconColor: "#ef4444",
-        bgColors: ["#7f1d1d", "#450a0a", "#1a1a1a"] as [string, string, string],
-        title: "ANALYSIS FAILED",
-        subtitle: "Something went wrong during analysis",
-        tips: [
-          "Try taking a new photo",
-          "Ensure good lighting and a clear subject",
-          "Check your internet connection",
-          "If the problem persists, try a different image",
-        ],
-      };
+  if (category === "rate_limited") {
+    return base("TOO MANY REQUESTS", messageForCode("rate_limited"), ["Wait a few seconds, then try again"], "hourglass", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
+  if (category === "quota") {
+    return base("FREE ANALYSES USED", messageForCode("quota"), ["A Season Pass keeps Quick Check, Age, and Score available"], "lock-closed", "#D4AF37", ["#3D4A2F", "#1a1f16", "#1a1a1a"]);
+  }
+  if (category === "zero_frames") {
+    return base("NO FRAMES CAPTURED", messageForCode("zero_frames"), ["Hold the phone steady through the burst"], "camera", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
+  }
+  return base("ANALYSIS FAILED", messageForCode("unknown"), ["Try another photo", "Check that you have a signal"], "alert-circle", "#ef4444", ["#7f1d1d", "#450a0a", "#1a1a1a"]);
 };
 
 export const ProcessingScreen = () => {
@@ -304,29 +62,25 @@ export const ProcessingScreen = () => {
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const currentResult = useDeerScoringStore((s) => s.currentResult);
   const error = useDeerScoringStore((s) => s.error);
+  const errorCode = useDeerScoringStore((s) => s.errorCode);
   const capturedFrames = useDeerScoringStore((s) => s.capturedFrames);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
   const clearCurrentResult = useDeerScoringStore((s) => s.clearCurrentResult);
-
-  // Subscription usage tracking
-  const incrementAgeAnalysis = useSubscriptionStore((s) => s.incrementAgeAnalysis);
-  const incrementScoreAnalysis = useSubscriptionStore((s) => s.incrementScoreAnalysis);
-
-  // Track if we already counted this analysis to avoid double-counting
-  const hasCountedAnalysis = useRef(false);
 
   // Get the image URI for error display
   const imageUri = capturedFrames[0]?.imageUri;
 
   // Categorize and get display info for error
   const errorInfo = useMemo(() => {
-    if (!error) return null;
-    const category = categorizeError(error);
+    if (!error && !errorCode) return null;
+    const category: ErrorCategory = errorCode ?? "unknown";
+    const display = getErrorDisplayInfo(category, analysisMode);
     return {
       category,
-      ...getErrorDisplayInfo(category, analysisMode, error),
+      ...display,
+      subtitle: error || display.subtitle,
     };
-  }, [error, analysisMode]);
+  }, [error, errorCode, analysisMode]);
 
   // Haptic feedback on error
   useEffect(() => {
@@ -338,24 +92,13 @@ export const ProcessingScreen = () => {
   // Navigate to results when processing completes
   useEffect(() => {
     if (!isProcessing && currentResult) {
-      // Increment usage counter only once per successful analysis
-      if (!hasCountedAnalysis.current) {
-        hasCountedAnalysis.current = true;
-        if (analysisMode === "age") {
-          incrementAgeAnalysis();
-        } else {
-          incrementScoreAnalysis();
-        }
-      }
-
-      // Route to appropriate results screen based on analysis mode
       if (analysisMode === "age") {
         navigation.replace("AgeResults");
       } else {
         navigation.replace("Results");
       }
     }
-  }, [isProcessing, currentResult, analysisMode, navigation, incrementAgeAnalysis, incrementScoreAnalysis]);
+  }, [isProcessing, currentResult, analysisMode, navigation]);
 
   // Modified safety check - don't redirect if we just had an error
   useEffect(() => {
@@ -411,7 +154,7 @@ export const ProcessingScreen = () => {
                 className="w-28 h-28 rounded-full items-center justify-center mb-5"
                 style={{ backgroundColor: `${errorInfo.iconColor}30` }}
               >
-                <Ionicons name={errorInfo.icon} size={64} color={errorInfo.iconColor} />
+                <Ionicons name={errorInfo.icon as keyof typeof Ionicons.glyphMap} size={64} color={errorInfo.iconColor} />
               </View>
 
               {/* Error Title */}
@@ -459,6 +202,14 @@ export const ProcessingScreen = () => {
 
           {/* Action Buttons */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+            {errorInfo.category === "quota" ? (
+              <Pressable
+                onPress={() => navigation.navigate("TierPaywall", { reason: "free_limit" })}
+                style={{ backgroundColor: "#D4AF37", borderRadius: 12, paddingVertical: 16, alignItems: "center", marginBottom: 12 }}
+              >
+                <Text style={{ color: "#1a1f16", fontWeight: "bold" }}>See plans</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={handleRetry}
               style={({ pressed }) => ({

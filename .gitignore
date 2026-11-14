@@ -7,6 +7,10 @@ node_modules/
 .env.*
 !.env.example
 
+# Eval output
+eval/scorecard.json
+eval/out/
+
 # Expo / React Native / native build output
 .expo/
 dist/

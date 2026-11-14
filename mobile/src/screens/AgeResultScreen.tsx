@@ -18,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { EmailPrompt } from "../components/EmailPrompt";
 import { ErrorModal } from "../components/ErrorModal";
@@ -53,6 +55,14 @@ export const AgeResultScreen = () => {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [manualNotes, setManualNotes] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const explainable = currentResult?.explainableAge;
+  const ageCall = (explainable?.estimatedAgeYears ?? 0) >= 4.5 ? "Mature" : (explainable?.estimatedAgeYears ?? 0) >= 3.5 ? "Middle-aged" : "Young";
+  useResultFollowUp(Boolean(explainable), explainable ? {
+    imageUri: currentResult?.capturedFrames[0]?.imageUri,
+    headline: explainable.estimatedAge,
+    call: ageCall,
+    confidence: explainable.overallConfidence,
+  } : null);
 
   // Auto-save to history when result is available
   useEffect(() => {
@@ -792,6 +802,21 @@ Powered by RackScore™ AI`;
           >
             <View className="w-10 h-1 bg-gray-500 rounded-full self-center mb-6" />
             <Text className="text-white text-xl font-bold mb-6 text-center">Share Results</Text>
+            {imageUri ? (
+              <ShareableResultCard
+                compact
+                data={{
+                  type: "age",
+                  imageUri,
+                  ageEstimate: explainableAge.estimatedAge,
+                  ageRange: explainableAge.estimatedAge,
+                  confidence: explainableAge.overallConfidence,
+                  decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
+                  call: ageCall,
+                  topCues: explainableAge.detectedCues.slice(0, 3).map((cue) => `${cue.displayName}: ${cue.detectedPattern}`),
+                }}
+              />
+            ) : null}
 
             <Pressable
               onPress={handleShare}
