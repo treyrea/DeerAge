@@ -27,6 +27,11 @@ class MemoryKv implements Kv {
       this.sets.delete(key);
       return 1;
     }
+    if (op === "INCRBYFLOAT") {
+      const next = (Number(this.strings.get(key) ?? 0) || 0) + Number(rest[1] ?? 0);
+      this.strings.set(key, String(next));
+      return next;
+    }
     if (op === "INCR") {
       const next = (Number(this.strings.get(key) ?? 0) || 0) + 1;
       this.strings.set(key, String(next));
@@ -310,7 +315,7 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(csv.status, 200);
     assert.match(csv.text ?? "", /free_harvest_user,scan_1,yes/);
     assert.match(csv.text ?? "", /4\.5,jawbone,Incisors worn/);
-    const feedback = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    const feedback = await route(request("GET", "/api/admin/feedback?format=csv", undefined, ADMIN));
     assert.equal(feedback.status, 200);
     assert.match(feedback.text ?? "", /harvest_age/);
     assert.match(feedback.text ?? "", /4\.5/);
@@ -330,7 +335,144 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(saved.status, 200);
     assert.equal(payload(saved).scanId, "scan_wrong");
     assert.equal(payload(saved).photoStored, false);
-    const csv = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    const csv = await route(request("GET", "/api/admin/feedback?format=csv", undefined, ADMIN));
     assert.match(csv.text ?? "", /scan_wrong,wrong_call,SHOOTER,2\.5,yes/);
+  });
+
+  test("a follow-up email is optional, validated, and hidden unless requested", async () => {
+    const bad = await route(request("POST", "/api/call-report", {
+      appUserId: "free_mail_user",
+      scanId: "scan_mail",
+      kind: "wrong_call",
+      fieldCall: "LET WALK",
+      followUpEmail: "not-an-email",
+    }));
+    assert.equal(bad.status, 400);
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_mail_user",
+      scanId: "scan_mail",
+      kind: "cancel_reason",
+      note: "Only hunt in the fall",
+      followUpEmail: "Hunter@Example.com",
+    }));
+    assert.equal(saved.status, 200);
+    const hidden = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    const reports = payload(hidden).reports as Array<Record<string, unknown>>;
+    const row = reports.find((item) => item.scanId === "scan_mail");
+    assert.equal(row?.hasEmail, true);
+    assert.equal(row?.cancelReason, true);
+    assert.equal("email" in (row ?? {}), false);
+    const shown = await route(request("GET", "/api/admin/feedback?includeContact=1", undefined, ADMIN));
+    const visible = (payload(shown).reports as Array<Record<string, unknown>>).find((item) => item.scanId === "scan_mail");
+    assert.equal(visible?.email, "hunter@example.com");
+    const later = await route(request("GET", `/api/admin/feedback?since=${encodeURIComponent("2099-01-01T00:00:00.000Z")}`, undefined, ADMIN));
+    assert.equal((payload(later).reports as unknown[]).length, 0);
+  });
+
+  test("consent keeps a photo, a reply can offer one free re-scan, and a wrong answer reopens it", async () => {
+    const { setRescanRunnerForTests } = await import("./report-rescan.js");
+    setRescanRunnerForTests(async () => ({
+      stop: null,
+      provisional: { fieldCall: "HOLD", note: "", ageClass: "" },
+      readings: { fast: null, main: null, bodyOnly: null },
+      costs: [],
+      result: { fieldCall: "LET WALK", ageYears: 2.5, fieldCallNote: "Reads 2.5." },
+    }));
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_keep_user",
+      scanId: "scan_keep",
+      kind: "wrong_call",
+      fieldCall: "SHOOTER",
+      reportedAge: "2.5",
+      scanImages: ["aGVsbG8="],
+      resultSnapshot: { ageYears: 5.5, leaseMinimum: 4.5, grossScore: 140 },
+    }));
+    assert.equal(saved.status, 200);
+    assert.equal(payload(saved).imagesKept, 1);
+    const id = payload(saved).id as string;
+    const cases = await route(request("GET", "/api/admin/report-cases", undefined, ADMIN));
+    const item = (payload(cases).cases as Array<{ id: string; ageYears: string; grossScore: string; images: Array<{ url: string }> }>).find((row) => row.id === id);
+    assert.equal(item?.ageYears, "2.5");
+    assert.equal(item?.grossScore, "140");
+    assert.match(item?.images[0]?.url ?? "", /sig=/);
+    const image = await route(request("GET", item?.images[0]?.url ?? "", undefined, ADMIN));
+    assert.equal(image.status, 200);
+    assert.equal(image.text, "aGVsbG8=");
+    const reply = await route(request("POST", "/api/admin/reply", {
+      id,
+      reply: "Looking at the body again.",
+      offerRescan: true,
+    }, ADMIN));
+    assert.equal(reply.status, 200);
+    assert.equal(payload(reply).pushSent, false);
+    assert.equal(payload(reply).emailPending, false);
+    assert.equal(payload(reply).status, "replied");
+    const rescanned = await route(request("POST", "/api/rescan", { appUserId: "free_keep_user", reportId: id }));
+    assert.equal(rescanned.status, 200);
+    assert.equal(payload(rescanned).next.fieldCall, "LET WALK");
+    const again = await route(request("POST", "/api/rescan", { appUserId: "free_keep_user", reportId: id }));
+    assert.equal(again.status, 400);
+    const answer = await route(request("POST", "/api/rescan-answer", { appUserId: "free_keep_user", reportId: id, right: false }));
+    assert.equal(payload(answer).status, "rescanned-wrong");
+    const removed = await route(request("POST", "/api/report-photo", { appUserId: "free_keep_user", reportId: id }));
+    assert.equal(payload(removed).deleted, true);
+    const after = await route(request("GET", "/api/admin/report-cases", undefined, ADMIN));
+    assert.equal((payload(after).cases as Array<{ id: string }>).some((row) => row.id === id), false);
+    setRescanRunnerForTests(null);
+  });
+
+  test("a second look is free once per scan and a dispute names the disagreement", async () => {
+    const { setSecondLookRunnerForTests } = await import("./second-look.js");
+    setSecondLookRunnerForTests(async () => ({
+      ageYears: 2.5,
+      fieldCall: "LET WALK",
+      bodyOnlyAge: 2.5,
+      cues: [{ area: "neck", text: "Thin neck with a clear throat line" }],
+      model: "test-model",
+      costUsd: 0.02,
+    }));
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_look_user",
+      scanId: "scan_look",
+      kind: "wrong_call",
+      fieldCall: "SHOOTER",
+      reportedAge: "3.5",
+      proofMethod: "jawbone",
+      minimum: 4.5,
+      scanImages: ["aGVsbG8="],
+      resultSnapshot: { ageYears: 5.5, cueBullets: [{ area: "Neck", text: "Neck runs into the chest" }] },
+    }));
+    assert.equal(payload(saved).id.length > 0, true);
+    const listed = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    const row = (payload(listed).reports as Array<Record<string, unknown>>).find((item) => item.scanId === "scan_look");
+    assert.equal(row?.proofReview, true);
+    assert.equal(row?.freeMonthOwed, false);
+    const first = await route(request("POST", "/api/second-look", {
+      appUserId: "free_look_user",
+      scanId: "scan_look",
+      originalCall: "SHOOTER",
+      originalAge: 5.5,
+      minimum: 4.5,
+    }));
+    assert.equal(first.status, 200);
+    assert.equal(payload(first).secondLook.agree, false);
+    assert.match(payload(first).secondLook.note, /disagree/i);
+    const second = await route(request("POST", "/api/second-look", {
+      appUserId: "free_look_user",
+      scanId: "scan_look",
+      originalCall: "SHOOTER",
+      originalAge: 5.5,
+    }));
+    assert.equal(payload(second).reused, true);
+    const dispute = await route(request("POST", "/api/admin/reply", { id: payload(saved).id, kind: "dispute" }, ADMIN));
+    assert.equal(dispute.status, 200);
+    const messages = await route(request("GET", "/api/replies?appUserId=free_look_user"));
+    const message = (payload(messages).messages as Array<{ reply: string; dispute: boolean }>).find((item) => item.dispute);
+    assert.equal(message?.dispute, true);
+    assert.match(message?.reply ?? "", /Here's what the photo shows/);
+    assert.match(message?.reply ?? "", /disagree/i);
+    assert.match(message?.reply ?? "", /lab tooth age is the strongest proof/);
+    assert.doesNotMatch(message?.reply ?? "", /you're wrong/i);
+    setSecondLookRunnerForTests(null);
   });
 });

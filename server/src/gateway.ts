@@ -73,10 +73,11 @@ export async function callModel(options: {
   timeoutMs: number;
   effort: ReasoningEffort;
   allowStatusRetry?: boolean;
+  model?: string;
 }): Promise<ModelCall> {
   const key = process.env.AI_GATEWAY_API_KEY?.trim();
   if (!key) throw new GatewayError("The AI gateway is not configured.", 503, false);
-  const model = modelFor(options.role);
+  const model = options.model?.trim() || modelFor(options.role);
   const content: Array<Record<string, unknown>> = [
     { type: "text", text: options.prompt },
     ...options.images.map((image) => ({

@@ -15,8 +15,10 @@ Do not refuse a partial photo. Answer whenever any of the deer is visible. Stop 
 
 Otherwise set "stop" to null, give an age class midpoint (1.5, 2.5, 3.5, 4.5, 5.5, or 6.5), name the parts you could see, and if the angle is poor add a short betterAngle tip.
 
+Each cue must be something you can see in the photo. Label area as neck, brisket, belly, back, legs, face, or antler. Include antler only if you used the rack.
+
 End with one line and nothing after it:
-FINAL {"age":4.5,"confidence":50,"visibleParts":["neck","chest","legs"],"betterAngle":"","cues":["Neck still meets the chest in a seam"],"stop":null}`;
+FINAL {"age":4.5,"confidence":50,"visibleParts":["neck","chest","legs"],"betterAngle":"","cues":[{"area":"neck","text":"Neck still meets the chest in a seam"}],"stop":null}`;
 }
 
 export function maskedAgePrompt(): string {
@@ -25,7 +27,7 @@ export function maskedAgePrompt(): string {
 Stop only if no deer is visible or nothing in the frame can be seen. Otherwise give an age class midpoint (1.5, 2.5, 3.5, 4.5, 5.5, or 6.5).
 
 End with one line and nothing after it:
-FINAL {"age":2.5,"confidence":40,"visibleParts":["neck","legs"],"betterAngle":"","cues":["Thin neck with a clear throat line"],"stop":null}`;
+FINAL {"age":2.5,"confidence":40,"visibleParts":["neck","legs"],"betterAngle":"","cues":[{"area":"neck","text":"Thin neck with a clear throat line"}],"stop":null}`;
 }
 
 export function antlerBoxPrompt(): string {

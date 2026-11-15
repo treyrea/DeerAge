@@ -339,6 +339,13 @@ export const ResultsScreen = () => {
           <WrongCallCard
             scanId={currentResult.analysisId}
             fieldCall={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
+            photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall,
+              ageYears: currentResult.explainableAge?.estimatedAgeYears,
+              grossScore: typeof score.netTypical === "number" ? score.netTypical : undefined,
+              leaseMinimum,
+            }}
           />
           <PreShotBar
             draft={{

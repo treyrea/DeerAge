@@ -28,6 +28,7 @@ import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { TierPaywallScreen } from "../screens/TierPaywallScreen";
 import { ManageSubscriptionScreen } from "../screens/ManageSubscriptionScreen";
+import { MessagesScreen } from "../screens/MessagesScreen";
 import { FeedScreen } from "../screens/FeedScreen";
 import type { PaywallResultSummary } from "../lib/products";
 
@@ -56,6 +57,7 @@ export type HistoryStackParamList = {
 export type SettingsStackParamList = {
   SettingsMain: undefined;
   ManageSubscription: undefined;
+  Messages: undefined;
 };
 
 // Combined type for backward compatibility
@@ -129,6 +131,7 @@ const SettingsStackNavigator = () => {
     >
       <SettingsStack.Screen name="SettingsMain" component={SettingsScreen} />
       <SettingsStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
+      <SettingsStack.Screen name="Messages" component={MessagesScreen} />
     </SettingsStack.Navigator>
   );
 };

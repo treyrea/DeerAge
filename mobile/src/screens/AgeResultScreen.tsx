@@ -202,6 +202,15 @@ export const AgeResultScreen = () => {
           <WrongCallCard
             scanId={currentResult.analysisId}
             fieldCall={explainableAge.fieldCall || ""}
+            photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: explainableAge.fieldCall,
+              ageYears: explainableAge.estimatedAgeYears,
+              fastAge: explainableAge.fastAge,
+              mainAge: explainableAge.mainAge,
+              bodyOnlyAge: explainableAge.bodyOnlyAge,
+              leaseMinimum: explainableAge.minimumAgeThreshold,
+            }}
           />
           <PreShotBar
             draft={{

@@ -5,7 +5,8 @@
 
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
 import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
-import { handleAdminFeedbackRequest, handleCallReport } from "./feedback.js";
+import { handleAdminFeedbackRequest, handleAdminReply, handleCallReport, handleDeleteReportPhoto, handleReportCases, handleReportImage, handleReplies, handleRescan, handleRescanAnswer } from "./feedback.js";
+import { handleSecondLook } from "./second-look.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
 import { handleVerifyRecord } from "./record.js";
@@ -68,6 +69,14 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/admin/harvests") return handleAdminHarvestsRequest(req);
   if (path === "/api/call-report") return handleCallReport(req);
   if (path === "/api/admin/feedback") return handleAdminFeedbackRequest(req);
+  if (path === "/api/admin/reply") return handleAdminReply(req);
+  if (path === "/api/admin/report-cases") return handleReportCases(req);
+  if (path === "/api/admin/report-image") return handleReportImage(req);
+  if (path === "/api/replies") return handleReplies(req);
+  if (path === "/api/rescan") return handleRescan(req);
+  if (path === "/api/rescan-answer") return handleRescanAnswer(req);
+  if (path === "/api/report-photo") return handleDeleteReportPhoto(req);
+  if (path === "/api/second-look") return handleSecondLook(req);
   if (path === "/api/admin/config") return handleAdminConfigRequest(req);
   if (path === "/api/verify-record") return handleVerifyRecord(req);
   return { status: 404, body: { ok: false, code: "invalid_request", message: "Not found." } };

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { postCallReport } from "../api/call-report";
+import { followUpEmailOrNull, postCallReport } from "../api/call-report";
 import { openAppleSubscriptions } from "../lib/revenuecatClient";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 
@@ -21,13 +21,26 @@ export const ManageSubscriptionScreen = () => {
   const planLabel = useSubscriptionStore((s) => s.planLabel);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const continueToApple = async () => {
     if (!reason) return;
+    const mail = followUpEmailOrNull(email);
+    if (mail === "invalid") {
+      setEmailError("Enter a valid email, or leave it blank.");
+      return;
+    }
+    setEmailError("");
     setBusy(true);
-    const result = await postCallReport({ kind: "cancel_reason", scanId: "account", note: note.trim() ? `${reason}. ${note.trim()}` : reason });
+    const result = await postCallReport({
+      kind: "cancel_reason",
+      scanId: "account",
+      note: note.trim() ? `${reason}. ${note.trim()}` : reason,
+      followUpEmail: mail,
+    });
     setBusy(false);
     setSaved(result.ok);
     await openAppleSubscriptions();
@@ -70,6 +83,19 @@ export const ManageSubscriptionScreen = () => {
           placeholderTextColor="#8B7355"
           style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 12, padding: 12, marginTop: 14 }}
         />
+        <Text style={{ color: "#F5F5DC", marginTop: 16 }}>Want us to follow up? Leave your email (optional).</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Email"
+          placeholderTextColor="#8B7355"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 12, padding: 12, marginTop: 8 }}
+        />
+        <Text style={{ color: "#E5D4B8", marginTop: 6, lineHeight: 18 }}>{"We'll only use it to answer this report, never for marketing."}</Text>
+        {emailError ? <Text style={{ color: "#fecaca", marginTop: 8 }}>{emailError}</Text> : null}
         <Pressable
           onPress={() => { void continueToApple(); }}
           disabled={!reason || busy}

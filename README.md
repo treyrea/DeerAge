@@ -50,13 +50,14 @@ Until that key exists, a phone can still show the opt-in, but Apple will not del
 
 When shipping 1.0.9, update App Privacy for these optional types. None are used for tracking, and none are required to use the app.
 
-- **Contact Info → Email Address.** Optional. Collected only if the hunter signs up for rut-timing alerts and an end-of-season recap. Linked to the install (the RevenueCat app user id). Purpose: App Functionality. Not used for tracking.
+- **Contact Info → Email Address.** Optional. Collected if the hunter signs up for rut-timing alerts and an end-of-season recap, or if he types an email on a wrong-call report or a cancel note. Linked to the install (the RevenueCat app user id). Purposes: App Functionality, and Customer Support for a report reply. Not used for tracking. Not used for marketing. Never required, and never filled in for him.
+- **User Content → Photos.** A submitted wrong-call report keeps that scan's photo and the result, so the miss can be studied. A second look stores that photo and both ages. Linked to the install and the report. Purpose: App Functionality. Not used for tracking. Kept until the report is resolved plus 1 year, or until he taps Delete my report photo. The photo is not on a public URL.
 - **Identifiers → Device ID.** Optional. The Expo push token, collected only if the hunter turns notifications on. Linked to the install. Purpose: App Functionality. Not used for tracking.
 - **Location → Precise Location.** Optional. Only while he is using the app, and only if he allows it. On the phone it suggests today's hunt region and can be attached to a pre-shot record. The region name, not the GPS point, is sent with an analysis. Linked to his own records. Purpose: App Functionality. Not used for tracking. No background location.
 
 A lease manager name or phone typed in Settings stays on the phone. DeerAge does not read the Contacts app and does not upload that number.
 
-A wrong-call report, a confirmed harvest age, and a cancel or return note are stored with the scan id or the app user id. An optional report photo is stored only when it is small enough. See the privacy policy.
+A wrong-call report keeps the scan photo and the result. A confirmed harvest age and a cancel or return note are stored with the scan id or the app user id. An optional follow-up email on a report or cancel note is stored with that report and is not mailed by the server. See the privacy policy.
 
 ## Plans
 

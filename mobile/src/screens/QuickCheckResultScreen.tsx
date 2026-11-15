@@ -240,6 +240,15 @@ export const QuickCheckResultScreen = () => {
             <WrongCallCard
               scanId={result.shotReceipt?.id ?? `quick-${imageUri}`}
               fieldCall={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
+              photos={[imageUri]}
+              snapshot={{
+                fieldCall: result.fieldCall,
+                ageYears: result.ageYears,
+                fastAge: result.fastAge,
+                mainAge: result.mainAge,
+                bodyOnlyAge: result.bodyOnlyAge,
+                leaseMinimum,
+              }}
             />
           ) : null}
           <PreShotBar

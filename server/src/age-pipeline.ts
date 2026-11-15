@@ -14,6 +14,7 @@ export interface AgeReading {
   visibleParts: string[];
   betterAngle: string;
   cues: string[];
+  labeled: { area: string; text: string }[];
   stop: "not_deer" | "no_antlers" | "unreadable" | null;
   backup: boolean;
 }
@@ -32,6 +33,7 @@ const EMPTY: AgeReading = {
   visibleParts: [],
   betterAngle: "",
   cues: [],
+  labeled: [],
   stop: null,
   backup: false,
 };
@@ -42,16 +44,49 @@ export function readingFrom(text: string, backup = false): AgeReading {
   const stop = parsed.stop === "not_deer" || parsed.stop === "no_antlers" || parsed.stop === "unreadable" ? parsed.stop : null;
   const age = Number(parsed.age);
   const parts = Array.isArray(parsed.visibleParts) ? parsed.visibleParts.filter((part): part is string => typeof part === "string") : [];
-  const cues = Array.isArray(parsed.cues) ? parsed.cues.filter((cue): cue is string => typeof cue === "string") : [];
+  const labeled = labeledCues(parsed.cues);
   return {
     age: Number.isFinite(age) && age > 0 ? age : null,
     confidence: Math.max(0, Math.min(100, Math.round(Number(parsed.confidence) || 0))),
     visibleParts: parts.slice(0, 8),
     betterAngle: typeof parsed.betterAngle === "string" ? parsed.betterAngle.slice(0, 160) : "",
-    cues: cues.slice(0, 6),
+    cues: labeled.map((cue) => cue.text).slice(0, 6),
+    labeled: labeled.slice(0, 6),
     stop,
     backup,
   };
+}
+
+const CUE_AREAS = ["neck", "brisket", "belly", "back", "legs", "face", "antler"] as const;
+
+function cueArea(given: string, text: string): string {
+  const named = given.toLowerCase();
+  if ((CUE_AREAS as readonly string[]).includes(named)) return named;
+  const lower = text.toLowerCase();
+  if (/\bantler|\brack\b|\bbeam\b|\btine\b/.test(lower)) return "antler";
+  if (lower.includes("brisket") || lower.includes("chest")) return "brisket";
+  if (lower.includes("neck") || lower.includes("throat")) return "neck";
+  if (lower.includes("belly")) return "belly";
+  if (lower.includes("back")) return "back";
+  if (lower.includes("leg")) return "legs";
+  if (lower.includes("face") || lower.includes("muzzle")) return "face";
+  return "body";
+}
+
+function labeledCues(value: unknown): { area: string; text: string }[] {
+  if (!Array.isArray(value)) return [];
+  const cues: { area: string; text: string }[] = [];
+  for (const item of value) {
+    if (typeof item === "string" && item.trim()) {
+      cues.push({ area: cueArea("", item), text: item.trim() });
+    } else if (item && typeof item === "object") {
+      const row = item as { area?: unknown; text?: unknown };
+      const text = typeof row.text === "string" ? row.text.trim() : "";
+      if (!text) continue;
+      cues.push({ area: cueArea(typeof row.area === "string" ? row.area : "", text), text });
+    }
+  }
+  return cues;
 }
 
 export function boxesFrom(text: string): number[][] {
@@ -186,7 +221,11 @@ function resultBody(
   minimum: number,
 ): Record<string, unknown> {
   const source = main?.age != null ? main : fast;
-  const cues = (bodyOnly?.cues?.length ? bodyOnly.cues : source?.cues ?? []).map((text) => ({ area: "Body", text }));
+  const labeled = (source?.labeled?.length ? source.labeled : bodyOnly?.labeled) ?? [];
+  const cues = labeled.map((cue) => ({
+    area: cue.area === "antler" ? "Antler" : cue.area.charAt(0).toUpperCase() + cue.area.slice(1),
+    text: cue.text,
+  }));
   return {
     ageYears: source?.age ?? null,
     estimatedAgeYears: source?.age ?? null,

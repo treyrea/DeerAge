@@ -3,12 +3,12 @@
  * Includes distance capture settings and rangefinder integration scaffold
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, Platform, Linking, Switch } from "react-native";
 import Constants from "expo-constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useDistanceStore } from "../state/distanceStore";
@@ -17,6 +17,7 @@ import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
 import { CommunitySettings } from "../components/CommunitySettings";
+import { loadMessages } from "../api/call-report";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
 
@@ -75,6 +76,15 @@ export const SettingsScreen = () => {
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [managerName, setManagerName] = useState(profile.leaseManagerName);
   const [managerPhone, setManagerPhone] = useState(profile.leaseManagerPhone);
+  const [unreadReplies, setUnreadReplies] = useState(0);
+  const [replyCount, setReplyCount] = useState(0);
+
+  useFocusEffect(useCallback(() => {
+    void loadMessages().then((loaded) => {
+      setUnreadReplies(loaded.unread);
+      setReplyCount(loaded.messages.length);
+    });
+  }, []));
 
   const handleSave = () => {
     const ageValue = parseFloat(minimumAge);
@@ -117,6 +127,22 @@ export const SettingsScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
+          {replyCount > 0 ? (
+            <Pressable
+              onPress={() => navigation.navigate("Messages")}
+              className="rounded-2xl p-4 mb-6 flex-row items-center justify-between"
+              style={{ backgroundColor: "#3D4A2F" }}
+            >
+              <Text className="text-base font-bold" style={{ color: "#F5F5DC" }}>Messages from DeerAge</Text>
+              {unreadReplies > 0 ? (
+                <View style={{ minWidth: 24, height: 24, borderRadius: 12, backgroundColor: "#D4AF37", alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
+                  <Text style={{ color: "#1a1f16", fontWeight: "800" }}>{unreadReplies}</Text>
+                </View>
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color="#D4AF37" />
+              )}
+            </Pressable>
+          ) : null}
           {/* Subscription Status Section */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: isPro ? "#166534" : "#3D4A2F", borderWidth: isPro ? 2 : 0, borderColor: "#D4AF37" }}>
             <View className="flex-row items-center mb-4">

@@ -142,6 +142,37 @@ function audienceOf(value: unknown): "all" | "subscriber" | "free" {
   throw new ApiError(400, "invalid_request", "Audience must be all, subscriber, or free.");
 }
 
+/** One install, one line. A miss does not undo the reply that was already stored. */
+export async function sendReportReplyPush(appUserId: string): Promise<boolean> {
+  try {
+    const record = await readJson<PushRecord | null>(pushKey(appUserId), null);
+    if (!record?.token) return false;
+    const accessToken = process.env.EXPO_ACCESS_TOKEN?.trim() ?? "";
+    const response = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+        body: JSON.stringify([{
+          to: record.token,
+          title: "DeerAge",
+          body: "DeerAge replied to your report",
+          sound: "default",
+          data: { kind: "reply" },
+        }]),
+      });
+    if (!response.ok) return false;
+    const payload = (await response.json()) as { data?: { status?: string; details?: { error?: string } }[] };
+    const ticket = payload.data?.[0];
+    if (ticket?.details?.error === "DeviceNotRegistered") await removePush(appUserId);
+    return ticket?.status === "ok";
+  } catch {
+    return false;
+  }
+}
+
 export async function handleAdminPushRequest(req: Incoming): Promise<Outgoing> {
   if (req.method !== "POST") return fail(405, "invalid_request", "Use POST.");
   try {

@@ -3,7 +3,9 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { HarvestPanel } from "./HarvestPanel";
+import { SecondLookLink } from "./SecondLookLink";
 import { WrongCallCard } from "./WrongCallCard";
+import { FAIR_LIMIT_NOTE } from "../lib/fair-limit";
 import { LeaseManagerButton } from "./LeaseManagerButton";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { recordExportAllowed, saveShotRecord, useShotRecordStore } from "../state/shotRecordStore";
@@ -111,6 +113,14 @@ export const ShotRecordPage = ({
         <Text style={{ color: "#F5F5DC", fontSize: 36, fontWeight: "800", marginTop: 6 }}>{record.ageClass || "Age class unavailable"}</Text>
         <Text style={{ color: "#D4AF37", fontSize: 28, fontWeight: "800" }}>{record.fieldCall}</Text>
         {record.fieldCallNote ? <Text style={{ color: "#E5D4B8", marginTop: 8, lineHeight: 20 }}>{record.fieldCallNote}</Text> : null}
+        <SecondLookLink
+          scanId={record.localId}
+          fieldCall={record.fieldCall}
+          age={Number(record.ageClass) || null}
+          minimum={record.leaseMinimum}
+          photos={record.photoUris}
+        />
+        <Text style={{ color: "#8B7355", marginTop: 8, lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 10 }}>Phone time: {new Date(record.deviceTime).toLocaleString()}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 4 }}>Server time: {record.serverTime ? new Date(record.serverTime).toLocaleString() : "Not signed"}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 4 }}>
@@ -118,7 +128,21 @@ export const ShotRecordPage = ({
         </Text>
         <View style={{ marginTop: 16 }}>
           <HarvestPanel scanId={record.localId} leaseMinimum={record.leaseMinimum} fieldCall={record.fieldCall} showReport={false} />
-          <WrongCallCard scanId={record.localId} fieldCall={record.fieldCall} />
+          <WrongCallCard
+            scanId={record.localId}
+            fieldCall={record.fieldCall}
+            minimum={record.leaseMinimum}
+            photos={record.photoUris}
+            snapshot={{
+              fieldCall: record.fieldCall,
+              ageClass: record.ageClass,
+              fastAge: record.fastAge,
+              mainAge: record.mainAge,
+              bodyOnlyAge: record.bodyOnlyAge,
+              leaseMinimum: record.leaseMinimum,
+              grossScore: record.scoreLabel,
+            }}
+          />
         </View>
         <LeaseManagerButton
           ageClass={record.ageClass}

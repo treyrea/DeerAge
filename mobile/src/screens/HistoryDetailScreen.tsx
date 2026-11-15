@@ -106,6 +106,12 @@ export const HistoryDetailScreen = () => {
           <WrongCallCard
             scanId={result.analysisId}
             fieldCall={explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall || ""}
+            photos={result.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall,
+              ageYears: explainableAge?.estimatedAgeYears,
+              leaseMinimum: explainableAge?.minimumAgeThreshold ?? savedMinimum,
+            }}
           />
           {result.shotReceipt || linked ? (
             <PreShotBar
