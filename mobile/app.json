@@ -21,7 +21,11 @@
     "android": {
       "edgeToEdgeEnabled": true
     },
-    "extra": {},
+    "extra": {
+      "eas": {
+        "projectId": "7cc67b2e-b3c4-408f-bb74-850c9de5ac8e"
+      }
+    },
     "icon": "./icon.png",
     "plugins": [
       "expo-asset",
@@ -32,6 +36,7 @@
       "expo-sqlite",
       "expo-video",
       "expo-web-browser"
-    ]
+    ],
+    "owner": "treyrea"
   }
 }
