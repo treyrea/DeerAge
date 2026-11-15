@@ -22,7 +22,6 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
-import { EmailPrompt } from "../components/EmailPrompt";
 import { ErrorModal } from "../components/ErrorModal";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
@@ -41,17 +40,11 @@ export const AgeResultScreen = () => {
   const startCapture = useDeerScoringStore((s) => s.startCapture);
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
-  const analysisCount = useDeerScoringStore((s) => s.analysisCount);
-  const userEmail = useDeerScoringStore((s) => s.userEmail);
-  const markEmailPromptSeen = useDeerScoringStore((s) => s.markEmailPromptSeen);
-  const dismissEmailPrompt = useDeerScoringStore((s) => s.dismissEmailPrompt);
-
   const [hasSaved, setHasSaved] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
   const [showWhyThisAge, setShowWhyThisAge] = useState(true);
   const [showModelCard, setShowModelCard] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [manualNotes, setManualNotes] = useState("");
@@ -97,18 +90,10 @@ export const AgeResultScreen = () => {
           await saveToHistory(currentResult);
         }
         setHasSaved(true);
-
-        // Show email prompt after 1st or 5th analysis (if email not collected)
-        if (!userEmail && (analysisCount === 1 || analysisCount === 5)) {
-          setTimeout(() => {
-            setShowEmailPrompt(true);
-            markEmailPromptSeen();
-          }, 1500); // Delay to let user see results first
-        }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
+  }, [currentResult, hasSaved, saveToHistory]);
 
   // Handle missing result
   useEffect(() => {
@@ -769,15 +754,6 @@ Powered by RackScore™ AI`;
           </View>
         </View>
       </Modal>
-
-      {/* Email Prompt Modal */}
-      <EmailPrompt
-        visible={showEmailPrompt}
-        onDismiss={() => {
-          setShowEmailPrompt(false);
-          dismissEmailPrompt();
-        }}
-      />
 
       {/* Success Modal */}
       <ErrorModal

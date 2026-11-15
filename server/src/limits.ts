@@ -140,6 +140,14 @@ async function pipeline(commands: (string | number)[][]): Promise<unknown[]> {
   }
 }
 
+export function redisCommand(args: (string | number)[]): Promise<unknown> {
+  return command(args);
+}
+
+export function redisPipeline(commands: (string | number)[][]): Promise<unknown[]> {
+  return pipeline(commands);
+}
+
 function asNumber(value: unknown): number {
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : 0;

@@ -11,6 +11,16 @@ Set the Vercel project **Root Directory** to `server`. Framework preset: Other. 
 | `POST` | `/api/analyze` | Quick Check, Age, or Score. Verifies entitlement and the free-use count, then calls OpenAI. |
 | `GET` | `/api/config` | Minimum app version, model name, and the free-analysis count. No secrets. |
 | `GET` | `/api/access?appUserId=` | Reads entitlement and remaining free analyses. Does not spend a use. |
+| `GET` | `/api/feed` | Published announcements and open polls. Optional `?appUserId=` adds `myVote`. |
+| `POST` | `/api/poll-vote` | One vote per RevenueCat app user id. Body: `appUserId`, `pollId`, `optionId`. |
+| `POST` | `/api/push-token` | Saves or removes an Expo push token for that app user id. |
+| `POST` | `/api/email-optin` | Optional email plus a consent timestamp. |
+| `POST` | `/api/email-unsubscribe` | Body `token` or `appUserId`. |
+| `GET` `POST` `PATCH` | `/api/admin/announcements` | Admin. List, create, or edit. `status`: `draft`, `published`, `closed`. |
+| `GET` `POST` `PATCH` | `/api/admin/polls` | Admin. List, create, or edit. `status`: `draft`, `open`, `closed`. |
+| `GET` | `/api/admin/poll-results?pollId=` | Admin. Counts split into subscriber and free. |
+| `POST` | `/api/admin/push` | Admin. Broadcast, or `dryRun: true` to count only. |
+| `GET` | `/api/admin/emails` | Admin. CSV export. |
 
 `POST /api/analyze` body:
 
@@ -67,10 +77,17 @@ Set these in the Vercel project. Copy `server/.env.example` to `server/.env` for
 | `OPENAI_REASONING_TOKEN_HEADROOM` | no | Extra completion tokens for reasoning. Default `4096`. |
 | `SCORE_CALIBRATION` | no | Inches multiplier. Default `1`. Do not fit it to the eval set. |
 | `DEERAGE_EVAL_TOKEN` | no | Shared secret for `/eval`. Requests that send it skip entitlement and do not change free-use counts. The app never sends it. |
-| `MIN_APP_VERSION` | no | Builds older than this see the soft update prompt. Default `1.0.8`. |
-| `LATEST_APP_VERSION` | no | Shown as the current release. Default `1.0.8`. |
-| `UPSTASH_REDIS_REST_URL` | yes | Upstash Redis REST URL from the Vercel Marketplace integration. |
-| `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash Redis REST token. Server-side only. |
+| `MIN_APP_VERSION` | no | Builds older than this see the soft update prompt. Default `1.0.8`. Raise it to `1.0.9` after that build is on the App Store. |
+| `LATEST_APP_VERSION` | no | Shown as the current release. Default `1.0.9`. |
+| `UPSTASH_REDIS_REST_URL` | yes | Upstash Redis REST URL. Falls back to `KV_REST_API_URL` when unset. |
+| `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash Redis REST token. Falls back to `KV_REST_API_TOKEN`. Server-side only. |
+| `ADMIN_TOKEN` | yes, for admin routes | Bearer token for `/api/admin/*`. Long random string. The app never sends it. |
+| `EXPO_ACCESS_TOKEN` | no | Optional Expo push access token. Broadcasts work without it. |
+| `FEED_RATE_LIMIT_PER_MINUTE` | no | Feed reads per app user id. Default `40`. |
+| `VOTE_RATE_LIMIT_PER_MINUTE` | no | Votes per app user id. Default `12`. |
+| `PUSH_TOKEN_RATE_LIMIT_PER_MINUTE` | no | Token registrations per app user id. Default `10`. |
+| `EMAIL_RATE_LIMIT_PER_MINUTE` | no | Email opt-in and unsubscribe per id. Default `6`. |
+| `ADMIN_RATE_LIMIT_PER_MINUTE` | no | Admin calls per caller. Default `30`. |
 | `FAIR_USE_DAILY` | no | Subscriber analyses per day. Default `10`. |
 | `FAIR_USE_MONTHLY` | no | Subscriber analyses per month. Default `40`. |
 | `FAIR_USE_TIMEZONE` | no | Calendar for those caps. Default `America/Chicago`. |
@@ -81,6 +98,68 @@ Set these in the Vercel project. Copy `server/.env.example` to `server/.env` for
 | `OPENAI_OUTPUT_USD_PER_MILLION` | no | Output token price. Default `20`. List price after Nov 30, 2026 is about `30`. |
 
 The mobile app's EAS secrets are different and public-client values only: `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_API_BASE_URL`. See the repo README.
+
+## Updates, polls, push, and email
+
+Public routes are rate limited in the same Upstash Redis as fair use. Admin routes require `Authorization: Bearer $ADMIN_TOKEN`. If `ADMIN_TOKEN` is unset, those routes return `not_configured`.
+
+A missing `status` on create publishes the announcement or opens the poll. Close either one with `PATCH` and `"status": "closed"`. Votes are one per RevenueCat app user id. A second choice returns `already_voted` and does not change the tally. Results split `subscriber` (an active entitlement) and `free`.
+
+From `server/`, with `DEERAGE_API_BASE_URL` and `ADMIN_TOKEN` set (a local `server/.env` is loaded and is not committed):
+
+```bash
+npm run admin -- announcement:create --title "Season Pass is here" --body "Your current plan keeps full access."
+npm run admin -- poll:create --question "What should we build next?" --option "Rut timing" --option "Herd photos"
+npm run admin -- poll:results --id poll_abc123
+npm run admin -- push --title "New poll" --body "Vote on what is next." --audience all --dry-run
+npm run admin -- emails
+```
+
+`push --dry-run` counts tokens and does not send. `--audience` is `all`, `subscriber`, or `free`. The segment is whatever RevenueCat said the last time that phone registered its token.
+
+The same calls as curl:
+
+```bash
+curl -sS "$DEERAGE_API_BASE_URL/api/admin/announcements" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Season Pass is here","body":"Your current plan keeps full access.","status":"published"}'
+
+curl -sS "$DEERAGE_API_BASE_URL/api/admin/polls" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What should we build next?","options":["Rut timing","Herd photos"],"status":"open"}'
+
+curl -sS "$DEERAGE_API_BASE_URL/api/admin/poll-results?pollId=POLL_ID" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+curl -sS "$DEERAGE_API_BASE_URL/api/admin/push" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"New poll","body":"Vote on what is next.","audience":"all","dryRun":true}'
+
+curl -sS "$DEERAGE_API_BASE_URL/api/admin/emails" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Close an item:
+
+```bash
+curl -sS -X PATCH "$DEERAGE_API_BASE_URL/api/admin/announcements" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"ann_abc123","status":"closed"}'
+```
+
+Unsubscribe (no admin token; the token is the one returned by opt-in and included in the CSV):
+
+```bash
+curl -sS "$DEERAGE_API_BASE_URL/api/email-unsubscribe" \
+  -H "Content-Type: application/json" \
+  -d '{"token":"UNSUBSCRIBE_TOKEN"}'
+```
+
+`npm test` covers votes, the admin token, email export, and the push dry-run.
 
 ## Entitlement
 

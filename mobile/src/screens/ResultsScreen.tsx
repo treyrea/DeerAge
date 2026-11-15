@@ -19,7 +19,6 @@ import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
-import { EmailPrompt } from "../components/EmailPrompt";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
 import * as Haptics from "expo-haptics";
 
@@ -39,18 +38,12 @@ export const ResultsScreen = () => {
   const startCapture = useDeerScoringStore((s) => s.startCapture);
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
-  const analysisCount = useDeerScoringStore((s) => s.analysisCount);
-  const userEmail = useDeerScoringStore((s) => s.userEmail);
-  const markEmailPromptSeen = useDeerScoringStore((s) => s.markEmailPromptSeen);
-  const dismissEmailPrompt = useDeerScoringStore((s) => s.dismissEmailPrompt);
-
   const [hasSaved, setHasSaved] = useState(false);
   const [showManualCounter, setShowManualCounter] = useState(false);
   const [manualCount, setManualCount] = useState(currentResult?.manualPointCount || 0);
   const [manualLeftCount, setManualLeftCount] = useState(currentResult?.manualLeftCount || 0);
   const [manualRightCount, setManualRightCount] = useState(currentResult?.manualRightCount || 0);
   const [manualOverride, setManualOverride] = useState(currentResult?.manualOverride || false);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [showScoreAdjustment, setShowScoreAdjustment] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [adjustedScore, setAdjustedScore] = useState<number | null>(null);
@@ -136,18 +129,10 @@ export const ResultsScreen = () => {
       const timer = setTimeout(() => {
         saveToHistory(currentResult);
         setHasSaved(true);
-
-        // Show email prompt after 1st or 5th analysis (if email not collected)
-        if (!userEmail && (analysisCount === 1 || analysisCount === 5)) {
-          setTimeout(() => {
-            setShowEmailPrompt(true);
-            markEmailPromptSeen();
-          }, 1500); // Delay to let user see results first
-        }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
+  }, [currentResult, hasSaved, saveToHistory]);
 
   const ageLabel = formatAgeClass(currentResult?.explainableAge?.estimatedAge ?? currentResult?.age?.estimatedAge);
   useResultFollowUp(Boolean(currentResult), currentResult ? {
@@ -1223,15 +1208,6 @@ export const ResultsScreen = () => {
           </Pressable>
         </View>
       </ScrollView>
-
-      {/* Email Prompt Modal */}
-      <EmailPrompt
-        visible={showEmailPrompt}
-        onDismiss={() => {
-          setShowEmailPrompt(false);
-          dismissEmailPrompt();
-        }}
-      />
 
       {/* Score Adjustment Modal */}
       <ScoreAdjustmentModal

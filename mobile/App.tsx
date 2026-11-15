@@ -9,6 +9,9 @@ import NetInfo from "@react-native-community/netinfo";
 import { useNetworkStore } from "./src/state/networkStore";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
+import { CommunityPrompts } from "./src/components/CommunityPrompts";
+import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefresh } from "./src/lib/push";
+import { useCommunityStore } from "./src/state/communityStore";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -47,6 +50,20 @@ function MainApp() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    configurePushHandling();
+    const refresh = () => {
+      void refreshPushRegistration();
+    };
+    if (useCommunityStore.persist.hasHydrated()) refresh();
+    const unsubHydration = useCommunityStore.persist.onFinishHydration(refresh);
+    const unsubToken = subscribePushTokenRefresh();
+    return () => {
+      unsubHydration();
+      unsubToken();
+    };
+  }, []);
+
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
@@ -82,6 +99,7 @@ function MainApp() {
         )}
         <NavigationContainer>
           <RootNavigator />
+          <CommunityPrompts />
           <StatusBar style="light" />
         </NavigationContainer>
       </SafeAreaProvider>

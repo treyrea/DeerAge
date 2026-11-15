@@ -5,6 +5,7 @@
 
 import React, { useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, Platform, Linking, Switch } from "react-native";
+import Constants from "expo-constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -15,6 +16,7 @@ import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
+import { CommunitySettings } from "../components/CommunitySettings";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
 
@@ -197,6 +199,8 @@ export const SettingsScreen = () => {
               </Pressable>
             )}
           </View>
+
+          <CommunitySettings />
 
           {/* Property Rules Section */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
@@ -461,7 +465,7 @@ export const SettingsScreen = () => {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               const subject = encodeURIComponent("DeerAge Feedback");
-              const body = encodeURIComponent("\n\n---\nApp Version: 1.0\nPlatform: " + Platform.OS);
+              const body = encodeURIComponent(`\n\n---\nApp Version: ${Constants.expoConfig?.version ?? "1.0.9"}\nPlatform: ${Platform.OS}`);
               Linking.openURL(`mailto:treyrea@gmail.com?subject=${subject}&body=${body}`);
             }}
             className="rounded-2xl p-4 mb-6 flex-row items-center"
@@ -474,7 +478,7 @@ export const SettingsScreen = () => {
 
           {/* Footer */}
           <Text className="text-center text-xs mb-6" style={{ color: "#8B7355" }}>
-            DeerAge v1.0{"\n"}
+            DeerAge v{Constants.expoConfig?.version ?? "1.0.9"}{"\n"}
             Powered by RackScore™ AI
           </Text>
         </View>

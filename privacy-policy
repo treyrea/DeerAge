@@ -1,6 +1,6 @@
 # **DeerAge Privacy Policy**
 
-**Last updated:** November 10, 2025
+**Last updated:** November 15, 2026
 **App name:** DeerAge
 **Developer:** Trey Harper
 
@@ -21,7 +21,8 @@ We collect only the data necessary to provide app functionality, improve perform
 | Data Type                             | Purpose of Collection                                                                                     |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Precise Location**                  | To tag photos and field data with GPS coordinates for accurate deer-ageing and environmental mapping.     |
-| **Email Address, Name, Phone Number** | To create and manage your user profile, provide support, and send optional account-related notifications. |
+| **Email Address** | Optional. Only if you sign up for rut-timing alerts and an end-of-season recap. DeerAge does not require an email, a name, or a phone number. Unsubscribe anytime in Settings. |
+| **Push notification token** | Optional. Only if you turn notifications on, so we can send an update or a poll to this install. |
 | **Photos or Videos**                  | To allow users to upload deer images for ageing analysis and to store or display these within the app.    |
 
 ### **Usage and Diagnostic Information**

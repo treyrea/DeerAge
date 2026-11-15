@@ -2,6 +2,16 @@
   "functions": {
     "api/analyze.ts": { "maxDuration": 60 },
     "api/config.ts": { "maxDuration": 10 },
-    "api/access.ts": { "maxDuration": 10 }
+    "api/access.ts": { "maxDuration": 10 },
+    "api/feed.ts": { "maxDuration": 10 },
+    "api/poll-vote.ts": { "maxDuration": 10 },
+    "api/push-token.ts": { "maxDuration": 10 },
+    "api/email-optin.ts": { "maxDuration": 10 },
+    "api/email-unsubscribe.ts": { "maxDuration": 10 },
+    "api/admin/announcements.ts": { "maxDuration": 10 },
+    "api/admin/polls.ts": { "maxDuration": 10 },
+    "api/admin/poll-results.ts": { "maxDuration": 10 },
+    "api/admin/push.ts": { "maxDuration": 30 },
+    "api/admin/emails.ts": { "maxDuration": 15 }
   }
 }

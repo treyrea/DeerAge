@@ -21,6 +21,8 @@ import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useHunterProfile } from "../state/hunterProfile";
 import { UpdateAvailableBanner } from "../components/UpdateAvailableBanner";
+import { FeedHomeCard } from "../components/FeedHomeCard";
+import { LegacyPlanCard } from "../components/LegacyPlanCard";
 import * as Haptics from "expo-haptics";
 
 // Custom rack ruler icon for Score My Rack
@@ -59,6 +61,8 @@ export const HomeScreen = () => {
       <ScrollView>
         <View className="px-6 py-8">
           <UpdateAvailableBanner />
+          <LegacyPlanCard />
+          <FeedHomeCard />
           {/* Offline Alert Banner - Only show when offline */}
           {!isOnline && (
             <Pressable

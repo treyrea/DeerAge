@@ -266,6 +266,16 @@ export const setUserId = (userId: string): Promise<RevenueCatResult<void>> => {
   });
 };
 
+/** Sets the RevenueCat reserved subscriber attribute $email. Passing null clears it. */
+export const setRevenueCatEmail = async (email: string | null): Promise<void> => {
+  if (!isEnabled) return;
+  try {
+    await Purchases.setEmail(email);
+  } catch (error) {
+    console.log(`${LOG_PREFIX} setEmail failed:`, error);
+  }
+};
+
 /**
  * Log out the current user
  *

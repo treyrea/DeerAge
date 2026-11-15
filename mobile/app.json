@@ -3,15 +3,16 @@
     "name": "DeerAge",
     "slug": "deerage",
     "scheme": "vibecode",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecode.deerage-qj3cfq",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "DeerAge uses the camera to photograph deer so it can estimate age and score the rack.",
         "NSPhotoLibraryUsageDescription": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score.",
         "NSPhotoLibraryAddUsageDescription": "DeerAge saves the result card you share into your photo library.",
@@ -35,7 +36,8 @@
       "expo-secure-store",
       "expo-sqlite",
       "expo-video",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications"
     ],
     "owner": "treyrea"
   }

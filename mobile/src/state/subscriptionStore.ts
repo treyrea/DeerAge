@@ -16,6 +16,7 @@ interface SubscriptionState {
   entitled: boolean;
   planLabel: PlanLabel;
   activeEntitlementIds: string[];
+  activeProductIds: string[];
   lifetimeAnalysesUsed: number;
   pendingPaywall: boolean;
   localUserId: string | null;
@@ -38,12 +39,24 @@ function productIdFrom(info: CustomerInfo, entitlementIds: string[]): string | n
   return null;
 }
 
+function productIdsFrom(info: CustomerInfo): string[] {
+  const ids = new Set<string>();
+  for (const entitlement of Object.values(info.entitlements.active ?? {})) {
+    if (entitlement?.productIdentifier) ids.add(entitlement.productIdentifier);
+  }
+  for (const id of info.activeSubscriptions ?? []) {
+    if (id) ids.add(id);
+  }
+  return [...ids];
+}
+
 export const useSubscriptionStore = create<SubscriptionState>()(
   persist(
     (set, get) => ({
       entitled: false,
       planLabel: "Free",
       activeEntitlementIds: [],
+      activeProductIds: [],
       lifetimeAnalysesUsed: 0,
       pendingPaywall: false,
       localUserId: null,
@@ -55,6 +68,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         set({
           entitled,
           activeEntitlementIds: [...activeEntitlementIds],
+          activeProductIds: productIdsFrom(info),
           planLabel: planLabelFor(activeEntitlementIds, productIdFrom(info, [...activeEntitlementIds])),
           pendingPaywall: entitled ? false : get().pendingPaywall,
         });
@@ -65,7 +79,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         const result = await getCustomerInfo();
         if (!result.ok) {
           if (result.reason === "not_configured" || result.reason === "web_not_supported") {
-            set({ entitled: false, planLabel: "Free", activeEntitlementIds: [] });
+            set({ entitled: false, planLabel: "Free", activeEntitlementIds: [], activeProductIds: [] });
             return false;
           }
           return get().entitled;
@@ -118,6 +132,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         entitled: state.entitled,
         planLabel: state.planLabel,
         activeEntitlementIds: state.activeEntitlementIds,
+        activeProductIds: state.activeProductIds,
         lifetimeAnalysesUsed: state.lifetimeAnalysesUsed,
         localUserId: state.localUserId,
       }),

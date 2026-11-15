@@ -27,6 +27,7 @@ import { DeerScoringResult } from "../types/deer-scoring";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { TierPaywallScreen } from "../screens/TierPaywallScreen";
+import { FeedScreen } from "../screens/FeedScreen";
 import type { PaywallResultSummary } from "../lib/products";
 
 // Stack param lists
@@ -43,6 +44,7 @@ export type HomeStackParamList = {
   QuickCheckCamera: undefined;
   QuickCheckResult: { result: QuickAgeResult; imageUri: string };
   TierPaywall: { reason?: string; resultSummary?: PaywallResultSummary };
+  Feed: undefined;
 };
 
 export type HistoryStackParamList = {
@@ -87,6 +89,7 @@ const HomeStackNavigator = () => {
       <HomeStack.Screen name="OfflineAgeGuide" component={OfflineAgeGuideScreen} />
       <HomeStack.Screen name="QuickCheckCamera" component={QuickCheckCameraScreen} />
       <HomeStack.Screen name="QuickCheckResult" component={QuickCheckResultScreen} />
+      <HomeStack.Screen name="Feed" component={FeedScreen} />
       <HomeStack.Screen
         name="TierPaywall"
         component={TierPaywallScreen}

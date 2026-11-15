@@ -1,11 +1,13 @@
 {
   "name": "deerage-proxy",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "scripts": {
     "dev": "tsx src/dev-server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/content.test.ts",
+    "admin": "tsx src/admin-cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

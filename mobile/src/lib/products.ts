@@ -37,6 +37,11 @@ export const ACCESS_ENTITLEMENT_IDS = [
 
 export type AccessEntitlementId = (typeof ACCESS_ENTITLEMENT_IDS)[number];
 
+export function isLegacyProduct(productId: string | null | undefined): boolean {
+  if (!productId) return false;
+  return (LEGACY_PRODUCT_IDS as readonly string[]).includes(productId);
+}
+
 export const FREE_LIFETIME_ANALYSES = 3;
 
 export type PlanLabel = "Free" | "Season Pass" | "Monthly" | "Scout" | "Hunter" | "Trophy" | "Outfitter" | "Member";
