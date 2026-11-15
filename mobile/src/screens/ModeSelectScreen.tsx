@@ -2,18 +2,19 @@
  * Mode Select Screen - Choose photo source for analysis
  */
 
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useDeerScoringStore } from "../state/deerScoringStore";
-import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { allowanceLine } from "../lib/products";
+import { refreshScanCredits } from "../api/scan-credits";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { DeerMark } from "../components/DeerMark";
 import { HuntRegionSheet, RegionHeadsUp } from "../components/HuntRegionSheet";
@@ -42,7 +43,12 @@ export const ModeSelectScreen = () => {
   const entitled = useSubscriptionStore((s) => s.entitled);
   const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
   const remaining = useSubscriptionStore((s) => s.remainingFree());
+  const scanCredits = useSubscriptionStore((s) => s.scanCredits);
   const fairUsePerDay = useFairUseAllowance();
+
+  useFocusEffect(useCallback(() => {
+    void refreshScanCredits();
+  }, []));
 
   const handleProceed = (destination: "Camera" | "PhotoSelect") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -60,9 +66,9 @@ export const ModeSelectScreen = () => {
         subtext: "Everyday use. The fair-use cap resets tomorrow.",
       };
     }
-    if (remaining > 0) {
+    if (remaining > 0 || scanCredits > 0) {
       return {
-        text: `${remaining} of ${FREE_LIFETIME_ANALYSES} free analyses left`,
+        text: allowanceLine(remaining, scanCredits),
         subtext: "Quick Check and Age share this count",
       };
     }

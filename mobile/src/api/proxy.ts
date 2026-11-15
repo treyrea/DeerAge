@@ -204,7 +204,21 @@ export async function analyzeImages(input: {
   } | null;
 
   if (response.status === 202 && payload?.ok && typeof (payload as { jobId?: unknown }).jobId === "string") {
-    const done = await pollJob((payload as { jobId: string }).jobId, input.mode);
+    const quotedFree = payload.entitled || payload.freeUsesRemaining == null ? null : payload.freeUsesRemaining;
+    const quotedCredits = typeof (payload as { scanCredits?: unknown }).scanCredits === "number"
+      ? (payload as { scanCredits: number }).scanCredits
+      : undefined;
+    let done: Awaited<ReturnType<typeof pollJob>>;
+    try {
+      done = await pollJob((payload as { jobId: string }).jobId, input.mode);
+    } catch (error) {
+      const { refreshScanCredits } = await import("./scan-credits");
+      await refreshScanCredits();
+      throw error;
+    }
+    if (quotedCredits != null || quotedFree != null || payload.entitled) {
+      useSubscriptionStore.getState().noteServerUsage(quotedFree, quotedCredits);
+    }
     payload.result = done.result;
     payload.record = done.record;
     payload.serverTime = done.record && typeof done.record === "object" && "serverTime" in done.record ? String((done.record as { serverTime?: unknown }).serverTime ?? "") : null;
@@ -215,7 +229,7 @@ export async function analyzeImages(input: {
   if ((!response.ok && response.status !== 202) || !payload?.ok || !payload.result) {
     const code = payload?.code && CODES.has(payload.code as AnalysisErrorCode) ? (payload.code as AnalysisErrorCode) : response.status === 402 ? "quota" : response.status === 429 ? "rate_limited" : "upstream";
     if (code === "quota") {
-      useSubscriptionStore.getState().noteServerUsage(0);
+      useSubscriptionStore.getState().noteServerUsage(0, 0);
     }
     throw new AnalysisError(code, payload?.message);
   }

@@ -45,6 +45,18 @@ export function isLegacyProduct(productId: string | null | undefined): boolean {
 
 export const FREE_LIFETIME_ANALYSES = 3;
 
+/** Consumables. Fetched by product id, not from an offering. */
+export const SCAN_PACK_10_ID = "deerage_scans_10";
+export const SCAN_PACK_30_ID = "deerage_scans_30";
+export const SCAN_PACK_IDS = [SCAN_PACK_10_ID, SCAN_PACK_30_ID] as const;
+
+export function allowanceLine(remainingFree: number, scanCredits: number): string {
+  const free = `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`;
+  if (scanCredits <= 0) return free;
+  const noun = scanCredits === 1 ? "scan" : "scans";
+  return `${free} · ${scanCredits} ${noun} left`;
+}
+
 export type PlanLabel = "Free" | "Season Pass" | "Monthly" | "Scout" | "Hunter" | "Trophy" | "Outfitter" | "Member";
 
 export interface PaywallResultSummary {

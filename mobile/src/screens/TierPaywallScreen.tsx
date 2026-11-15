@@ -16,15 +16,21 @@ import type { PurchasesPackage } from "react-native-purchases";
 import {
   addCustomerInfoUpdateListener,
   getOfferings,
+  getStoreProducts,
   isRevenueCatEnabled,
   purchasePackage,
+  purchaseStoreProduct,
   trackPaywallImpression,
 } from "../lib/revenuecatClient";
 import {
   LEGACY_OFFERING_ID,
   LEGACY_PRODUCT_IDS,
+  SCAN_PACK_10_ID,
+  SCAN_PACK_30_ID,
+  SCAN_PACK_IDS,
   type PaywallResultSummary,
 } from "../lib/products";
+import { claimScanPack, restoreScanPacks } from "../api/scan-credits";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { DEFAULT_PRODUCTS, useRemoteConfig } from "../state/remoteConfig";
@@ -34,6 +40,13 @@ type NavigationProp = NativeStackNavigationProp<Record<string, object | undefine
 type PaywallRoute = RouteProp<{
   TierPaywall: { reason?: string; resultSummary?: PaywallResultSummary };
 }, "TierPaywall">;
+
+type PackOffer = {
+  id: string;
+  scans: number;
+  priceLabel: string;
+  product: Parameters<typeof purchaseStoreProduct>[0];
+};
 
 interface PlanCard {
   id: "season" | "monthly";
@@ -88,6 +101,9 @@ export const TierPaywallScreen = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPacks, setShowPacks] = useState(false);
+  const [packs, setPacks] = useState<PackOffer[]>([]);
+  const [buyingPack, setBuyingPack] = useState(false);
 
   const close = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -154,6 +170,21 @@ export const TierPaywallScreen = () => {
         ...(offerings.data.all[LEGACY_OFFERING_ID]?.availablePackages ?? []),
       ]).filter((pkg) => (LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier));
       setLegacy(legacyPool);
+      const storeProducts = await getStoreProducts([...SCAN_PACK_IDS]);
+      if (!active) return;
+      if (storeProducts.ok) {
+        const offers = [SCAN_PACK_10_ID, SCAN_PACK_30_ID].flatMap((id) => {
+          const product = storeProducts.data.find((item) => item.identifier === id);
+          if (!product) return [];
+          return [{
+            id,
+            scans: id === SCAN_PACK_10_ID ? 10 : 30,
+            priceLabel: product.priceString,
+            product,
+          }];
+        });
+        setPacks(offers);
+      }
       setLoading(false);
     };
     void load();
@@ -194,21 +225,48 @@ export const TierPaywallScreen = () => {
     close();
   };
 
-  const onRestore = async () => {
-    setRestoring(true);
+  const buyPack = async (offer: PackOffer) => {
+    setBuyingPack(true);
     setError(null);
-    const result = await restore();
-    setRestoring(false);
+    const result = await purchaseStoreProduct(offer.product);
     if (!result.ok) {
-      setError("Couldn't reach the App Store to restore. Try again when you have a signal.");
+      setBuyingPack(false);
+      setError("No scans were added.");
       return;
     }
-    if (!result.entitled) {
-      setError("No active subscription was found for this Apple ID.");
+    const transactionId = result.data.transaction?.transactionIdentifier ?? "";
+    const claimed = await claimScanPack(result.data.productIdentifier || offer.id, transactionId);
+    setBuyingPack(false);
+    if (!claimed.ok) {
+      setError("The App Store finished, but the scans haven't been added yet. Tap Restore when you have a signal.");
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     close();
+  };
+
+  const onRestore = async () => {
+    setRestoring(true);
+    setError(null);
+    const result = await restore();
+    const packsRestored = await restoreScanPacks();
+    setRestoring(false);
+    if (!result.ok && !packsRestored.ok) {
+      setError("Couldn't reach the App Store to restore. Try again when you have a signal.");
+      return;
+    }
+    if (result.entitled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      close();
+      return;
+    }
+    if (packsRestored.ok && (packsRestored.credits ?? 0) > 0) {
+      setError(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      close();
+      return;
+    }
+    setError("No active subscription was found for this Apple ID.");
   };
 
   return (
@@ -293,6 +351,30 @@ export const TierPaywallScreen = () => {
               </Text>
             )}
           </Pressable>
+
+          <Pressable onPress={() => setShowPacks((open) => !open)} style={{ marginTop: 16, alignItems: "center" }}>
+            <Text style={{ color: "#E5D4B8", textDecorationLine: "underline" }}>Just need a few scans?</Text>
+          </Pressable>
+          {showPacks ? (
+            <View style={{ marginTop: 12 }}>
+              {packs.length === 0 ? (
+                <Text style={{ color: "#E5D4B8", textAlign: "center" }}>Scan packs could not be loaded. Check your connection and try again.</Text>
+              ) : packs.map((offer) => (
+                <Pressable
+                  key={offer.id}
+                  onPress={() => void buyPack(offer)}
+                  disabled={buyingPack || purchasing}
+                  style={{ marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: "#24301c" }}
+                >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>{offer.scans} scans</Text>
+                    <Text style={{ color: "#D4AF37", fontWeight: "700" }}>{offer.priceLabel || "Unavailable"}</Text>
+                  </View>
+                </Pressable>
+              ))}
+              {buyingPack ? <ActivityIndicator color="#D4AF37" style={{ marginTop: 8 }} /> : null}
+            </View>
+          ) : null}
 
           {legacy.length > 0 ? (
             <Pressable onPress={() => setShowLegacy((open) => !open)} style={{ marginTop: 18, alignItems: "center" }}>

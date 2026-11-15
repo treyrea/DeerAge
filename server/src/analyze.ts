@@ -17,6 +17,7 @@ import { UpstreamError } from "./openai.js";
 import { issueRecord } from "./record.js";
 import { runAgeCall } from "./age-pipeline.js";
 import { runScoreCall } from "./score-pipeline.js";
+import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
 import type { ModelCall } from "./gateway.js";
 interface HuntContext {
@@ -108,6 +109,7 @@ export async function getAccess(appUserId: string) {
         entitled: access.entitled,
         entitlementIds: access.entitlementIds,
         freeUsesRemaining: access.entitled ? null : access.freeUsesRemaining,
+        scanCredits: await readCredits(appUserId),
         fairUsePerDay: fairUsePerDay(),
         fairUsePerMonth: fairUsePerMonth(),
         freeLifetimeAnalyses: FREE_LIFETIME_ANALYSES,
@@ -159,6 +161,8 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   }
 
   let access: AccessSnapshot | null = null;
+  let creditHeld = false;
+  let freeHeld = false;
   if (!isEval) {
     if (!revenueCatConfigured()) {
       return fail(503, "not_configured", "Entitlement checks are not configured.");
@@ -168,20 +172,40 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     } catch {
       return fail(502, "upstream", "Could not verify the subscription. Try again.");
     }
-    if (!access.entitled && access.freeUsesRemaining === 0) {
-      return fail(402, "quota", "You've used your 3 free analyses.");
-    }
     if (!access.entitled) {
+      let spentCredit = false;
       try {
-        await writeFreeUses(appUserId, access.freeUsesUsed + 1);
+        spentCredit = await consumeCredit(appUserId);
       } catch {
-        return fail(502, "upstream", "Could not reserve a free analysis. Try again.");
+        return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
+      }
+      if (spentCredit) {
+        creditHeld = true;
+      } else if (access.freeUsesRemaining === 0) {
+        return fail(402, "quota", "You've used your 3 free analyses.");
+      } else {
+        try {
+          await writeFreeUses(appUserId, access.freeUsesUsed + 1);
+          freeHeld = true;
+        } catch {
+          return fail(502, "upstream", "Could not reserve a free analysis. Try again.");
+        }
       }
     }
   }
 
   const refund = async () => {
-    if (!access || access.entitled || isEval) return;
+    if (creditHeld) {
+      creditHeld = false;
+      try {
+        await returnCredit(appUserId);
+      } catch {
+        // A failed refund spends the credit. That is the closed direction.
+      }
+      return;
+    }
+    if (!freeHeld || !access || access.entitled || isEval) return;
+    freeHeld = false;
     try {
       await writeFreeUses(appUserId, access.freeUsesUsed);
     } catch {
@@ -234,7 +258,13 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
         if (fairUseHeld) await releaseFairUse(appUserId);
       },
     }));
-    return { status: 202, body: { ok: true, jobId, mode } };
+    const scanCredits = await readCredits(appUserId);
+    const freeUsesRemaining = !access || access.entitled || isEval
+      ? null
+      : freeHeld
+        ? Math.max(0, (access.freeUsesRemaining ?? 0) - 1)
+        : access.freeUsesRemaining;
+    return { status: 202, body: { ok: true, jobId, mode, entitled: Boolean(access?.entitled), freeUsesRemaining, scanCredits } };
   } catch (error) {
     if (spendReserved > 0) {
       await settleCost(usage, spendReserved, mode, appUserId).catch(() => undefined);

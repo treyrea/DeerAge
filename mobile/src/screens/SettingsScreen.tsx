@@ -13,7 +13,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useDistanceStore } from "../state/distanceStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
-import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { allowanceLine } from "../lib/products";
+import { refreshScanCredits, restoreScanPacks } from "../api/scan-credits";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
 import { CommunitySettings } from "../components/CommunitySettings";
@@ -67,6 +68,7 @@ export const SettingsScreen = () => {
   const entitled = useSubscriptionStore((s) => s.entitled);
   const lapsed = useSubscriptionStore((s) => s.lapsed);
   const remainingFree = useSubscriptionStore((s) => s.remainingFree());
+  const scanCredits = useSubscriptionStore((s) => s.scanCredits);
   const restore = useSubscriptionStore((s) => s.restore);
   const profile = useHunterProfile();
   const isPro = entitled;
@@ -80,6 +82,7 @@ export const SettingsScreen = () => {
   const [replyCount, setReplyCount] = useState(0);
 
   useFocusEffect(useCallback(() => {
+    void refreshScanCredits();
     void loadMessages().then((loaded) => {
       setUnreadReplies(loaded.unread);
       setReplyCount(loaded.messages.length);
@@ -170,7 +173,7 @@ export const SettingsScreen = () => {
                 <Text className="text-sm mt-1" style={{ color: isPro ? "#bbf7d0" : "#E5D4B8" }}>
                   {isPro
                     ? `${fairUsePerDay} analyses a day. The fair-use cap resets tomorrow.`
-                    : `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`}
+                    : allowanceLine(remainingFree, scanCredits)}
                 </Text>
               </View>
             </View>
@@ -222,6 +225,7 @@ export const SettingsScreen = () => {
             <Pressable
               onPress={() => {
                 void restore();
+                void restoreScanPacks();
               }}
               className="rounded-xl py-3 items-center mb-3"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}

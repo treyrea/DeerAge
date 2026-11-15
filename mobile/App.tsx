@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { useNetworkStore } from "./src/state/networkStore";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
+import { refreshScanCredits } from "./src/api/scan-credits";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
 import { CommunityPrompts } from "./src/components/CommunityPrompts";
 import { UpdateGate } from "./src/components/UpdateGate";
@@ -46,6 +47,7 @@ function MainApp() {
   useEffect(() => {
     // Read CustomerInfo only. Restore runs when the hunter taps Restore.
     void refreshEntitlement();
+    void refreshScanCredits();
 
     const unsubscribe = addCustomerInfoUpdateListener((customerInfo) => {
       applyCustomerInfo(customerInfo);

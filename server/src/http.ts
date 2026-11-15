@@ -7,6 +7,7 @@ import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleA
 import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
 import { handleAdminFeedbackRequest, handleAdminReply, handleCallReport, handleDeleteReportPhoto, handleFreeMonths, handleGrant, handleOwed, handleReportCases, handleReportImage, handleReportStep, handleReplies, handleRescan, handleRescanAnswer } from "./feedback.js";
 import { handleSecondLook } from "./second-look.js";
+import { handleRestoreScanCredits, handleScanCredits } from "./scan-credits.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
 import { handleVerifyRecord } from "./record.js";
@@ -81,6 +82,8 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/rescan-answer") return handleRescanAnswer(req);
   if (path === "/api/report-photo") return handleDeleteReportPhoto(req);
   if (path === "/api/second-look") return handleSecondLook(req);
+  if (path === "/api/scan-credits") return handleScanCredits(req);
+  if (path === "/api/scan-credits-restore") return handleRestoreScanCredits(req);
   if (path === "/api/admin/config") return handleAdminConfigRequest(req);
   if (path === "/api/verify-record") return handleVerifyRecord(req);
   return { status: 404, body: { ok: false, code: "invalid_request", message: "Not found." } };

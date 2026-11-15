@@ -32,6 +32,11 @@ class MemoryKv implements Kv {
       this.strings.set(key, String(next));
       return next;
     }
+    if (op === "INCRBY") {
+      const next = (Number(this.strings.get(key) ?? 0) || 0) + Number(rest[1] ?? 0);
+      this.strings.set(key, String(next));
+      return next;
+    }
     if (op === "INCR") {
       const next = (Number(this.strings.get(key) ?? 0) || 0) + 1;
       this.strings.set(key, String(next));

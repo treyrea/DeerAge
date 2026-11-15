@@ -18,6 +18,7 @@ interface SubscriptionState {
   activeEntitlementIds: string[];
   activeProductIds: string[];
   lifetimeAnalysesUsed: number;
+  scanCredits: number;
   pendingPaywall: boolean;
   localUserId: string | null;
   lapsed: boolean;
@@ -27,7 +28,7 @@ interface SubscriptionState {
   restore: () => Promise<{ ok: boolean; entitled: boolean }>;
   canStartAnalysis: () => boolean;
   remainingFree: () => number;
-  noteServerUsage: (remaining: number | null) => void;
+  noteServerUsage: (remaining: number | null, scanCredits?: number) => void;
   markPendingPaywall: () => void;
   clearPendingPaywall: () => void;
   markWinBackSeen: () => void;
@@ -71,6 +72,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       activeEntitlementIds: [],
       activeProductIds: [],
       lifetimeAnalysesUsed: 0,
+      scanCredits: 0,
       pendingPaywall: false,
       localUserId: null,
       lapsed: false,
@@ -111,6 +113,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       canStartAnalysis: () => {
         if (get().entitled) return true;
+        if (get().scanCredits > 0) return true;
         return get().lifetimeAnalysesUsed < FREE_LIFETIME_ANALYSES;
       },
 
@@ -118,15 +121,17 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return Math.max(0, FREE_LIFETIME_ANALYSES - get().lifetimeAnalysesUsed);
       },
 
-      noteServerUsage: (remaining) => {
+      noteServerUsage: (remaining, scanCredits) => {
+        const credits = typeof scanCredits === "number" ? Math.max(0, Math.floor(scanCredits)) : get().scanCredits;
         if (remaining == null) {
-          set({ pendingPaywall: false });
+          set({ scanCredits: credits, pendingPaywall: false });
           return;
         }
         const used = Math.max(0, Math.min(FREE_LIFETIME_ANALYSES, FREE_LIFETIME_ANALYSES - remaining));
         set({
           lifetimeAnalysesUsed: used,
-          pendingPaywall: !get().entitled && remaining <= 0,
+          scanCredits: credits,
+          pendingPaywall: !get().entitled && remaining <= 0 && credits <= 0,
         });
       },
 
@@ -151,6 +156,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         activeEntitlementIds: state.activeEntitlementIds,
         activeProductIds: state.activeProductIds,
         lifetimeAnalysesUsed: state.lifetimeAnalysesUsed,
+        scanCredits: state.scanCredits,
         localUserId: state.localUserId,
         lapsed: state.lapsed,
         winBackSeen: state.winBackSeen,

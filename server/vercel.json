@@ -32,6 +32,8 @@
     "api/rescan-answer.ts": { "maxDuration": 10 },
     "api/report-photo.ts": { "maxDuration": 10 },
     "api/second-look.ts": { "maxDuration": 60 },
+    "api/scan-credits.ts": { "maxDuration": 15 },
+    "api/scan-credits-restore.ts": { "maxDuration": 15 },
     "api/admin/config.ts": { "maxDuration": 10 },
     "api/verify-record.ts": { "maxDuration": 10 }
   }

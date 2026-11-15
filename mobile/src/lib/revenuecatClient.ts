@@ -16,10 +16,14 @@
 
 import { Platform } from "react-native";
 import Purchases, {
+  PURCHASE_TYPE,
   type PurchasesOfferings,
   type CustomerInfo,
   type PurchasesPackage,
+  type MakePurchaseResult,
 } from "react-native-purchases";
+
+type StoreProduct = Awaited<ReturnType<typeof Purchases.getProducts>>[number];
 
 // Check if running on web
 const isWeb = Platform.OS === "web";
@@ -207,6 +211,19 @@ export const purchasePackage = (
     const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
     return customerInfo;
   });
+};
+
+/** Scan packs are consumables, so they are loaded by product id rather than from an offering. */
+export const getStoreProducts = (
+  productIds: string[],
+): Promise<RevenueCatResult<StoreProduct[]>> => {
+  return guardRevenueCatUsage("getProducts", () => Purchases.getProducts(productIds, PURCHASE_TYPE.INAPP));
+};
+
+export const purchaseStoreProduct = (
+  product: StoreProduct,
+): Promise<RevenueCatResult<MakePurchaseResult>> => {
+  return guardRevenueCatUsage("purchaseStoreProduct", () => Purchases.purchaseStoreProduct(product));
 };
 
 /**
