@@ -1,6 +1,6 @@
-import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, reserveUsd, type TokenUsage } from "./cost";
-import { FREE_LIFETIME_ANALYSES, modelName } from "./config";
-import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement";
+import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, reserveUsd, type TokenUsage } from "./cost.js";
+import { FREE_LIFETIME_ANALYSES, modelName } from "./config.js";
+import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement.js";
 import {
   LimitStoreError,
   allowRate,
@@ -12,10 +12,10 @@ import {
   releaseFairUse,
   reserveFairUse,
   reserveSpend,
-} from "./limits";
-import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai";
-import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts";
-import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring";
+} from "./limits.js";
+import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai.js";
+import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts.js";
+import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring.js";
 
 export interface AnalyzeBody {
   mode?: string;

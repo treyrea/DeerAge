@@ -3,8 +3,8 @@
  * No AI provider keys are read from the request. They come from the environment.
  */
 
-import { getAccess, runAnalysis, type AnalyzeBody } from "./analyze";
-import { publicConfig } from "./config";
+import { getAccess, runAnalysis, type AnalyzeBody } from "./analyze.js";
+import { publicConfig } from "./config.js";
 
 export interface Incoming {
   method?: string;
