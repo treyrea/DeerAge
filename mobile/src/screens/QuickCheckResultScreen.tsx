@@ -17,6 +17,7 @@ import { ShareableResultCard } from "../components/ShareableResultCard";
 import { formatAgeClass } from "../utils/age-class";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
@@ -235,6 +236,12 @@ export const QuickCheckResultScreen = () => {
             />
           )}
           <Text style={{ color: "#8B7355", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{result.disclaimer}</Text>
+          {!isInvalidImage ? (
+            <WrongCallCard
+              scanId={result.shotReceipt?.id ?? `quick-${imageUri}`}
+              fieldCall={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
+            />
+          ) : null}
           <PreShotBar
             draft={isInvalidImage ? null : {
               localId: result.shotReceipt?.id ?? `quick-${imageUri}`,

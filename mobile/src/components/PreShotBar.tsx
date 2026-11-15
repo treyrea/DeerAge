@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { HarvestPanel } from "./HarvestPanel";
+import { WrongCallCard } from "./WrongCallCard";
 import { LeaseManagerButton } from "./LeaseManagerButton";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { recordExportAllowed, saveShotRecord, useShotRecordStore } from "../state/shotRecordStore";
@@ -116,7 +117,8 @@ export const ShotRecordPage = ({
           Location: {record.latitude != null && record.longitude != null ? `${record.latitude.toFixed(5)}, ${record.longitude.toFixed(5)}` : "Not attached"}
         </Text>
         <View style={{ marginTop: 16 }}>
-          <HarvestPanel scanId={record.localId} leaseMinimum={record.leaseMinimum} />
+          <HarvestPanel scanId={record.localId} leaseMinimum={record.leaseMinimum} fieldCall={record.fieldCall} showReport={false} />
+          <WrongCallCard scanId={record.localId} fieldCall={record.fieldCall} />
         </View>
         <LeaseManagerButton
           ageClass={record.ageClass}

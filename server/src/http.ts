@@ -5,6 +5,7 @@
 
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
 import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
+import { handleAdminFeedbackRequest, handleCallReport } from "./feedback.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
 import { handleVerifyRecord } from "./record.js";
@@ -65,6 +66,8 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/admin/emails") return handleAdminEmailsRequest(req);
   if (path === "/api/harvest") return handleHarvestRequest(req);
   if (path === "/api/admin/harvests") return handleAdminHarvestsRequest(req);
+  if (path === "/api/call-report") return handleCallReport(req);
+  if (path === "/api/admin/feedback") return handleAdminFeedbackRequest(req);
   if (path === "/api/admin/config") return handleAdminConfigRequest(req);
   if (path === "/api/verify-record") return handleVerifyRecord(req);
   return { status: 404, body: { ok: false, code: "invalid_request", message: "Not found." } };

@@ -18,6 +18,8 @@
     "api/admin/emails.ts": { "maxDuration": 15 },
     "api/harvest.ts": { "maxDuration": 10 },
     "api/admin/harvests.ts": { "maxDuration": 15 },
+    "api/call-report.ts": { "maxDuration": 10 },
+    "api/admin/feedback.ts": { "maxDuration": 15 },
     "api/admin/config.ts": { "maxDuration": 10 },
     "api/verify-record.ts": { "maxDuration": 10 }
   }

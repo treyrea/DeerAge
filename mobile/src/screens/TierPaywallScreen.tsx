@@ -21,16 +21,13 @@ import {
   trackPaywallImpression,
 } from "../lib/revenuecatClient";
 import {
-  DEFAULT_OFFERING_ID,
   LEGACY_OFFERING_ID,
   LEGACY_PRODUCT_IDS,
-  MONTHLY_PRODUCT_ID,
-  SEASON_PRODUCT_ID,
   type PaywallResultSummary,
 } from "../lib/products";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
-import { useRemoteConfig } from "../state/remoteConfig";
+import { DEFAULT_PRODUCTS, useRemoteConfig } from "../state/remoteConfig";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -45,6 +42,7 @@ interface PlanCard {
   priceLabel: string;
   trialLabel: string | null;
   package: PurchasesPackage | null;
+  seasonKind?: "length" | "annual";
 }
 
 function trialCopy(pkg: PurchasesPackage, priceLabel: string): string | null {
@@ -79,6 +77,7 @@ export const TierPaywallScreen = () => {
   const paywallHeadline = useRemoteConfig((s) => s.copy.paywallHeadline);
   const paywallSubhead = useRemoteConfig((s) => s.copy.paywallSubhead);
   const recordsOn = useRemoteConfig((s) => s.flags.preShotRecord);
+  const products = useRemoteConfig((s) => s.products) ?? DEFAULT_PRODUCTS;
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
@@ -116,13 +115,16 @@ export const TierPaywallScreen = () => {
         return;
       }
       const current = offerings.data.current;
-      const planOffering = offerings.data.all[DEFAULT_OFFERING_ID] ?? current;
+      const planOffering = offerings.data.all[products.offeringId] ?? current;
       await trackPaywallImpression(planOffering);
       const packages = planOffering.availablePackages;
-      const seasonPackage = packages.find((pkg) => pkg.product.identifier === SEASON_PRODUCT_ID)
+      const seasonLength = packages.find((pkg) => pkg.product.identifier === products.seasonPassId) ?? null;
+      const seasonAnnual = packages.find((pkg) => pkg.product.identifier === products.seasonAnnualId)
         ?? packages.find((pkg) => pkg.packageType === "ANNUAL" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
         ?? null;
-      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === MONTHLY_PRODUCT_ID)
+      const seasonPackage = seasonLength ?? seasonAnnual;
+      const seasonKind = seasonLength ? "length" : "annual";
+      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === products.monthlyId)
         ?? packages.find((pkg) => pkg.packageType === "MONTHLY" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
         ?? null;
       const seasonPrice = seasonPackage?.product.priceString ?? "";
@@ -130,7 +132,10 @@ export const TierPaywallScreen = () => {
       setSeason({
         id: "season",
         title: "Season Pass",
-        detail: "A year of Quick Check, Age, and Score.",
+        seasonKind,
+        detail: seasonKind === "length"
+          ? "Covers this hunting season. It does not renew, so you are not billed in the off-season."
+          : "One charge a year. It renews next fall, not every month. Cancel in Settings before it renews if you sit out a season.",
         priceLabel: seasonPrice,
         trialLabel: seasonPackage && seasonPrice ? trialCopy(seasonPackage, seasonPrice) : null,
         package: seasonPackage,
@@ -138,7 +143,7 @@ export const TierPaywallScreen = () => {
       setMonthly({
         id: "monthly",
         title: "Monthly",
-        detail: "Same access, billed every month.",
+        detail: "Billed every month, including the off-season. Cancel anytime if you only hunt in the fall.",
         priceLabel: monthlyPrice,
         trialLabel: monthlyPackage && monthlyPrice ? trialCopy(monthlyPackage, monthlyPrice) : null,
         package: monthlyPackage,
@@ -160,7 +165,7 @@ export const TierPaywallScreen = () => {
       active = false;
       unsubscribe();
     };
-  }, [applyCustomerInfo, close]);
+  }, [applyCustomerInfo, close, products.offeringId, products.seasonPassId, products.seasonAnnualId, products.monthlyId]);
 
   const selectedPlan = selected === "season" ? season : monthly;
 
@@ -235,6 +240,9 @@ export const TierPaywallScreen = () => {
           ) : null}
 
           <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>{paywallHeadline || "Keep aging deer"}</Text>
+          <Text style={{ color: "#D4AF37", marginTop: 8, lineHeight: 20 }}>
+            Season Pass is for the hunting season. You do not have to pay every month of the year.
+          </Text>
           <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: recordsOn ? 8 : 18 }}>
             {paywallSubhead || `Three free analyses are included. A plan is everyday use: ${fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.`}
           </Text>

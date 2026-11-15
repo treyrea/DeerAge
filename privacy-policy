@@ -24,7 +24,9 @@ We collect only the data necessary to provide app functionality, improve perform
 | **Email Address** | Optional. Only if you sign up for rut-timing alerts and an end-of-season recap. DeerAge does not require an email, a name, or a phone number. Unsubscribe anytime in Settings. |
 | **Lease manager name or phone** | Optional. Only if you type them in Settings so a text can be addressed. They stay on this phone. DeerAge does not read your contacts, does not upload the number, and does not send the message. You press Send in Messages. |
 | **Push notification token** | Optional. Only if you turn notifications on, so we can send an update or a poll to this install. |
-| **Photos or Videos**                  | To allow users to upload deer images for ageing analysis and to store or display these within the app.    |
+| **Photos or Videos**                  | To allow users to upload deer images for ageing analysis and to store or display these within the app. A photo you attach to a wrong-call report is stored with that report. |
+| **Wrong-call reports** | If you say a call was wrong or right, DeerAge stores the scan id, the call, an age you type, whether you marked it jawbone-aged, your note, and an optional photo. Confirmed harvest ages are copied into the same store so later checks can use them. |
+| **Cancel and return notes** | If you answer the cancel survey or the "What could we do better?" prompt, DeerAge stores the reason and the optional note, tied to this install's app user id. |
 
 ### **Usage and Diagnostic Information**
 

@@ -103,6 +103,15 @@ export function bulletsFrom(raw: unknown, fallback: string[]): CueBullet[] {
   return fallback.filter((line) => line.trim()).slice(0, 4).map((text) => ({ area: "Body", text }));
 }
 
+/** A confirmed age agrees with the call only when the call was firm. */
+export function confirmedAgeMatchesCall(fieldCall: string, confirmedAge: string, minimum: number): boolean {
+  if (fieldCall !== "SHOOTER" && fieldCall !== "LET WALK") return false;
+  const years = Number.parseFloat(confirmedAge);
+  if (!Number.isFinite(years)) return false;
+  const meets = classStep(years) >= classStep(minimum);
+  return fieldCall === "SHOOTER" ? meets : !meets;
+}
+
 export function harvestComparedToMinimum(confirmedAge: string, minimum: number): string | null {
   const years = Number.parseFloat(confirmedAge);
   if (!Number.isFinite(years)) return null;

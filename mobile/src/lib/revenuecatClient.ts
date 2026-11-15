@@ -385,3 +385,38 @@ export const getPackage = async (
 
   return { ok: true, data: pkg };
 };
+
+/** Opens Apple's subscription page. DeerAge does not cancel the plan itself. */
+export async function openAppleSubscriptions(): Promise<void> {
+  const shown = await guardRevenueCatUsage("showManageSubscriptions", () => Purchases.showManageSubscriptions());
+  if (shown.ok) return;
+  const { Linking } = await import("react-native");
+  await Linking.openURL("https://apps.apple.com/account/subscriptions");
+}
+
+/**
+ * Presents a StoreKit promotional offer only when that offer id is already on the product.
+ * An empty id, or a missing offer, does not invent a price.
+ */
+export async function presentPromotionalOffer(input: {
+  offerId: string;
+  productIds: string[];
+  offeringId: string;
+}): Promise<"purchased" | "missing" | "cancelled" | "failed"> {
+  if (!input.offerId) return "missing";
+  const offerings = await getOfferings();
+  if (!offerings.ok) return "failed";
+  const offering = offerings.data.all[input.offeringId] ?? offerings.data.current;
+  const packages = offering?.availablePackages ?? [];
+  const pkg = packages.find((item) => input.productIds.includes(item.product.identifier));
+  const discount = pkg?.product.discounts?.find((item) => item.identifier === input.offerId);
+  if (!pkg || !discount) return "missing";
+  const offer = await guardRevenueCatUsage("getPromotionalOffer", () => Purchases.getPromotionalOffer(pkg.product, discount));
+  if (!offer.ok || !offer.data) return "missing";
+  const purchase = await guardRevenueCatUsage("purchaseDiscountedPackage", () => Purchases.purchaseDiscountedPackage(pkg, offer.data!));
+  if (!purchase.ok) {
+    const text = String(purchase.error ?? "").toLowerCase();
+    return text.includes("cancel") ? "cancelled" : "failed";
+  }
+  return "purchased";
+}

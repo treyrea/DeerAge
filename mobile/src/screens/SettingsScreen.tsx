@@ -64,6 +64,7 @@ export const SettingsScreen = () => {
 
   const planLabel = useSubscriptionStore((s) => s.planLabel);
   const entitled = useSubscriptionStore((s) => s.entitled);
+  const lapsed = useSubscriptionStore((s) => s.lapsed);
   const remainingFree = useSubscriptionStore((s) => s.remainingFree());
   const restore = useSubscriptionStore((s) => s.restore);
   const profile = useHunterProfile();
@@ -219,21 +220,21 @@ export const SettingsScreen = () => {
                   </Text>
                 </View>
               </Pressable>
-            ) : (
+            ) : null}
+            {isPro || lapsed ? (
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // Navigate to Home tab, then to TierPaywall
-                  navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "manage" } });
+                  navigation.navigate("ManageSubscription");
                 }}
                 className="rounded-xl py-3 items-center"
-                style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                style={{ backgroundColor: "rgba(255,255,255,0.15)", marginTop: isPro ? 0 : 12 }}
               >
                 <Text className="text-sm font-semibold" style={{ color: "#bbf7d0" }}>
-                  Manage Subscription
+                  Manage subscription
                 </Text>
               </Pressable>
-            )}
+            ) : null}
           </View>
 
           <CommunitySettings />

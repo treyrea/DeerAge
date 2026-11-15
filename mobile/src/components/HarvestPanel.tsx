@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { useHarvestStore, type HarvestMethod } from "../state/harvestStore";
-import { harvestComparedToMinimum } from "../utils/field-call";
+import { maybeRequestReview } from "../lib/review";
+import { confirmedAgeMatchesCall, harvestComparedToMinimum } from "../utils/field-call";
+import { WrongCallCard } from "./WrongCallCard";
 
 const METHODS: { id: HarvestMethod; label: string }[] = [
   { id: "jawbone", label: "Jawbone" },
@@ -10,7 +12,17 @@ const METHODS: { id: HarvestMethod; label: string }[] = [
   { id: "other", label: "Other" },
 ];
 
-export const HarvestPanel = ({ scanId, leaseMinimum }: { scanId: string; leaseMinimum: number }) => {
+export const HarvestPanel = ({
+  scanId,
+  leaseMinimum,
+  fieldCall = "",
+  showReport = true,
+}: {
+  scanId: string;
+  leaseMinimum: number;
+  fieldCall?: string;
+  showReport?: boolean;
+}) => {
   const entry = useHarvestStore((s) => s.entries[scanId]);
   const save = useHarvestStore((s) => s.save);
   const [age, setAge] = useState(entry?.confirmedAge ?? "");
@@ -73,13 +85,18 @@ export const HarvestPanel = ({ scanId, leaseMinimum }: { scanId: string; leaseMi
             style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 10 }}
           />
           <Pressable
-            onPress={() => save({ scanId, harvested: true, confirmedAge: age.trim(), method, notes: notes.trim() })}
+            onPress={() => {
+              const confirmed = age.trim();
+              save({ scanId, harvested: true, confirmedAge: confirmed, method, notes: notes.trim() });
+              if (confirmedAgeMatchesCall(fieldCall, confirmed, leaseMinimum)) void maybeRequestReview(fieldCall);
+            }}
             style={{ marginTop: 12, backgroundColor: "#D4AF37", borderRadius: 10, paddingVertical: 12, alignItems: "center" }}
           >
             <Text style={{ color: "#1a1f16", fontWeight: "700" }}>{entry?.synced ? "Saved" : "Save age"}</Text>
           </Pressable>
         </View>
       )}
+      {showReport ? <View style={{ marginTop: 14 }}><WrongCallCard scanId={scanId} fieldCall={fieldCall} /></View> : null}
     </View>
   );
 };

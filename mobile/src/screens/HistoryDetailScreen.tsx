@@ -13,6 +13,7 @@ import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/d
 import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
+import { WrongCallCard } from "../components/WrongCallCard";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
 import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { useShotRecordStore } from "../state/shotRecordStore";
@@ -96,7 +97,16 @@ export const HistoryDetailScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
-          <HarvestPanel scanId={result.analysisId} leaseMinimum={explainableAge?.minimumAgeThreshold ?? savedMinimum} />
+          <HarvestPanel
+            scanId={result.analysisId}
+            leaseMinimum={explainableAge?.minimumAgeThreshold ?? savedMinimum}
+            fieldCall={explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall || ""}
+            showReport={false}
+          />
+          <WrongCallCard
+            scanId={result.analysisId}
+            fieldCall={explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall || ""}
+          />
           {result.shotReceipt || linked ? (
             <PreShotBar
               draft={{

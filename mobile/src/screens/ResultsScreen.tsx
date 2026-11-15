@@ -11,6 +11,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
@@ -335,6 +336,10 @@ export const ResultsScreen = () => {
               scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : undefined}
             />
           ) : null}
+          <WrongCallCard
+            scanId={currentResult.analysisId}
+            fieldCall={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
+          />
           <PreShotBar
             draft={{
               localId: currentResult.analysisId,

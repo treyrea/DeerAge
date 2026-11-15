@@ -20,6 +20,8 @@ interface SubscriptionState {
   lifetimeAnalysesUsed: number;
   pendingPaywall: boolean;
   localUserId: string | null;
+  lapsed: boolean;
+  winBackSeen: boolean;
   applyCustomerInfo: (info: CustomerInfo) => boolean;
   refreshEntitlement: () => Promise<boolean>;
   restore: () => Promise<{ ok: boolean; entitled: boolean }>;
@@ -28,7 +30,18 @@ interface SubscriptionState {
   noteServerUsage: (remaining: number | null) => void;
   markPendingPaywall: () => void;
   clearPendingPaywall: () => void;
+  markWinBackSeen: () => void;
   ensureLocalUserId: () => string;
+}
+
+function lapsedFrom(info: CustomerInfo): boolean {
+  if (Object.keys(info.entitlements.active ?? {}).length > 0) return false;
+  return Object.values(info.entitlements.all ?? {}).some((entitlement) => {
+    if (!entitlement) return false;
+    if (entitlement.unsubscribeDetectedAt) return true;
+    const expires = entitlement.expirationDate ? Date.parse(entitlement.expirationDate) : NaN;
+    return Number.isFinite(expires) && expires < Date.now();
+  });
 }
 
 function productIdFrom(info: CustomerInfo, entitlementIds: string[]): string | null {
@@ -60,6 +73,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       lifetimeAnalysesUsed: 0,
       pendingPaywall: false,
       localUserId: null,
+      lapsed: false,
+      winBackSeen: false,
 
       applyCustomerInfo: (info) => {
         const active = info.entitlements.active ?? {};
@@ -71,6 +86,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           activeProductIds: productIdsFrom(info),
           planLabel: planLabelFor(activeEntitlementIds, productIdFrom(info, [...activeEntitlementIds])),
           pendingPaywall: entitled ? false : get().pendingPaywall,
+          lapsed: lapsedFrom(info),
         });
         return entitled;
       },
@@ -116,6 +132,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       markPendingPaywall: () => set({ pendingPaywall: true }),
       clearPendingPaywall: () => set({ pendingPaywall: false }),
+      markWinBackSeen: () => set({ winBackSeen: true }),
 
       ensureLocalUserId: () => {
         const existing = get().localUserId;
@@ -135,6 +152,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         activeProductIds: state.activeProductIds,
         lifetimeAnalysesUsed: state.lifetimeAnalysesUsed,
         localUserId: state.localUserId,
+        lapsed: state.lapsed,
+        winBackSeen: state.winBackSeen,
       }),
     },
   ),

@@ -56,16 +56,18 @@ When shipping 1.0.9, update App Privacy for these optional types. None are used 
 
 A lease manager name or phone typed in Settings stays on the phone. DeerAge does not read the Contacts app and does not upload that number.
 
-Photos and purchases are unchanged.
+A wrong-call report, a confirmed harvest age, and a cancel or return note are stored with the scan id or the app user id. An optional report photo is stored only when it is small enough. See the privacy policy.
 
 ## Plans
 
-The paywall reads prices from the RevenueCat **current** offering. It does not hardcode a price.
+The paywall reads prices from the RevenueCat offering named in config (`default` unless `PAYWALL_OFFERING_ID` is set). It does not hardcode a price. Product ids are config, not hardcoded purchases.
 
-Intended new products, created later in App Store Connect:
+Intended products, created later in App Store Connect and attached in RevenueCat. None of these were created or changed by the app:
 
-- `season_annual` — Season Pass, $19.99/year, 7-day free trial, entitlement `deerage_pro`
-- `deerage_monthly` — Monthly, $4.99/month, entitlement `deerage_pro`
+- `deerage_season` — non-renewing Season Pass for one hunting season, entitlement `deerage_pro`. Preferred. It does not renew in the off-season.
+- `season_annual` — auto-renewing Season Pass, one charge a year, entitlement `deerage_pro`. Shown only if `deerage_season` is missing, with the line "It renews next fall."
+- `deerage_monthly` — Monthly, entitlement `deerage_pro`. Billed every month, including the off-season.
+- A win-back or promotional offer on the Season Pass, identifier set later in `WIN_BACK_OFFER_ID`. The app will not show a discount until that offer exists on the product.
 
 Existing subscribers keep access through `scout`, `hunter`, `trophy`, `outfitter`, or `pro`. Those products (`scout_monthly`, `hunter_monthly`, `trophy_monthly`, `outfitter_monthly` in the `tiers` offering) show under More plans only when the offering still contains them.
 

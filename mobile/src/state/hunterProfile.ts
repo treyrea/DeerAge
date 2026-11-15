@@ -26,6 +26,7 @@ export interface HunterProfileState {
   hasRequestedReview: boolean;
   sessionCount: number;
   reviewAskedForVersion: string | null;
+  wrongReportAt: number | null;
   dismissedUpdateVersion: string | null;
   complete: (profile: {
     stateCode: string;
@@ -39,6 +40,7 @@ export interface HunterProfileState {
   markReviewRequested: () => void;
   noteSession: () => void;
   markReviewAsked: (version: string) => void;
+  noteWrongReport: () => void;
   dismissUpdate: (version: string) => void;
   confirmHunt: (place: Place) => void;
   setLeaseManager: (name: string, phone: string) => void;
@@ -114,6 +116,7 @@ export const useHunterProfile = create<HunterProfileState>()(
       hasRequestedReview: false,
       sessionCount: 0,
       reviewAskedForVersion: null,
+      wrongReportAt: null,
       dismissedUpdateVersion: null,
       complete: (profile) => {
         set({
@@ -135,6 +138,7 @@ export const useHunterProfile = create<HunterProfileState>()(
       markReviewRequested: () => set({ hasRequestedReview: true }),
       noteSession: () => set({ sessionCount: get().sessionCount + 1 }),
       markReviewAsked: (version) => set({ reviewAskedForVersion: version, hasRequestedReview: true }),
+      noteWrongReport: () => set({ wrongReportAt: Date.now() }),
       dismissUpdate: (version) => set({ dismissedUpdateVersion: version }),
       confirmHunt: (place) => set({
         huntStateCode: place.stateCode,
@@ -170,6 +174,7 @@ export const useHunterProfile = create<HunterProfileState>()(
         hasRequestedReview: state.hasRequestedReview,
         sessionCount: state.sessionCount,
         reviewAskedForVersion: state.reviewAskedForVersion,
+        wrongReportAt: state.wrongReportAt,
         dismissedUpdateVersion: state.dismissedUpdateVersion,
       }),
       onRehydrateStorage: () => () => {

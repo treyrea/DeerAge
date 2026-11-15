@@ -2,6 +2,7 @@
  * Confirmed ages from harvested deer. One row per app user id and scan id.
  */
 
+import { saveFeedback } from "./feedback.js";
 import { allowBucket, ensureRedis, kv, membersOf, readJson, redisSet } from "./kv.js";
 import {
   ApiError,
@@ -77,6 +78,20 @@ export async function handleHarvestRequest(req: Incoming): Promise<Outgoing> {
     }
     await redisSet(harvestKey(appUserId, scanId), JSON.stringify(record));
     await kv().command(["SADD", INDEX, indexMember(appUserId, scanId)]);
+    if (record.harvested && record.confirmedAge) {
+      try {
+        await saveFeedback({
+          appUserId,
+          scanId,
+          kind: "harvest_age",
+          reportedAge: record.confirmedAge,
+          jawboneAged: record.method === "jawbone",
+          note: record.notes,
+        });
+      } catch {
+        // The harvest row is already saved. The eval copy can be sent again later.
+      }
+    }
     return ok({ harvest: record });
   } catch (error) {
     return catchApi(error, "Couldn't save that harvest.");

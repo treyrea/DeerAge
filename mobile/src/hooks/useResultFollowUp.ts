@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { maybeRequestReview, recordGoodResult } from "../lib/review";
+import { recordGoodResult } from "../lib/review";
 import { scheduleCommunityPrompt } from "../state/communityStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import type { PaywallResultSummary } from "../lib/products";
@@ -34,7 +34,6 @@ export function useResultFollowUp(enabled: boolean, summary: PaywallResultSummar
       if (rescan.current) return;
       if (Date.now() - started < 800) return;
       scheduleCommunityPrompt();
-      void maybeRequestReview();
     };
   }, [enabled]);
 

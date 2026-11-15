@@ -25,6 +25,14 @@ export interface AppCopy {
   leaseManagerButton: string;
 }
 
+export interface ProductConfig {
+  offeringId: string;
+  seasonPassId: string;
+  seasonAnnualId: string;
+  monthlyId: string;
+  winBackOfferId: string;
+}
+
 const FLAGS: AppFlags = {
   feed: true,
   polls: true,
@@ -37,9 +45,18 @@ const FLAGS: AppFlags = {
   preShotRecord: true,
 };
 
+export const DEFAULT_PRODUCTS: ProductConfig = {
+  offeringId: "default",
+  seasonPassId: "deerage_season",
+  seasonAnnualId: "season_annual",
+  monthlyId: "deerage_monthly",
+  winBackOfferId: "",
+};
+
 interface RemoteConfigState {
   flags: AppFlags;
   copy: AppCopy;
+  products: ProductConfig;
   minSupportedVersion: string;
   recommendedVersion: string;
   minVersion: string;
@@ -61,6 +78,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
   persist(
     (set) => ({
       flags: FLAGS,
+      products: DEFAULT_PRODUCTS,
       copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "" },
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
@@ -68,9 +86,15 @@ export const useRemoteConfig = create<RemoteConfigState>()(
       loaded: false,
       applyPayload: (body) => {
         const copy = (body.copy ?? {}) as Record<string, unknown>;
+        const products = (body.products ?? {}) as Record<string, unknown>;
+        const nextProducts = { ...DEFAULT_PRODUCTS };
+        (Object.keys(nextProducts) as (keyof ProductConfig)[]).forEach((name) => {
+          if (typeof products[name] === "string") nextProducts[name] = products[name] as string;
+        });
         set({
           loaded: true,
           flags: flagsFrom(body.flags),
+          products: nextProducts,
           minSupportedVersion: typeof body.minSupportedVersion === "string" ? body.minSupportedVersion : "1.0.0",
           recommendedVersion: typeof body.recommendedVersion === "string" ? body.recommendedVersion : "",
           minVersion: typeof body.minVersion === "string" ? body.minVersion : "",
@@ -92,6 +116,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
       partialize: (state) => ({
         flags: state.flags,
         copy: state.copy,
+        products: state.products,
         minSupportedVersion: state.minSupportedVersion,
         recommendedVersion: state.recommendedVersion,
         minVersion: state.minVersion,

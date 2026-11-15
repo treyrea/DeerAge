@@ -310,5 +310,27 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(csv.status, 200);
     assert.match(csv.text ?? "", /free_harvest_user,scan_1,yes/);
     assert.match(csv.text ?? "", /4\.5,jawbone,Incisors worn/);
+    const feedback = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    assert.equal(feedback.status, 200);
+    assert.match(feedback.text ?? "", /harvest_age/);
+    assert.match(feedback.text ?? "", /4\.5/);
+  });
+
+  test("a wrong-call report is stored with the scan id", async () => {
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_report_user",
+      scanId: "scan_wrong",
+      kind: "wrong_call",
+      fieldCall: "SHOOTER",
+      reportedAge: "2.5",
+      jawboneAged: true,
+      note: "Jaw said 2.5",
+      photoBase64: "a".repeat(200_000),
+    }));
+    assert.equal(saved.status, 200);
+    assert.equal(payload(saved).scanId, "scan_wrong");
+    assert.equal(payload(saved).photoStored, false);
+    const csv = await route(request("GET", "/api/admin/feedback", undefined, ADMIN));
+    assert.match(csv.text ?? "", /scan_wrong,wrong_call,SHOOTER,2\.5,yes/);
   });
 });

@@ -51,6 +51,28 @@ export interface RemoteConfig {
     leaseManagerText: string;
     leaseManagerButton: string;
   };
+  products: {
+    offeringId: string;
+    seasonPassId: string;
+    seasonAnnualId: string;
+    monthlyId: string;
+    winBackOfferId: string;
+  };
+}
+
+function productId(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value && /^[A-Za-z0-9._-]{1,80}$/.test(value) ? value : fallback;
+}
+
+export function defaultProducts(): RemoteConfig["products"] {
+  return {
+    offeringId: productId("PAYWALL_OFFERING_ID", "default"),
+    seasonPassId: productId("SEASON_PASS_PRODUCT_ID", "deerage_season"),
+    seasonAnnualId: productId("SEASON_ANNUAL_PRODUCT_ID", "season_annual"),
+    monthlyId: productId("MONTHLY_PRODUCT_ID", "deerage_monthly"),
+    winBackOfferId: productId("WIN_BACK_OFFER_ID", ""),
+  };
 }
 
 function versionOr(value: string | undefined, fallback: string): string {
@@ -76,6 +98,7 @@ export function defaultRemoteConfig(): RemoteConfig {
       leaseManagerText: "",
       leaseManagerButton: "",
     },
+    products: defaultProducts(),
   };
 }
 
@@ -103,6 +126,12 @@ function mergeConfig(stored: unknown): RemoteConfig {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
   }
+  const products = { ...base.products };
+  const incomingProducts = row.products && typeof row.products === "object" ? row.products as Record<string, unknown> : {};
+  for (const name of ["offeringId", "seasonPassId", "seasonAnnualId", "monthlyId", "winBackOfferId"] as const) {
+    const value = incomingProducts[name];
+    if (typeof value === "string" && (value === "" || /^[A-Za-z0-9._-]{1,80}$/.test(value))) products[name] = value;
+  }
   return {
     minSupportedVersion: versionOr(row.minSupportedVersion, base.minSupportedVersion),
     recommendedVersion: versionOr(row.recommendedVersion, base.recommendedVersion),
@@ -110,6 +139,7 @@ function mergeConfig(stored: unknown): RemoteConfig {
     latestVersion: versionOr(row.latestVersion, base.latestVersion),
     flags,
     copy,
+    products,
   };
 }
 
@@ -136,6 +166,7 @@ export async function publicConfigPayload() {
     fairUsePerMonth: fairUsePerMonth(),
     flags: config.flags,
     copy: config.copy,
+    products: config.products,
   };
 }
 
@@ -171,6 +202,14 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (body.regionHeadsUp != null) current.copy.regionHeadsUp = body.regionHeadsUp === "" ? "" : cleanText(body.regionHeadsUp, 280);
     if (body.leaseManagerText != null) current.copy.leaseManagerText = body.leaseManagerText === "" ? "" : cleanText(body.leaseManagerText, 500);
     if (body.leaseManagerButton != null) current.copy.leaseManagerButton = body.leaseManagerButton === "" ? "" : cleanText(body.leaseManagerButton, 80);
+    if (body.products && typeof body.products === "object") {
+      const incoming = body.products as Record<string, unknown>;
+      for (const name of ["offeringId", "seasonPassId", "seasonAnnualId", "monthlyId", "winBackOfferId"] as const) {
+        if (typeof incoming[name] !== "string") continue;
+        const value = incoming[name] as string;
+        if (value === "" || /^[A-Za-z0-9._-]{1,80}$/.test(value)) current.products[name] = value;
+      }
+    }
     if (Array.isArray(body.homeTips)) {
       current.copy.homeTips = body.homeTips.filter((tip): tip is string => typeof tip === "string").map((tip) => tip.trim()).filter(Boolean).slice(0, 4);
     }

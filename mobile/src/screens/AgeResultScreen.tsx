@@ -20,6 +20,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton, shareRead, type LeaseNote } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
@@ -198,6 +199,10 @@ export const AgeResultScreen = () => {
               betterAngle={explainable.betterAngle}
             />
           ) : null}
+          <WrongCallCard
+            scanId={currentResult.analysisId}
+            fieldCall={explainableAge.fieldCall || ""}
+          />
           <PreShotBar
             draft={{
               localId: currentResult.analysisId,

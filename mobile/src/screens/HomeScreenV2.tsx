@@ -24,6 +24,7 @@ import { DeerMark } from "../components/DeerMark";
 import { UpdateAvailableBanner } from "../components/UpdateAvailableBanner";
 import { FeedHomeCard } from "../components/FeedHomeCard";
 import { LegacyPlanCard } from "../components/LegacyPlanCard";
+import { WinBackPrompt } from "../components/WinBackPrompt";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { pendingHarvestCount, useHarvestStore } from "../state/harvestStore";
 import * as Haptics from "expo-haptics";
@@ -66,6 +67,7 @@ export const HomeScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <WinBackPrompt />
       <ScrollView>
         <View className="px-6 py-8">
           <UpdateAvailableBanner />
