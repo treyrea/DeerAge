@@ -55,7 +55,6 @@ interface PlanCard {
   priceLabel: string;
   trialLabel: string | null;
   package: PurchasesPackage | null;
-  seasonKind?: "length" | "annual";
 }
 
 function trialCopy(pkg: PurchasesPackage, priceLabel: string): string | null {
@@ -134,24 +133,14 @@ export const TierPaywallScreen = () => {
       const planOffering = offerings.data.all[products.offeringId] ?? current;
       await trackPaywallImpression(planOffering);
       const packages = planOffering.availablePackages;
-      const seasonLength = packages.find((pkg) => pkg.product.identifier === products.seasonPassId) ?? null;
-      const seasonAnnual = packages.find((pkg) => pkg.product.identifier === products.seasonAnnualId)
-        ?? packages.find((pkg) => pkg.packageType === "ANNUAL" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
-        ?? null;
-      const seasonPackage = seasonLength ?? seasonAnnual;
-      const seasonKind = seasonLength ? "length" : "annual";
-      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === products.monthlyId)
-        ?? packages.find((pkg) => pkg.packageType === "MONTHLY" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
-        ?? null;
+      const seasonPackage = packages.find((pkg) => pkg.product.identifier === products.seasonPassId) ?? null;
+      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === products.monthlyId) ?? null;
       const seasonPrice = seasonPackage?.product.priceString ?? "";
       const monthlyPrice = monthlyPackage?.product.priceString ?? "";
       setSeason({
         id: "season",
         title: "Season Pass",
-        seasonKind,
-        detail: seasonKind === "length"
-          ? "Covers this hunting season. It does not renew, so you are not billed in the off-season."
-          : "One charge a year. It renews next fall, not every month. Cancel in Settings before it renews if you sit out a season.",
+        detail: "Covers this hunting season. It does not renew, so you are not billed in the off-season.",
         priceLabel: seasonPrice,
         trialLabel: seasonPackage && seasonPrice ? trialCopy(seasonPackage, seasonPrice) : null,
         package: seasonPackage,
@@ -196,7 +185,7 @@ export const TierPaywallScreen = () => {
       active = false;
       unsubscribe();
     };
-  }, [applyCustomerInfo, close, products.offeringId, products.seasonPassId, products.seasonAnnualId, products.monthlyId]);
+  }, [applyCustomerInfo, close, products.offeringId, products.seasonPassId, products.monthlyId]);
 
   const selectedPlan = selected === "season" ? season : monthly;
 

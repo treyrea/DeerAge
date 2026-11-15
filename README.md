@@ -65,8 +65,7 @@ The paywall reads prices from the RevenueCat offering named in config (`default`
 
 Intended products, created later in App Store Connect and attached in RevenueCat. None of these were created or changed by the app:
 
-- `deerage_season` — non-renewing Season Pass for one hunting season, entitlement `deerage_pro`. Preferred. It does not renew in the off-season.
-- `season_annual` — auto-renewing Season Pass, one charge a year, entitlement `deerage_pro`. Shown only if `deerage_season` is missing, with the line "It renews next fall."
+- `deerage_season` — Season Pass for one hunting season, entitlement `deerage_pro`. It does not renew, so there is no off-season charge.
 - `deerage_monthly` — Monthly, entitlement `deerage_pro`. Billed every month, including the off-season.
 - A win-back or promotional offer on the Season Pass, identifier set later in `WIN_BACK_OFFER_ID`. The app will not show a discount until that offer exists on the product.
 
@@ -83,6 +82,6 @@ Free hunters get 3 lifetime analyses, shared by Quick Check, Age, and Score. The
 
 Set `ADMIN_TOKEN` before anyone posts an update. `server/README.md` has the curl examples and `npm run admin`.
 
-The home card **What's new / Vote on what's next** appears when an announcement is published or a poll is open. Hunters on `scout_monthly`, `hunter_monthly`, `trophy_monthly`, or `outfitter_monthly` also see a one-time card, **Your plan still works**, which introduces Season Pass (`season_annual`, $19.99/year, 7-day trial, offering `default`). Their current plan is unchanged.
+The home card **What's new / Vote on what's next** appears when an announcement is published or a poll is open. Hunters on `scout_monthly`, `hunter_monthly`, `trophy_monthly`, or `outfitter_monthly` also see a one-time card, **Your plan still works**, which introduces Season Pass (`deerage_season`, offering `default`). Their current plan is unchanged.
 
 Never commit a filled-in `.env`. The repo stays public.

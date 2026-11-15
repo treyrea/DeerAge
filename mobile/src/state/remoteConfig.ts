@@ -28,7 +28,6 @@ export interface AppCopy {
 export interface ProductConfig {
   offeringId: string;
   seasonPassId: string;
-  seasonAnnualId: string;
   monthlyId: string;
   winBackOfferId: string;
 }
@@ -48,7 +47,6 @@ const FLAGS: AppFlags = {
 export const DEFAULT_PRODUCTS: ProductConfig = {
   offeringId: "default",
   seasonPassId: "deerage_season",
-  seasonAnnualId: "season_annual",
   monthlyId: "deerage_monthly",
   winBackOfferId: "",
 };

@@ -43,7 +43,7 @@ export const WinBackPrompt = () => {
     const result = await presentPromotionalOffer({
       offerId: products.winBackOfferId,
       offeringId: products.offeringId,
-      productIds: [products.seasonPassId, products.seasonAnnualId].filter(Boolean),
+      productIds: [products.seasonPassId].filter(Boolean),
     });
     if (result === "purchased") {
       await refreshEntitlement();
