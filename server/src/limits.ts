@@ -13,12 +13,26 @@ export class LimitStoreError extends Error {
   }
 }
 
-export function redisConfigured(): boolean {
+function upstashRestConfigured(): boolean {
   return Boolean(process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim());
 }
 
+function kvRestConfigured(): boolean {
+  return Boolean(process.env.KV_REST_API_URL?.trim() && process.env.KV_REST_API_TOKEN?.trim());
+}
+
+export function redisConfigured(): boolean {
+  return upstashRestConfigured() || kvRestConfigured();
+}
+
 function redisUrl(): string {
-  return (process.env.UPSTASH_REDIS_REST_URL ?? "").replace(/\/$/, "");
+  const raw = upstashRestConfigured() ? process.env.UPSTASH_REDIS_REST_URL : process.env.KV_REST_API_URL;
+  return (raw ?? "").replace(/\/$/, "");
+}
+
+function redisToken(): string {
+  const raw = upstashRestConfigured() ? process.env.UPSTASH_REDIS_REST_TOKEN : process.env.KV_REST_API_TOKEN;
+  return raw ?? "";
 }
 
 function intEnv(name: string, fallback: number): number {
@@ -81,7 +95,7 @@ async function command(args: (string | number)[]): Promise<unknown> {
       method: "POST",
       signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        Authorization: `Bearer ${redisToken()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(args),
@@ -107,7 +121,7 @@ async function pipeline(commands: (string | number)[][]): Promise<unknown[]> {
       method: "POST",
       signal: controller.signal,
       headers: {
-        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        Authorization: `Bearer ${redisToken()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(commands),

@@ -44,7 +44,6 @@ async function rc(path: string, init?: RequestInit): Promise<Response> {
       headers: {
         Authorization: `Bearer ${secret()}`,
         "Content-Type": "application/json",
-        "X-Platform": "ios",
         ...(init?.headers ?? {}),
       },
     });
