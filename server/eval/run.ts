@@ -1,12 +1,16 @@
 /**
- * End-to-end scan eval. Point it at a folder of photos and a CSV of known ages.
- * Nothing in this folder is a photo or a key. Do not commit either.
+ * End-to-end scan eval. Photos and keys stay outside the repo.
  *
  *   cd server
- *   AI_GATEWAY_API_KEY=... npx tsx eval/run.ts --images ../photos --labels ../labels.csv --out ../eval-out.csv
+ *   AI_GATEWAY_API_KEY=... npx tsx eval/run.ts \
+ *     --images /path/to/bucks --labels /path/to/labels.csv --out /tmp/eval-out.csv \
+ *     --minimum 4.5
  *
- * CSV columns: file, ageYears, grossScore
- * file is the image name inside --images. Leave ageYears or grossScore blank to skip that check.
+ * Gemini alone:  --main-model google/gemini-4-carbon
+ * Gemini plus Claude:  --ensemble google/gemini-4-carbon,anthropic/claude-fable-5.2
+ *
+ * CSV columns: file,ageYears,grossScore,minimum
+ * A blank age or score cell skips that check. minimum overrides --minimum for that row.
  * Each row times out at 300s. A timeout is not retried.
  */
 
@@ -19,6 +23,7 @@ interface LabelRow {
   file: string;
   ageYears: number | null;
   grossScore: number | null;
+  minimum: number | null;
 }
 
 function arg(name: string): string {
@@ -29,25 +34,37 @@ function arg(name: string): string {
 function labelsFrom(csvPath: string): LabelRow[] {
   const lines = readFileSync(csvPath, "utf8").trim().split(/\r?\n/).slice(1);
   return lines.filter(Boolean).map((line) => {
-    const [file, age, score] = line.split(",").map((cell) => cell.trim());
+    const [file, age, score, minimum] = line.split(",").map((cell) => cell.trim());
     return {
       file,
       ageYears: age ? Number(age) : null,
       grossScore: score ? Number(score) : null,
+      minimum: minimum ? Number(minimum) : null,
     };
   });
 }
 
-async function fileBase64(filePath: string): Promise<string> {
-  return readFileSync(filePath).toString("base64");
+function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), ms);
+  });
+  return Promise.race([work, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 async function main(): Promise<void> {
   const imagesDir = arg("--images");
   const labelsPath = arg("--labels");
   const outPath = arg("--out") || "eval-out.csv";
+  const defaultMinimum = Number(arg("--minimum")) || 4.5;
+  const mainModel = arg("--main-model");
+  const ensemble = arg("--ensemble");
+  if (mainModel) process.env.MAIN_MODEL = mainModel;
+  if (ensemble) process.env.MAIN_ENSEMBLE = ensemble;
   if (!imagesDir || !labelsPath) {
-    console.error("Usage: npx tsx eval/run.ts --images <folder> --labels <file.csv> --out <file.csv>");
+    console.error("Usage: npx tsx eval/run.ts --images <folder> --labels <file.csv> --out <file.csv> [--minimum 4.5] [--main-model id] [--ensemble id,id]");
     process.exitCode = 1;
     return;
   }
@@ -58,15 +75,15 @@ async function main(): Promise<void> {
   }
   const known = new Set(readdirSync(imagesDir));
   const rows = labelsFrom(labelsPath);
-  const header = "file,expectedAge,fastAge,mainAge,bodyOnlyAge,fieldCall,expectedScore,gross,costUsd,ms,note";
-  const written = [header];
+  const written = ["file,expectedAge,minimum,fastAge,mainAge,bodyOnlyAge,fieldCall,expectedScore,gross,costUsd,ms,note"];
   for (const row of rows) {
     if (!known.has(row.file)) {
-      written.push(`${row.file},,,,,,,,,"missing file"`);
+      written.push(`${row.file},,,,,,,,,,,"missing file"`);
       continue;
     }
+    const minimum = row.minimum ?? defaultMinimum;
+    const image = readFileSync(path.join(imagesDir, row.file)).toString("base64");
     const started = Date.now();
-    const image = await fileBase64(path.join(imagesDir, row.file));
     let fast = "";
     let main = "";
     let body = "";
@@ -75,31 +92,28 @@ async function main(): Promise<void> {
     let cost = 0;
     let note = "";
     try {
-      await Promise.race([
-        (async () => {
-      if (row.ageYears != null) {
-        const age = await runAgeCall(image, 4.5);
-        fast = String(age.readings.fast?.age ?? "");
-        main = String(age.readings.main?.age ?? "");
-        body = String(age.readings.bodyOnly?.age ?? "");
-        call = String(age.result?.fieldCall ?? age.stop ?? "");
-        cost += age.costs.reduce((sum, item) => sum + item.usd, 0);
-        if (age.stop) note = age.stop;
-      }
-      if (row.grossScore != null) {
-        const score = await runScoreCall([image]);
-        gross = String(score.result.grossScore ?? "");
-        cost += score.costs.reduce((sum, item) => sum + item.usd, 0);
-        if (score.backup) note = note ? `${note}; backup score` : "backup score";
-      }
-        })(),
-        new Promise((resolve, reject) => setTimeout(() => reject(new Error("timeout")), 300_000)),
-      ]);
+      await withTimeout((async () => {
+        if (row.ageYears != null) {
+          const age = await runAgeCall(image, minimum);
+          fast = String(age.readings.fast?.age ?? "");
+          main = String(age.readings.main?.age ?? "");
+          body = String(age.readings.bodyOnly?.age ?? "");
+          call = String(age.result?.fieldCall ?? age.stop ?? "");
+          cost += age.costs.reduce((sum, item) => sum + item.usd, 0);
+          if (age.stop) note = age.stop;
+        }
+        if (row.grossScore != null) {
+          const score = await runScoreCall([image]);
+          gross = String(score.result.grossScore ?? "");
+          cost += score.costs.reduce((sum, item) => sum + item.usd, 0);
+          if (score.backup) note = note ? `${note}; backup score` : "backup score";
+        }
+      })(), 300_000);
     } catch (error) {
       note = error instanceof Error ? error.message.replaceAll(",", " ") : "failed";
     }
     const ms = Date.now() - started;
-    written.push([row.file, row.ageYears ?? "", fast, main, body, call, row.grossScore ?? "", gross, cost.toFixed(4), ms, `"${note}"`].join(","));
+    written.push([row.file, row.ageYears ?? "", minimum, fast, main, body, call, row.grossScore ?? "", gross, cost.toFixed(4), ms, `"${note}"`].join(","));
     console.log(written[written.length - 1]);
   }
   mkdirSync(path.dirname(path.resolve(outPath)), { recursive: true });

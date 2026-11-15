@@ -1,10 +1,10 @@
 /**
  * Three reads in parallel: a fast look, the main body-first read, and an antler-blind check.
- * The fast look may say LET WALK early. It never says SHOOTER.
+ * The first screen only says Hold. A missing or young body check cannot be a shooter.
  */
 
-import { classLabel, classStep, finalCall } from "./field-call.js";
-import { callModel, GatewayError, parseFinal, type ModelCall } from "./gateway.js";
+import { classStep, finalCall } from "./field-call.js";
+import { callModel, parseFinal, type ModelCall } from "./gateway.js";
 import { coverAntlers } from "./mask.js";
 import { antlerBoxPrompt, bodyFirstAgePrompt, fastAgePrompt, maskedAgePrompt } from "./prompts.js";
 
@@ -106,13 +106,37 @@ export function boxesFrom(text: string): number[][] {
   });
 }
 
-function earlyWalk(age: number | null, minimum: number): boolean {
-  if (age == null) return false;
-  const step = classStep(age);
-  return step <= 2.5 && step < classStep(minimum);
+/** The fast model reads 2.5 for almost every buck, so the first screen never uses that age. */
+export function provisionalFromFast(): AgeOutcome["provisional"] {
+  return { fieldCall: "HOLD", ageClass: "", note: "Hold, checking his body." };
 }
 
-async function safeCall(role: "fast" | "age" | "ageFallback" | "boxes" | "masked", prompt: string, images: string[], timeoutMs: number, maxTokens: number, effort: "low" | "medium" | null): Promise<ModelCall | null> {
+export function maskedRunCount(): number {
+  const parsed = Number(process.env.MASKED_RUNS);
+  if (!Number.isFinite(parsed)) return 3;
+  return Math.max(2, Math.min(3, Math.floor(parsed)));
+}
+
+export function mainModelIds(): string[] {
+  const ensemble = process.env.MAIN_ENSEMBLE?.split(",").map((item) => item.trim()).filter(Boolean) ?? [];
+  if (ensemble.length > 0) return ensemble;
+  const single = process.env.MAIN_MODEL?.trim();
+  return single ? [single] : [];
+}
+
+/** Any young body, a young majority, or no usable body read blocks a shooter. */
+export function maskedVerdict(readings: Array<AgeReading | null>): { bodyYears: number | null; missing: boolean; vetoYoung: boolean } {
+  const ages = readings.flatMap((reading) => (reading?.age != null ? [classStep(reading.age)] : []));
+  const young = ages.filter((age) => age <= 2.5);
+  const vetoYoung = young.length > 0 || (ages.length > 0 && young.length * 2 > ages.length);
+  return {
+    bodyYears: ages.length === 0 ? null : Math.min(...ages),
+    missing: ages.length === 0,
+    vetoYoung,
+  };
+}
+
+async function safeCall(role: "fast" | "age" | "ageFallback" | "boxes" | "masked", prompt: string, images: string[], timeoutMs: number, maxTokens: number, effort: "low" | "medium" | null, model?: string): Promise<ModelCall | null> {
   try {
     return await callModel({
       role,
@@ -122,9 +146,9 @@ async function safeCall(role: "fast" | "age" | "ageFallback" | "boxes" | "masked
       maxTokens,
       effort,
       allowStatusRetry: true,
+      model,
     });
-  } catch (error) {
-    if (error instanceof GatewayError) return null;
+  } catch {
     return null;
   }
 }
@@ -135,82 +159,85 @@ export async function runAgeCall(
   onProvisional?: (provisional: AgeOutcome["provisional"]) => void,
 ): Promise<AgeOutcome> {
   const costs: ModelCall[] = [];
+  const models = mainModelIds();
   const fastPromise = safeCall("fast", fastAgePrompt(minimum), [image], 10_000, 800, "low");
-  const mainPromise = safeCall("age", bodyFirstAgePrompt(minimum), [image], 30_000, 2000, null);
+  const mainPromises = (models.length > 0 ? models : [undefined]).map((model) => safeCall("age", bodyFirstAgePrompt(minimum), [image], 30_000, 2000, null, model));
   const blindPromise = (async () => {
     const boxes = await safeCall("boxes", antlerBoxPrompt(), [image], 12_000, 500, "low");
-    if (!boxes) return { call: null as ModelCall | null, reading: null as AgeReading | null };
+    if (!boxes) return { calls: [] as ModelCall[], readings: [] as Array<AgeReading | null> };
     costs.push(boxes);
     const found = boxesFrom(boxes.text);
-    if (found.length === 0) return { call: null, reading: null };
+    if (found.length === 0) return { calls: [], readings: [] };
     let covered = image;
     try {
       covered = await coverAntlers(image, found);
     } catch {
-      return { call: null, reading: null };
+      return { calls: [], readings: [] };
     }
-    const masked = await safeCall("masked", maskedAgePrompt(), [covered], 15_000, 800, null);
-    return { call: masked, reading: masked ? readingFrom(masked.text) : null };
+    const runs = await Promise.all(
+      Array.from({ length: maskedRunCount() }, () => safeCall("masked", maskedAgePrompt(), [covered], 20_000, 2000, null)),
+    );
+    return {
+      calls: runs.filter((call): call is ModelCall => call != null),
+      readings: runs.map((call) => (call && call.text.trim() ? readingFrom(call.text) : null)),
+    };
   })();
 
   const fastCall = await fastPromise;
   if (fastCall) costs.push(fastCall);
   const fast = fastCall ? readingFrom(fastCall.text) : null;
-  const provisional: AgeOutcome["provisional"] = earlyWalk(fast?.age ?? null, minimum)
-    ? {
-      fieldCall: "LET WALK",
-      ageClass: classLabel(classStep(fast?.age ?? 1.5)),
-      note: `Reads ${classLabel(classStep(fast?.age ?? 1.5))}, under your lease minimum of ${classLabel(classStep(minimum))}. Let him walk.`,
-    }
-    : { fieldCall: "HOLD", ageClass: "", note: "Hold, checking his body." };
+  const provisional = provisionalFromFast();
   onProvisional?.(provisional);
 
-  let mainCall = await mainPromise;
-  let main = mainCall ? readingFrom(mainCall.text) : null;
-  if (mainCall) costs.push(mainCall);
-  if (!main?.age && !main?.stop) {
+  const mainCalls = await Promise.all(mainPromises);
+  let mains = mainCalls.filter((call): call is ModelCall => call != null).map((call) => {
+    costs.push(call);
+    return readingFrom(call.text);
+  });
+  if (mains.every((reading) => !reading.age && !reading.stop)) {
     const fallback = await safeCall("ageFallback", bodyFirstAgePrompt(minimum), [image], 20_000, 2000, "low");
     if (fallback) {
       costs.push(fallback);
-      main = readingFrom(fallback.text, true);
-      mainCall = fallback;
+      mains = [readingFrom(fallback.text, true)];
     }
   }
-  const blind = await blindPromise;
-  if (blind.call) costs.push(blind.call);
-
-  if (main?.stop && !main.age) {
-    return { stop: main.stop, provisional, readings: { fast, main, bodyOnly: blind.reading }, costs, result: null };
+  const youngFast = fast?.age != null && classStep(fast.age) <= 2.5;
+  const stopped = mains.find((reading) => reading.stop && !reading.age);
+  if (stopped?.stop && !(stopped.stop === "no_antlers" && youngFast)) {
+    return { stop: stopped.stop, provisional, readings: { fast, main: stopped, bodyOnly: null }, costs, result: null };
   }
+  const blind = await blindPromise;
+  for (const call of blind.calls) costs.push(call);
+  const verdict = maskedVerdict(blind.readings);
+  const main = combineMains(mains, minimum, models.length > 1);
+  const bodyOnly = blind.readings.find((reading) => reading?.age != null) ?? null;
   if (!main?.age) {
-    const kept = earlyWalk(fast?.age ?? null, minimum);
-    const decision = finalCall({
-      mainYears: kept ? fast?.age ?? null : null,
-      bodyYears: blind.reading?.age ?? null,
-      minimum,
-      confirmed: kept,
-    });
-    return {
-      stop: null,
-      provisional,
-      readings: { fast, main, bodyOnly: blind.reading },
-      costs,
-      result: resultBody(decision, fast, main, blind.reading, minimum),
-    };
+    const decision = finalCall({ mainYears: null, bodyYears: verdict.bodyYears, minimum, confirmed: false, bodyMissing: true });
+    return { stop: null, provisional, readings: { fast, main, bodyOnly }, costs, result: resultBody(decision, fast, main, bodyOnly, minimum) };
   }
   const decision = finalCall({
     mainYears: main.age,
-    bodyYears: blind.reading?.age ?? null,
+    bodyYears: verdict.vetoYoung ? verdict.bodyYears : verdict.missing ? null : verdict.bodyYears,
     minimum,
     confirmed: true,
+    bodyMissing: verdict.missing || Boolean(main.ensembleGap),
   });
-  return {
-    stop: null,
-    provisional,
-    readings: { fast, main, bodyOnly: blind.reading },
-    costs,
-    result: resultBody(decision, fast, main, blind.reading, minimum),
-  };
+  return { stop: null, provisional, readings: { fast, main, bodyOnly }, costs, result: resultBody(decision, fast, main, bodyOnly, minimum) };
+}
+
+function combineMains(readings: AgeReading[], minimum: number, ensemble: boolean): (AgeReading & { ensembleGap?: boolean }) | null {
+  const usable = readings.filter((reading) => reading.age != null && !(reading.stop && !reading.age));
+  if (usable.length === 0) return readings[0] ?? null;
+  if (!ensemble || usable.length === 1) {
+    return { ...usable[0], ensembleGap: ensemble && readings.length > 1 && classStep(usable[0].age ?? 0) >= classStep(minimum) };
+  }
+  const steps = usable.map((reading) => classStep(reading.age ?? 0));
+  const line = classStep(minimum);
+  const split = steps.some((step) => step >= line) && steps.some((step) => step < line);
+  const youngest = usable.reduce((pick, reading) => (classStep(reading.age ?? 0) < classStep(pick.age ?? 0) ? reading : pick));
+  const oldest = usable.reduce((pick, reading) => (classStep(reading.age ?? 0) > classStep(pick.age ?? 0) ? reading : pick));
+  // A split stays borderline. Agreement uses the younger class.
+  return split ? { ...oldest, ensembleGap: true } : { ...youngest, ensembleGap: false };
 }
 
 function resultBody(

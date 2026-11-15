@@ -27,6 +27,12 @@ test("a 3.5 point read under a 4.5 minimum is let walk", () => {
   assert.equal(read.fieldCall, "LET WALK");
 });
 
+test("a missing body check cannot be a shooter", () => {
+  const read = finalCall({ mainYears: 5.5, bodyYears: null, minimum: 4.5, confirmed: true, bodyMissing: true });
+  assert.equal(read.fieldCall, "BORDERLINE");
+  assert.match(read.fieldCallNote, /body check didn't come back/);
+});
+
 test("a shooter with a 1.5 body is borderline", () => {
   const read = finalCall({ mainYears: 5.5, bodyYears: 1.5, minimum: 4.5, confirmed: true });
   assert.equal(read.fieldCall, "BORDERLINE");

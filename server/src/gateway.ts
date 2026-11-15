@@ -28,7 +28,7 @@ export interface ModelCall {
 export type ReasoningEffort = "low" | "medium" | null;
 
 const ROLES = {
-  fast: ["FAST_MODEL", "gpt-5.6-sol"],
+  fast: ["FAST_MODEL", "openai/gpt-5.6-sol"],
   age: ["AGE_MODEL", "anthropic/claude-fable-5.2"],
   ageFallback: ["AGE_FALLBACK_MODEL", "google/gemini-4-carbon"],
   boxes: ["MASK_BOX_MODEL", "openai/gpt-6.1-sol"],
@@ -114,6 +114,9 @@ export async function callModel(options: {
       const promptTokens = payload.usage?.prompt_tokens ?? 0;
       const completionTokens = payload.usage?.completion_tokens ?? 0;
       const usd = typeof payload.usage?.cost === "number" ? payload.usage.cost : 0;
+      if (!text.trim()) {
+        console.log(JSON.stringify({ event: "model_call_failed", model, reason: "empty", ms: Date.now() - started }));
+      }
       const call: ModelCall = {
         role: options.role,
         model,
@@ -126,8 +129,10 @@ export async function callModel(options: {
       console.log(JSON.stringify({ event: "analysis_cost", ...call, text: undefined }));
       return call;
     } catch (error) {
-      if (error instanceof GatewayError) throw error;
       const timedOut = error instanceof Error && error.name === "AbortError";
+      const reason = error instanceof GatewayError ? error.message : timedOut ? "timeout" : "failed";
+      console.log(JSON.stringify({ event: "model_call_failed", model, reason, ms: Date.now() - started }));
+      if (error instanceof GatewayError) throw error;
       throw new GatewayError(timedOut ? "The model timed out." : "The model call failed.", timedOut ? 504 : 502, timedOut);
     } finally {
       clearTimeout(timer);

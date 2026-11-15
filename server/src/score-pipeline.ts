@@ -53,7 +53,7 @@ async function once(role: "score" | "scoreFallback", images: string[], effort: "
 export async function runScoreCall(images: string[]): Promise<ScoreOutcome> {
   const costs: ModelCall[] = [];
   try {
-    const primary = await once("score", images, "medium", 180_000);
+    const primary = await once("score", images, "medium", 120_000);
     costs.push(primary);
     const parsed = scoreFrom(primary.text, false);
     if (parsed) return { result: parsed, costs, backup: false };

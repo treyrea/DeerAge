@@ -93,9 +93,19 @@ export function finalCall(input: {
   bodyYears: number | null;
   minimum: number;
   confirmed: boolean;
+  /** The antler-blind read did not come back. A shooter is not allowed. */
+  bodyMissing?: boolean;
 }): Omit<FieldRead, "cueBullets"> {
   const leaseMinimum = classStep(input.minimum);
   const minimumLabel = classLabel(leaseMinimum);
+  if (input.bodyMissing && input.confirmed && input.mainYears != null && classStep(input.mainYears) >= leaseMinimum) {
+    return {
+      fieldCall: "BORDERLINE",
+      ageClass: classLabel(classStep(input.mainYears)),
+      leaseMinimum,
+      fieldCallNote: `The body check didn't come back, and your minimum is ${minimumLabel}. Don't risk the fine.`,
+    };
+  }
   if (!input.confirmed || input.mainYears == null) {
     return {
       fieldCall: "BORDERLINE",
