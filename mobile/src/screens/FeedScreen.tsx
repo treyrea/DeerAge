@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
 import { fetchFeed, submitVote } from "../api/community";
 import { useCommunityStore } from "../state/communityStore";
+import { useRemoteConfig } from "../state/remoteConfig";
 import { useNetworkStore } from "../state/networkStore";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
@@ -56,8 +57,9 @@ export const FeedScreen = () => {
     void refresh();
   }, [markSeen, refresh]));
 
+  const pollsOn = useRemoteConfig((s) => s.flags.polls);
   const announcements = feed?.announcements.filter((item) => !dismissedIds.includes(item.id)) ?? [];
-  const polls = feed?.polls.filter((item) => !dismissedIds.includes(item.id)) ?? [];
+  const polls = pollsOn ? (feed?.polls.filter((item) => !dismissedIds.includes(item.id)) ?? []) : [];
   const empty = announcements.length + polls.length === 0;
 
   const vote = async (pollId: string, optionId: string) => {

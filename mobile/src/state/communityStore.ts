@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useDeerScoringStore } from "./deerScoringStore";
+import { flagEnabled } from "./remoteConfig";
 
 export interface FeedAnnouncement {
   id: string;
@@ -110,8 +111,8 @@ export const useCommunityStore = create<CommunityState>()(
 export function nextCommunityPrompt(): "push" | "email" | null {
   const community = useCommunityStore.getState();
   const localEmail = useDeerScoringStore.getState().userEmail;
-  if (!community.pushPromptHandled) return "push";
-  if (!community.email && !localEmail && community.emailDismissCount < 2) return "email";
+  if (!community.pushPromptHandled && flagEnabled("pushPrompt")) return "push";
+  if (!community.email && !localEmail && community.emailDismissCount < 2 && flagEnabled("emailPrompt")) return "email";
   return null;
 }
 

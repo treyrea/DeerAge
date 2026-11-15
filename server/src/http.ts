@@ -5,7 +5,8 @@
 
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
 import { getAccess, runAnalysis, type AnalyzeBody } from "./analyze.js";
-import { publicConfig } from "./config.js";
+import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
+import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
 import { handleAdminEmailsRequest, handleAdminPushRequest, handleEmailOptInRequest, handleEmailUnsubscribeRequest, handlePushTokenRequest } from "./outreach.js";
 import { header, queryParam, type Incoming, type Outgoing } from "./wire.js";
 
@@ -26,7 +27,7 @@ export async function handleConfigRequest(req: Incoming): Promise<Outgoing> {
   if (req.method !== "GET") {
     return { status: 405, body: { ok: false, code: "invalid_request", message: "Use GET." } };
   }
-  return { status: 200, body: publicConfig() };
+  return { status: 200, body: await publicConfigPayload() };
 }
 
 export async function handleAccessRequest(req: Incoming): Promise<Outgoing> {
@@ -53,5 +54,8 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/admin/poll-results") return handleAdminPollResultsRequest(req);
   if (path === "/api/admin/push") return handleAdminPushRequest(req);
   if (path === "/api/admin/emails") return handleAdminEmailsRequest(req);
+  if (path === "/api/harvest") return handleHarvestRequest(req);
+  if (path === "/api/admin/harvests") return handleAdminHarvestsRequest(req);
+  if (path === "/api/admin/config") return handleAdminConfigRequest(req);
   return { status: 404, body: { ok: false, code: "invalid_request", message: "Not found." } };
 }

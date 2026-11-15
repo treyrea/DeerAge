@@ -18,6 +18,7 @@ import React, { useRef, useCallback } from "react";
 import { View, Text, Pressable, Share, Platform } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { DeerMark } from "./DeerMark";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import ViewShot from "react-native-view-shot";
@@ -337,7 +338,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
 const BrandingWatermark: React.FC = () => {
   return (
     <View className="flex-row items-center justify-center pt-2 border-t border-white/10">
-      <Text style={{ fontSize: 14 }}>🦌</Text>
+      <DeerMark size={16} color="#8B7355" />
       <Text className="text-xs ml-1" style={{ color: "#8B7355" }}>
         Aged with DeerAge
       </Text>
@@ -354,7 +355,7 @@ const getShareText = (data: ShareableResultData): string => {
     return `DeerAge\n\nAge class: ${formatAgeClass(data.ageRange || data.ageEstimate)}\n${data.call ? data.call + "\n" : ""}Confidence: ${data.confidence}%\n\nAged with DeerAge`;
   }
 
-  return `🦌 DeerAge B&C Score\n\n${data.pointCount} Points\nNet Score: ${data.netScore.toFixed(1)}"\nGross Score: ${data.grossScore.toFixed(1)}"\nCategory: ${data.category}\n${data.meetsMinimum ? "✓ Meets B&C Minimum!" : ""}\n\nKnow before you pull the trigger.\nPowered by RackScore™ AI`;
+  return `DeerAge B&C Score\n\n${data.pointCount} Points\nNet Score: ${data.netScore.toFixed(1)}"\nGross Score: ${data.grossScore.toFixed(1)}"\nCategory: ${data.category}\n${data.meetsMinimum ? "Meets B&C minimum" : ""}\n\nKnow before you pull the trigger.`;
 };
 
 // ============================================================================

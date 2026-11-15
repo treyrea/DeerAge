@@ -15,6 +15,8 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
+import { FieldCallCard } from "../components/FieldCallCard";
+import { useRemoteConfig } from "../state/remoteConfig";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -40,12 +42,13 @@ export const QuickCheckResultScreen = () => {
   const isInvalidImage = result.isValidImage === false;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const ageCall = ageCallFromClass(ageClassLabel);
-  useResultFollowUp(!isInvalidImage, {
+  const followUp = useResultFollowUp(!isInvalidImage, {
     imageUri,
     headline: ageClassLabel,
     call: ageCall,
     confidence: result.confidence,
   });
+  const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
 
   // Haptic feedback on mount
   React.useEffect(() => {
@@ -59,6 +62,7 @@ export const QuickCheckResultScreen = () => {
   }, [isShoot, isInvalidImage]);
 
   const handleFullAnalysis = () => {
+    followUp.markRescan();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Set up for full age analysis with the same image
     setAnalysisMode("age");
@@ -69,6 +73,7 @@ export const QuickCheckResultScreen = () => {
   };
 
   const handleNewCheck = () => {
+    followUp.markRescan();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.replace("QuickCheckCamera");
   };
@@ -190,10 +195,9 @@ export const QuickCheckResultScreen = () => {
     : "Leg Proportion";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#1a1a1a" }}>
-      {/* Full screen result background */}
+    <View style={{ flex: 1, backgroundColor: "#2B3420" }}>
       <LinearGradient
-        colors={isShoot ? ["#166534", "#14532d", "#1a1a1a"] : ["#7f1d1d", "#450a0a", "#1a1a1a"]}
+        colors={["#2B3420", "#1a1f16"]}
         style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
       >
         {/* Close button */}
@@ -204,44 +208,18 @@ export const QuickCheckResultScreen = () => {
         </View>
 
         {/* Main Result */}
-        <View className="flex-1 items-center justify-center px-6">
-          {/* Big Decision Icon */}
-          <View
-            className="w-32 h-32 rounded-full items-center justify-center mb-6"
-            style={{ backgroundColor: isShoot ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)" }}
-          >
-            <Ionicons
-              name={isShoot ? "checkmark-circle" : "close-circle"}
-              size={80}
-              color={isShoot ? "#22c55e" : "#ef4444"}
-            />
-          </View>
-
-          {/* Decision Text */}
-          <Text
-            className="text-5xl font-black mb-2"
-            style={{ color: isShoot ? "#22c55e" : "#ef4444" }}
-          >
-            {isShoot ? "SHOOT" : "LET WALK"}
-          </Text>
-
-          {/* Age Class Estimate (NOT exact age) */}
-          <View className="flex-row items-center mb-4">
-            <Text className="text-white text-2xl font-bold">{ageClassDisplay}</Text>
-            <View className="ml-3 px-2 py-1 rounded-full bg-white/20">
-              <Text className="text-white text-sm">{result.confidence}% confident</Text>
-            </View>
-          </View>
-
-          {/* Warden-safe explanation */}
-          <Text className="text-white/80 text-lg text-center px-4 mb-4">
-            {result.explanation}
-          </Text>
-
-          {/* TPWD Disclaimer */}
-          <Text className="text-white/50 text-xs text-center px-4 mb-8">
-            {result.disclaimer}
-          </Text>
+        <View className="flex-1 justify-center px-6">
+          <FieldCallCard
+            ageYears={result.ageYears ?? 3.5}
+            confidence={result.confidence}
+            ageClass={ageClassDisplay}
+            cueBullets={(result as { cueBullets?: unknown }).cueBullets}
+            fallbackCues={result.topCues ?? [result.explanation]}
+            fieldCall={shootOrPass ? (result as { fieldCall?: "Shooter" | "Pass" | "Borderline" }).fieldCall : undefined}
+            note={shootOrPass ? (result as { fieldCallNote?: string }).fieldCallNote : result.explanation}
+            title={shootOrPass ? undefined : (isShoot ? "SHOOT" : "LET WALK")}
+          />
+          <Text style={{ color: "#8B7355", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{result.disclaimer}</Text>
 
           {/* Thumbnail */}
           <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.5, height: SCREEN_WIDTH * 0.5 }}>
@@ -298,11 +276,11 @@ export const QuickCheckResultScreen = () => {
           <Pressable
             onPress={handleNewCheck}
             className="mb-3 rounded-xl py-4 items-center"
-            style={{ backgroundColor: isShoot ? "#22c55e" : "#ef4444" }}
+            style={{ backgroundColor: "#D4AF37" }}
           >
             <View className="flex-row items-center">
-              <Ionicons name="camera" size={20} color="white" />
-              <Text className="text-white font-bold ml-2">New Quick Check</Text>
+              <Ionicons name="camera" size={20} color="#1a1f16" />
+              <Text style={{ color: "#1a1f16", fontWeight: "700", marginLeft: 8 }}>New Quick Check</Text>
             </View>
           </Pressable>
 

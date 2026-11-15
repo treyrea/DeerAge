@@ -26,6 +26,9 @@ export interface QuickAgeResult {
   disclaimer: string;
   ageYears?: number;
   topCues?: string[];
+  fieldCall?: "Shooter" | "Pass" | "Borderline";
+  fieldCallNote?: string;
+  cueBullets?: { area: string; text: string }[];
 }
 
 interface FeatureRead {
@@ -116,5 +119,8 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     disclaimer: DISCLAIMER,
     ageYears: years,
     topCues,
+    fieldCall: result.fieldCall === "Shooter" || result.fieldCall === "Pass" || result.fieldCall === "Borderline" ? result.fieldCall : undefined,
+    fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
+    cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
   };
 }

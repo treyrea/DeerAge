@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { recordGoodResult } from "../lib/review";
+import { maybeRequestReview, recordGoodResult } from "../lib/review";
 import { scheduleCommunityPrompt } from "../state/communityStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import type { PaywallResultSummary } from "../lib/products";
@@ -9,10 +9,12 @@ import type { PaywallResultSummary } from "../lib/products";
 /**
  * After a real result: count it toward the ratings prompt, and open the paywall
  * once the shared free analyses are gone. The paywall shows this summary on top.
+ * The ratings sheet waits until the hunter keeps this result instead of scanning again.
  */
 export function useResultFollowUp(enabled: boolean, summary: PaywallResultSummary | null) {
   const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const ran = useRef(false);
+  const rescan = useRef(false);
 
   useEffect(() => {
     if (!enabled || !summary || ran.current) return;
@@ -26,4 +28,26 @@ export function useResultFollowUp(enabled: boolean, summary: PaywallResultSummar
     }
     scheduleCommunityPrompt();
   }, [enabled, summary, navigation]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const started = Date.now();
+    let asked = false;
+    const timer = setTimeout(() => {
+      asked = true;
+      if (!rescan.current) void maybeRequestReview();
+    }, 16_000);
+    return () => {
+      clearTimeout(timer);
+      if (asked || rescan.current) return;
+      if (Date.now() - started < 4_000) return;
+      void maybeRequestReview();
+    };
+  }, [enabled]);
+
+  return {
+    markRescan: () => {
+      rescan.current = true;
+    },
+  };
 }

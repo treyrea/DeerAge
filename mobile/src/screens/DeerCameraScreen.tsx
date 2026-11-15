@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions, Image } from "react-native";
+import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,9 +19,8 @@ import Slider from "@react-native-community/slider";
 import * as Haptics from "expo-haptics";
 import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
-
-// Antler silhouette image for score mode viewfinder
-const antlerSilhouette = require("../../assets/deer-head-antlers.png");
+import { AntlerSilhouette } from "../components/AntlerSilhouette";
+import { DeerBodyMark } from "../components/DeerMark";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -346,13 +345,9 @@ export const DeerCameraScreen = () => {
                 style={{ width: width * 0.85, height: analysisMode === "age" ? height * 0.35 : height * 0.30 }}
               >
                 {analysisMode === "age" ? (
-                  <Text className="text-8xl opacity-20">🦌</Text>
+                  <DeerBodyMark size={180} color="#F5F5DC" opacity={0.85} />
                 ) : (
-                  <Image
-                    source={antlerSilhouette}
-                    style={{ width: 120, height: 120, opacity: 0.25 }}
-                    resizeMode="contain"
-                  />
+                  <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
                 )}
               </View>
               <View className="mt-4 bg-green-600/90 px-6 py-3 rounded-full">
@@ -373,14 +368,9 @@ export const DeerCameraScreen = () => {
               >
                 {analysisMode === "age" ? (
                   // Full deer body silhouette for age estimation
-                  <Text className="text-8xl opacity-25">🦌</Text>
+                  <DeerBodyMark size={200} color="#F5F5DC" opacity={0.9} />
                 ) : (
-                  // Antler silhouette for rack scoring
-                  <Image
-                    source={antlerSilhouette}
-                    style={{ width: 140, height: 140, opacity: 0.3 }}
-                    resizeMode="contain"
-                  />
+                  <AntlerSilhouette size={150} color="#F5F5DC" opacity={0.85} />
                 )}
               </View>
 

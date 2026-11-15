@@ -16,6 +16,8 @@ export interface HunterProfileState {
   species: "whitetail" | "mule_deer";
   goodResultCount: number;
   hasRequestedReview: boolean;
+  sessionCount: number;
+  reviewAskedForVersion: string | null;
   dismissedUpdateVersion: string | null;
   complete: (profile: {
     stateCode: string;
@@ -27,6 +29,8 @@ export interface HunterProfileState {
   setHydrated: () => void;
   noteGoodResult: () => number;
   markReviewRequested: () => void;
+  noteSession: () => void;
+  markReviewAsked: (version: string) => void;
   dismissUpdate: (version: string) => void;
 }
 
@@ -54,6 +58,8 @@ export const useHunterProfile = create<HunterProfileState>()(
       species: "whitetail",
       goodResultCount: 0,
       hasRequestedReview: false,
+      sessionCount: 0,
+      reviewAskedForVersion: null,
       dismissedUpdateVersion: null,
       complete: (profile) => {
         set({
@@ -73,6 +79,8 @@ export const useHunterProfile = create<HunterProfileState>()(
         return next;
       },
       markReviewRequested: () => set({ hasRequestedReview: true }),
+      noteSession: () => set({ sessionCount: get().sessionCount + 1 }),
+      markReviewAsked: (version) => set({ reviewAskedForVersion: version, hasRequestedReview: true }),
       dismissUpdate: (version) => set({ dismissedUpdateVersion: version }),
     }),
     {
@@ -88,6 +96,8 @@ export const useHunterProfile = create<HunterProfileState>()(
         species: state.species,
         goodResultCount: state.goodResultCount,
         hasRequestedReview: state.hasRequestedReview,
+        sessionCount: state.sessionCount,
+        reviewAskedForVersion: state.reviewAskedForVersion,
         dismissedUpdateVersion: state.dismissedUpdateVersion,
       }),
       onRehydrateStorage: () => () => {

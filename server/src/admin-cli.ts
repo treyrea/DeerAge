@@ -120,6 +120,11 @@ Commands
   poll:results --id poll_...
   push --title "..." --body "..." [--audience all|subscriber|free] [--dry-run]
   emails
+  harvests
+  config:get
+  config:set [--min-supported 1.0.8] [--recommended 1.0.9] [--banner "The rut is on"]
+             [--paywall-headline "..."] [--paywall-subhead "..."] [--home-tip "..."]
+             [--flag shootOrPass=true]
 
 Omitted announcement status is published. Omitted poll status is open.
 poll:results splits votes into subscriber and free.
@@ -189,6 +194,36 @@ async function main() {
     return call("POST", "/api/admin/push", body);
   }
   if (command === "emails") return call("GET", "/api/admin/emails");
+  if (command === "harvests") return call("GET", "/api/admin/harvests");
+  if (command === "config:get") return call("GET", "/api/admin/config");
+  if (command === "config:set") {
+    const body: Record<string, unknown> = {};
+    if (one(flags, "min-supported")) body.minSupportedVersion = one(flags, "min-supported");
+    if (one(flags, "recommended")) body.recommendedVersion = one(flags, "recommended");
+    if (one(flags, "min")) body.minVersion = one(flags, "min");
+    if (one(flags, "latest")) body.latestVersion = one(flags, "latest");
+    if (flags.has("banner")) body.seasonalBanner = one(flags, "banner");
+    if (bools.has("clear-banner")) body.seasonalBanner = "";
+    if (flags.has("paywall-headline")) body.paywallHeadline = one(flags, "paywall-headline");
+    if (flags.has("paywall-subhead")) body.paywallSubhead = one(flags, "paywall-subhead");
+    const tips = flags.get("home-tip");
+    if (tips) body.homeTips = tips;
+    const flagArgs = flags.get("flag") ?? [];
+    if (flagArgs.length > 0) {
+      const flagsBody: Record<string, boolean> = {};
+      for (const entry of flagArgs) {
+        const [name, value] = entry.split("=");
+        if (!name || (value !== "true" && value !== "false")) {
+          console.error("Use --flag name=true or --flag name=false");
+          process.exitCode = 1;
+          return;
+        }
+        flagsBody[name] = value === "true";
+      }
+      body.flags = flagsBody;
+    }
+    return call("PATCH", "/api/admin/config", body);
+  }
   help();
   process.exitCode = 1;
 }

@@ -19,6 +19,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { FieldCallCard } from "../components/FieldCallCard";
+import { useRemoteConfig } from "../state/remoteConfig";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
@@ -52,7 +54,8 @@ export const AgeResultScreen = () => {
   const explainable = currentResult?.explainableAge;
   const ageClassLabel = formatAgeClass(explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
   const ageCall = ageCallFromClass(ageClassLabel);
-  useResultFollowUp(Boolean(explainable), explainable ? {
+  const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
     headline: ageClassLabel,
     call: ageCall,
@@ -210,6 +213,16 @@ Powered by RackScore™ AI`;
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="px-6 py-6">
+          {shootOrPass && explainable ? (
+            <FieldCallCard
+              ageYears={explainable.estimatedAgeYears}
+              confidence={explainable.overallConfidence}
+              ageClass={ageClassLabel}
+              cueBullets={explainable.cueBullets ?? explainable.detectedCues}
+              fieldCall={explainable.fieldCall}
+              note={explainable.fieldCallNote}
+            />
+          ) : null}
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}
@@ -554,8 +567,7 @@ Powered by RackScore™ AI`;
           <Pressable
             onPress={async () => {
               if (!currentResult) return;
-
-              console.log("[AgeResult] Starting rack analysis from age result");
+              followUp.markRescan();
 
               // Switch to rack scoring mode FIRST
               setAnalysisMode("score");
@@ -835,9 +847,9 @@ Powered by RackScore™ AI`;
           <Pressable
             onPress={handleNewAnalysis}
             className="flex-1 rounded-xl py-3 items-center justify-center"
-            style={{ backgroundColor: "#22c55e" }}
+            style={{ backgroundColor: "#D4AF37" }}
           >
-            <Text className="text-white font-bold text-base">New Analysis</Text>
+            <Text style={{ color: "#1a1f16", fontWeight: "700" }}>New Analysis</Text>
           </Pressable>
         </View>
       </View>

@@ -12,6 +12,7 @@ import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crocke
 import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
+import { HarvestPanel } from "../components/HarvestPanel";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -75,7 +76,7 @@ export const HistoryDetailScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
@@ -91,6 +92,7 @@ export const HistoryDetailScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
+          <HarvestPanel scanId={result.analysisId} />
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">

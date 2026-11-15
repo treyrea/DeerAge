@@ -275,6 +275,9 @@ export interface ExplainableAgeEstimation {
   imageQuality: "good" | "fair" | "poor";
   occlusionLevel: "none" | "minimal" | "moderate" | "high";
   photoTips?: string[]; // If quality is low, suggest improvements
+  fieldCall?: "Shooter" | "Pass" | "Borderline";
+  fieldCallNote?: string;
+  cueBullets?: { area: string; text: string }[];
 }
 
 export interface PropertyRules {

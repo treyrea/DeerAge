@@ -30,6 +30,7 @@ import {
 } from "../lib/products";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
+import { useRemoteConfig } from "../state/remoteConfig";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -75,6 +76,8 @@ export const TierPaywallScreen = () => {
   const applyCustomerInfo = useSubscriptionStore((s) => s.applyCustomerInfo);
   const restore = useSubscriptionStore((s) => s.restore);
   const fairUsePerDay = useFairUseAllowance();
+  const paywallHeadline = useRemoteConfig((s) => s.copy.paywallHeadline);
+  const paywallSubhead = useRemoteConfig((s) => s.copy.paywallSubhead);
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
@@ -230,9 +233,9 @@ export const TierPaywallScreen = () => {
             </View>
           ) : null}
 
-          <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>Keep aging deer</Text>
+          <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>{paywallHeadline || "Keep aging deer"}</Text>
           <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: 18 }}>
-            Three free analyses are included. A plan is everyday use: {fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.
+            {paywallSubhead || `Three free analyses are included. A plan is everyday use: ${fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.`}
           </Text>
 
           {loading ? <ActivityIndicator color="#D4AF37" /> : null}

@@ -10,6 +10,10 @@ import { useNetworkStore } from "./src/state/networkStore";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
 import { CommunityPrompts } from "./src/components/CommunityPrompts";
+import { UpdateGate } from "./src/components/UpdateGate";
+import { refreshRemoteConfig } from "./src/state/remoteConfig";
+import { useHunterProfile } from "./src/state/hunterProfile";
+import { useHarvestStore } from "./src/state/harvestStore";
 import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefresh } from "./src/lib/push";
 import { useCommunityStore } from "./src/state/communityStore";
 import { View, Text } from "react-native";
@@ -48,6 +52,22 @@ function MainApp() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    void refreshRemoteConfig();
+    let noted = false;
+    const note = () => {
+      if (noted) return;
+      noted = true;
+      useHunterProfile.getState().noteSession();
+    };
+    if (useHunterProfile.persist.hasHydrated()) note();
+    const unsub = useHunterProfile.persist.onFinishHydration(note);
+    Object.values(useHarvestStore.getState().entries).filter((entry) => !entry.synced).forEach((entry) => {
+      useHarvestStore.getState().save(entry);
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -100,6 +120,7 @@ function MainApp() {
         <NavigationContainer>
           <RootNavigator />
           <CommunityPrompts />
+          <UpdateGate />
           <StatusBar style="light" />
         </NavigationContainer>
       </SafeAreaProvider>

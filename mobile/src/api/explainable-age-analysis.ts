@@ -115,5 +115,8 @@ export async function analyzeExplainableAge(
     imageQuality: quality,
     occlusionLevel: "minimal",
     photoTips: quality === "poor" ? ["Use a broadside photo with the whole body in daylight."] : undefined,
+    fieldCall: result.fieldCall === "Shooter" || result.fieldCall === "Pass" || result.fieldCall === "Borderline" ? result.fieldCall : undefined,
+    fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
+    cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
   };
 }

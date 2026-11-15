@@ -21,6 +21,9 @@ Set the Vercel project **Root Directory** to `server`. Framework preset: Other. 
 | `GET` | `/api/admin/poll-results?pollId=` | Admin. Counts split into subscriber and free. |
 | `POST` | `/api/admin/push` | Admin. Broadcast, or `dryRun: true` to count only. |
 | `GET` | `/api/admin/emails` | Admin. CSV export. |
+| `POST` | `/api/harvest` | Mark a scan harvested and store a confirmed age. |
+| `GET` | `/api/admin/harvests` | Admin. CSV of harvest checks. |
+| `GET` `PATCH` | `/api/admin/config` | Admin. Versions, feature flags, and remote copy. |
 
 `POST /api/analyze` body:
 
@@ -113,6 +116,9 @@ npm run admin -- poll:create --question "What should we build next?" --option "R
 npm run admin -- poll:results --id poll_abc123
 npm run admin -- push --title "New poll" --body "Vote on what is next." --audience all --dry-run
 npm run admin -- emails
+npm run admin -- harvests
+npm run admin -- config:set --banner "The rut is on" --flag shootOrPass=true
+npm run admin -- config:get
 ```
 
 `push --dry-run` counts tokens and does not send. `--audience` is `all`, `subscriber`, or `free`. The segment is whatever RevenueCat said the last time that phone registered its token.

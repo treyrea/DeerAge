@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import * as Application from "expo-application";
 import { apiBaseUrl } from "../api/proxy";
 import { useHunterProfile } from "../state/hunterProfile";
+import { useRemoteConfig } from "../state/remoteConfig";
 
 const STORE_URL = "https://apps.apple.com/app/id6755117006";
 
@@ -21,6 +22,7 @@ function compareVersions(installed: string, minimum: string): number {
 export const UpdateAvailableBanner = () => {
   const dismissed = useHunterProfile((s) => s.dismissedUpdateVersion);
   const dismissUpdate = useHunterProfile((s) => s.dismissUpdate);
+  const recommendedVersion = useRemoteConfig((s) => s.recommendedVersion);
   const [minVersion, setMinVersion] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +43,8 @@ export const UpdateAvailableBanner = () => {
   }, []);
 
   const installed = Application.nativeApplicationVersion || Constants.expoConfig?.version || "0.0.0";
-  if (!minVersion || compareVersions(installed, minVersion) >= 0 || dismissed === minVersion) {
+  const target = recommendedVersion || minVersion;
+  if (!target || compareVersions(installed, target) >= 0 || dismissed === target) {
     return null;
   }
 
@@ -63,10 +66,10 @@ export const UpdateAvailableBanner = () => {
       <View style={{ flex: 1, marginLeft: 10 }}>
         <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>Update available</Text>
         <Text style={{ color: "#E5D4B8", fontSize: 13, marginTop: 2 }}>
-          DeerAge {minVersion} is out. This copy is {installed}.
+          DeerAge {target} is out. This copy is {installed}.
         </Text>
       </View>
-      <Pressable onPress={() => dismissUpdate(minVersion)} hitSlop={8}>
+      <Pressable onPress={() => dismissUpdate(target)} hitSlop={8}>
         <Ionicons name="close" size={18} color="#E5D4B8" />
       </Pressable>
     </Pressable>

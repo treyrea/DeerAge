@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 import { fetchFeed } from "../api/community";
 import { unseenFeedCount, useCommunityStore } from "../state/communityStore";
 import { useNetworkStore } from "../state/networkStore";
+import { useRemoteConfig } from "../state/remoteConfig";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -21,6 +22,7 @@ export const FeedHomeCard = () => {
   const isOnline = isConnected && isInternetReachable !== false;
 
   const [stale, setStale] = useState(false);
+  const feedOn = useRemoteConfig((s) => s.flags.feed);
 
   useFocusEffect(useCallback(() => {
     if (!isOnline) {
@@ -42,6 +44,7 @@ export const FeedHomeCard = () => {
     };
   }, [isOnline, setCachedFeed]));
 
+  if (!feedOn) return null;
   const visibleAnnouncements = feed?.announcements.filter((item) => !dismissedIds.includes(item.id)) ?? [];
   const visiblePolls = feed?.polls.filter((item) => !dismissedIds.includes(item.id)) ?? [];
   if (visibleAnnouncements.length + visiblePolls.length === 0) return null;

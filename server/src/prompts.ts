@@ -60,6 +60,8 @@ Reject the photo when it is not a deer, only a head or mount, or too poor to see
 
 ageYears is only the midpoint of a class, used to combine frames. The hunter is shown the class (1.5–2.5, 2.5–3.5, 3.5–4.5, 4.5–5.5, or 5.5+), never a single year. ageCall is "young" under 3.5, "middle-aged" at 3.5, and "mature" at 4.5 or older.
 meetsMinimum is true when ageYears is at least the hunter's shooter goal.
+Also return fieldCall and cueBullets. fieldCall is "Shooter" when the body is likely 4.5 or older, "Pass" when it is likely under 4.5, and "Borderline" when the photo does not settle it. Say the uncertainty in fieldCallNote. Do not claim an exact age.
+cueBullets is 3 to 5 short checks a hunter can see: area is one of Body, Neck, Belly, Legs, Face, Chest, Rack, and text is one short clause.
 topCues is up to 3 short body observations a hunter can check.
 cues is the same observations with name chosen from: neck_thickness, chest_depth, brisket, backline, belly, leg_proportion, face_shape, rump_ham, waist_tuck, muscle_definition.
 indicator is immature, transitional, mature, or post-mature.
@@ -75,6 +77,9 @@ JSON shape:
   "explanation": "One sentence a hunter can read.",
   "imageQuality": "good",
   "topCues": ["Neck blends into the chest"],
+  "fieldCall": "Shooter",
+  "fieldCallNote": "The body reads mature. This is a field read, not a known age.",
+  "cueBullets": [{"area":"Neck","text":"Blends into the chest"},{"area":"Belly","text":"A little sag, not a paunch"}],
   "cues": [{"name":"neck_thickness","displayName":"Neck","pattern":"blends into the chest","confidence":70,"indicator":"mature"}],
   "scale": {"pixelsPerInch": 12, "noseToEyeInches": 7, "earSpreadInches": 15, "method": "hybrid", "confidence": "Med", "note": "how you scaled it"}
 }`;
@@ -86,7 +91,9 @@ export function quickPrompt(context: HuntContext | undefined): string {
 ${contextBlock(context)}
 
 Judge exactly three body features: neck-to-brisket, chest depth versus the hindquarter, and leg-to-body proportion. Antlers are not the decision.
-decision is "SHOOT" when the body reads at or above the hunter's shooter goal, otherwise "LET WALK".
+decision is "SHOOT" when the body reads at or above the hunter's shooter goal, otherwise "LET WALK". Keep that field.
+Also return fieldCall: "Shooter" if likely 4.5 or older, "Pass" if likely under 4.5, "Borderline" if the photo does not settle it. fieldCallNote states the uncertainty and does not claim an exact age.
+cueBullets is 3 short checks. area is Body, Neck, Belly, Legs, Face, or Chest.
 If the photo is not a deer or the body is not visible, set isValidImage false and invalidImageReason to not_deer, head_mount, no_body_visible, or poor_quality.
 
 JSON shape:
@@ -107,7 +114,10 @@ JSON shape:
     "chestHindquarterRatio": {"pattern":"chest about even with the ham","indicator":"transitional","confidence":60},
     "legBodyProportion": {"pattern":"legs still look long","indicator":"immature","confidence":55}
   },
-  "topCues": ["Neck still has a seam"]
+  "topCues": ["Neck still has a seam"],
+  "fieldCall": "Pass",
+  "fieldCallNote": "The body reads young. This is a field read, not a known age.",
+  "cueBullets": [{"area":"Neck","text":"Still meets the chest in a seam"},{"area":"Legs","text":"Look long for the chest"}]
 }`;
 }
 

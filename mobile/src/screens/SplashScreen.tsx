@@ -7,6 +7,7 @@ import React, { useEffect } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { DeerMark } from "../components/DeerMark";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -88,11 +89,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           <View
             style={{
               position: "absolute",
-              opacity: 0.08,
+              opacity: 0.22,
               top: "20%",
             }}
           >
-            <Text style={{ fontSize: 180, color: "#F5F5DC" }}>🦌</Text>
+            <DeerMark size={220} color="#F5F5DC" opacity={0.9} />
           </View>
 
           <Animated.View

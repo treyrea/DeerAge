@@ -14,6 +14,7 @@ import {
   reserveSpend,
 } from "./limits.js";
 import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai.js";
+import { fieldBundle } from "./field-call.js";
 import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts.js";
 import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring.js";
 
@@ -308,12 +309,15 @@ async function runQuick(image: string, context: HuntContext, usage: TokenUsage) 
   const ageYears = roundHalf(num(raw.ageYears) || 3.5);
   const goal = context.minimumShooterAge ?? 4.5;
   const decision = raw.decision === "SHOOT" || raw.decision === "LET WALK" ? raw.decision : ageYears >= goal ? "SHOOT" : "LET WALK";
+  const confidence = Math.max(0, Math.min(100, Math.round(num(raw.confidence) || 50)));
   return {
     ...raw,
     decision,
     ageYears,
+    confidence,
     isValidImage: true,
     disclaimer: "Age estimates are based on proportional body characteristics and represent age classes, not exact age.",
+    ...fieldBundle(ageYears, confidence, raw.cueBullets ?? raw.cues, raw.topCues),
   };
 }
 
@@ -409,6 +413,7 @@ async function runAge(images: string[], context: HuntContext, usage: TokenUsage)
     shooterPassReason: closest.explanation || `Across ${frames.length} frame${frames.length === 1 ? "" : "s"}, the body reads ${callLabel} (${ageYears} years).`,
     topCues: closest.topCues,
     cues: closest.cues,
+    ...fieldBundle(ageYears, confidence, closest.cues, closest.topCues, spread),
     imageQuality: closest.imageQuality,
     scale: frames.find((frame) => frame.scale.pixelsPerInch > 0)?.scale ?? closest.scale,
     frameVotes: years,
@@ -451,7 +456,13 @@ async function runScore(images: string[], context: HuntContext, usage: TokenUsag
       message: "The rack couldn't be measured in this photo. Try a clearer, head-on shot of the antlers.",
     };
   }
-  return { ...merged, frameCount: usable.length, consensus: "median-measurements" };
+  const rackConfidence = merged.confidence === "High" ? 80 : merged.confidence === "Low" ? 40 : 60;
+  return {
+    ...merged,
+    frameCount: usable.length,
+    consensus: "median-measurements",
+    ...fieldBundle(merged.ageYears, rackConfidence, merged.topCues, merged.topCues),
+  };
 }
 
 async function runBaseline(image: string, usage: TokenUsage) {

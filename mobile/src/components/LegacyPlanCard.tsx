@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 import { isLegacyProduct } from "../lib/products";
 import { useCommunityStore } from "../state/communityStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useRemoteConfig } from "../state/remoteConfig";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -15,8 +16,9 @@ export const LegacyPlanCard = () => {
   const activeProductIds = useSubscriptionStore((s) => s.activeProductIds);
   const dismissed = useCommunityStore((s) => s.legacyCardDismissed);
   const dismiss = useCommunityStore((s) => s.dismissLegacyCard);
+  const legacyOn = useRemoteConfig((s) => s.flags.legacyCard);
   const onLegacyPlan = activeProductIds.some((id) => isLegacyProduct(id));
-  if (!onLegacyPlan || dismissed) return null;
+  if (!legacyOn || !onLegacyPlan || dismissed) return null;
 
   return (
     <View style={{

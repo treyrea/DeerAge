@@ -272,4 +272,43 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(third.status, 429);
     assert.equal(payload(third).code, "rate_limited");
   });
+
+  test("remote config edits flags and copy and keeps the old minVersion field", async () => {
+    const saved = await route(request("PATCH", "/api/admin/config", {
+      seasonalBanner: "The rut is on",
+      paywallHeadline: "A season of reads",
+      flags: { shootOrPass: false },
+      homeTips: ["Broadside, whole body"],
+    }, ADMIN));
+    assert.equal(saved.status, 200);
+    const config = await route(request("GET", "/api/config"));
+    assert.equal(config.status, 200);
+    assert.equal(payload(config).minVersion, "1.0.8");
+    assert.equal(payload(config).copy.seasonalBanner, "The rut is on");
+    assert.equal(payload(config).copy.paywallHeadline, "A season of reads");
+    assert.equal(payload(config).flags.shootOrPass, false);
+    assert.equal(payload(config).flags.feed, true);
+  });
+
+  test("a harvest is stored once per scan and exports as CSV", async () => {
+    const marked = await route(request("POST", "/api/harvest", {
+      appUserId: "free_harvest_user",
+      scanId: "scan_1",
+      harvested: true,
+    }));
+    assert.equal(marked.status, 200);
+    const aged = await route(request("POST", "/api/harvest", {
+      appUserId: "free_harvest_user",
+      scanId: "scan_1",
+      confirmedAge: "4.5",
+      method: "jawbone",
+      notes: "Incisors worn",
+    }));
+    assert.equal(payload(aged).harvest.confirmedAge, "4.5");
+    assert.equal(payload(aged).harvest.method, "jawbone");
+    const csv = await route(request("GET", "/api/admin/harvests", undefined, ADMIN));
+    assert.equal(csv.status, 200);
+    assert.match(csv.text ?? "", /free_harvest_user,scan_1,yes/);
+    assert.match(csv.text ?? "", /4\.5,jawbone,Incisors worn/);
+  });
 });

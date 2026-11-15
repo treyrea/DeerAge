@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
+import { DeerMark } from "../components/DeerMark";
 
 // Custom rack ruler icon for Score My Rack
 const RackRulerIcon = require("../../assets/image-1765760310.png");
@@ -92,7 +93,7 @@ export const ModeSelectScreen = () => {
         {/* Mode Icon */}
         <View className="items-center mb-8" style={{ height: 100, justifyContent: "center" }}>
           {isAgeMode ? (
-            <Text style={{ fontSize: 80 }}>🦌</Text>
+            <DeerMark size={88} color="#F5F5DC" />
           ) : (
             <View
               style={{

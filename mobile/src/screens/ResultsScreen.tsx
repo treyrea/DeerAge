@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { FieldCallCard } from "../components/FieldCallCard";
+import { useRemoteConfig } from "../state/remoteConfig";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { useNavigation } from "@react-navigation/native";
@@ -135,7 +137,8 @@ export const ResultsScreen = () => {
   }, [currentResult, hasSaved, saveToHistory]);
 
   const ageLabel = formatAgeClass(currentResult?.explainableAge?.estimatedAge ?? currentResult?.age?.estimatedAge);
-  useResultFollowUp(Boolean(currentResult), currentResult ? {
+  const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const followUp = useResultFollowUp(Boolean(currentResult), currentResult ? {
     imageUri: currentResult.capturedFrames?.[0]?.imageUri,
     headline: ageLabel,
     call: ageCallFromClass(ageLabel),
@@ -364,6 +367,17 @@ export const ResultsScreen = () => {
             </Pressable>
           )}
 
+          {shootOrPass && currentResult ? (
+            <FieldCallCard
+              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || 3.5}
+              confidence={currentResult.explainableAge?.overallConfidence ?? 60}
+              ageClass={displayedAge}
+              cueBullets={currentResult.explainableAge?.cueBullets ?? currentResult.explainableAge?.detectedCues}
+              fieldCall={currentResult.explainableAge?.fieldCall}
+              note={currentResult.explainableAge?.fieldCallNote}
+              scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C` : undefined}
+            />
+          ) : null}
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>
@@ -1159,8 +1173,7 @@ export const ResultsScreen = () => {
           <Pressable
             onPress={async () => {
               if (!currentResult) return;
-
-              console.log("[Results] Starting age analysis from rack result");
+              followUp.markRescan();
 
               // Switch to age estimation mode FIRST
               setAnalysisMode("age");
