@@ -9,7 +9,9 @@ import { allowBucket, ensureRedis, kv, membersOf, readJson, redisSet } from "./k
 import { sendReportReplyPush } from "./outreach.js";
 import { createHash } from "node:crypto";
 import { abuseFlags } from "./abuse.js";
-import { grantPromotionalMonth } from "./entitlement.js";
+import { activePayingCount, attemptFreeMonthGrant } from "./entitlement.js";
+import { freeMonthCap, inChicagoMonth } from "./free-month.js";
+import { monthStamp } from "./limits.js";
 import { disputeReply, proofEffect, proofMethodOf, type ProofMethod } from "./proof.js";
 import { STILL_WORKING, TRACKER_DEFAULTS, dueAtFrom, isOverdue, stepText, trackerStepOf, type TrackerStep, type TrackerUpdate } from "./tracker.js";
 import { loadSecondLook } from "./second-look.js";
@@ -75,6 +77,8 @@ export interface FeedbackRecord {
   updates: TrackerUpdate[];
   owedAt: string | null;
   freeMonthGrantedAt: string | null;
+  grantReason: "auto" | "manual" | null;
+  autoGrantError: string | null;
   photoHash: string | null;
   subscribedAt: string | null;
   photoDeletedAt: string | null;
@@ -153,6 +157,8 @@ function filled(record: Partial<FeedbackRecord> & Pick<FeedbackRecord, "id" | "a
     updates: [],
     owedAt: null,
     freeMonthGrantedAt: null,
+    grantReason: null,
+    autoGrantError: null,
     photoHash: null,
     subscribedAt: null,
     photoDeletedAt: null,
@@ -240,6 +246,42 @@ function moveTracker(record: FeedbackRecord, step: TrackerStep, expected = TRACK
   record.replyRead = false;
 }
 
+async function flagsFor(record: FeedbackRecord, records: FeedbackRecord[]): Promise<string[]> {
+  const owners = record.photoHash ? await membersOf(`deerage:photohash:${record.photoHash}`) : [];
+  const mine = records.filter((item) => item.appUserId === record.appUserId && item.kind === "wrong_call");
+  const recentReportCount = mine.filter((item) => Date.now() - Date.parse(item.createdAt) <= 30 * 24 * 60 * 60 * 1000).length;
+  return abuseFlags({
+    appUserId: record.appUserId,
+    createdAt: record.createdAt,
+    reportedAge: record.reportedAge,
+    proofMethod: record.proofMethod,
+    photoHash: record.photoHash,
+    subscribedAt: record.subscribedAt,
+    grants: mine.map((item) => item.freeMonthGrantedAt).filter((at): at is string => Boolean(at)),
+    recentReportCount,
+    hashOwners: owners,
+  });
+}
+
+async function tryAutoGrant(record: FeedbackRecord): Promise<void> {
+  const others = await loadAll();
+  const flags = await flagsFor(record, [...others, record]);
+  if (flags.length > 0) return;
+  const subscribers = await activePayingCount();
+  const cap = freeMonthCap(subscribers ?? 10);
+  const autoThisMonth = others.filter((item) => item.grantReason === "auto" && inChicagoMonth(item.freeMonthGrantedAt)).length;
+  if (autoThisMonth >= cap) return;
+  const result = await attemptFreeMonthGrant(record.appUserId);
+  if (result !== "granted") {
+    record.autoGrantError = result === "no_key" ? "RevenueCat secret is not set." : "RevenueCat did not grant the month.";
+    return;
+  }
+  record.freeMonthGrantedAt = new Date().toISOString();
+  record.grantReason = "auto";
+  record.autoGrantError = null;
+  moveTracker(record, "verdict");
+}
+
 export async function saveFeedback(input: {
   appUserId: string;
   scanId: string;
@@ -298,6 +340,9 @@ export async function saveFeedback(input: {
   if (input.proofMethod && input.reportedAge) {
     const ageYears = Number(input.reportedAge);
     if (Number.isFinite(ageYears)) applyProof(record, input.proofMethod, ageYears, input.minimum ?? 4.5);
+  }
+  if (record.freeMonthOwed && !record.freeMonthGrantedAt && !record.autoGrantError) {
+    await tryAutoGrant(record);
   }
   await storeRecord(record);
   await kv().command(["SADD", INDEX, record.id]);
@@ -752,11 +797,18 @@ export async function handleOwed(req: Incoming): Promise<Outgoing> {
     await allowBucket("admin", `admin:${callerKey(req)}`, limitFromEnv("ADMIN_RATE_LIMIT_PER_MINUTE", 30));
     requireAdmin(req);
     const records = await loadAll();
-    const owed = records.filter((record) => record.freeMonthOwed && !record.freeMonthGrantedAt).map((record) => {
+    const owed = await Promise.all(records.filter((record) => record.freeMonthOwed && !record.freeMonthGrantedAt).map(async (record) => {
       const owedAt = record.owedAt ?? record.createdAt;
       const hoursWaiting = Math.max(0, (Date.now() - Date.parse(owedAt)) / (60 * 60 * 1000));
-      return { id: record.id, appUserId: record.appUserId, owedAt, hoursWaiting: Math.round(hoursWaiting * 10) / 10 };
-    });
+      return {
+        id: record.id,
+        appUserId: record.appUserId,
+        owedAt,
+        hoursWaiting: Math.round(hoursWaiting * 10) / 10,
+        flags: await flagsFor(record, records),
+        autoGrantError: record.autoGrantError,
+      };
+    }));
     return ok({ owed });
   } catch (error) {
     return catchApi(error, "Couldn't list owed months.");
@@ -774,18 +826,47 @@ export async function handleGrant(req: Incoming): Promise<Outgoing> {
     if (!record) throw new ApiError(404, "invalid_request", "No report with that id.");
     if (!record.freeMonthOwed) throw new ApiError(400, "invalid_request", "That report does not have a free month owed.");
     if (record.freeMonthGrantedAt) return ok({ id: record.id, granted: true, grantedInStore: false, already: true });
-    let grantedInStore = false;
-    try {
-      grantedInStore = await grantPromotionalMonth(record.appUserId);
-    } catch {
-      return fail(502, "upstream", "RevenueCat did not grant the month. It is still owed.");
-    }
+    const result = await attemptFreeMonthGrant(record.appUserId);
+    if (result === "failed") return fail(502, "upstream", "RevenueCat did not grant the month. It is still owed.");
+    const grantedInStore = result === "granted";
     record.freeMonthGrantedAt = new Date().toISOString();
+    record.grantReason = "manual";
     moveTracker(record, "verdict");
     await storeRecord(record);
     const pushSent = await sendReportReplyPush(record.appUserId);
     return ok({ id: record.id, granted: true, grantedInStore, pushSent });
   } catch (error) {
     return catchApi(error, "Couldn't grant that month.");
+  }
+}
+
+export async function handleFreeMonths(req: Incoming): Promise<Outgoing> {
+  if (req.method !== "GET") return fail(405, "invalid_request", "Use GET.");
+  try {
+    ensureRedis();
+    await allowBucket("admin", `admin:${callerKey(req)}`, limitFromEnv("ADMIN_RATE_LIMIT_PER_MINUTE", 30));
+    requireAdmin(req);
+    const records = await loadAll();
+    const grants = records.filter((record) => inChicagoMonth(record.freeMonthGrantedAt));
+    const auto = grants.filter((record) => record.grantReason === "auto").length;
+    const manual = grants.length - auto;
+    const subscribers = await activePayingCount();
+    const cap = freeMonthCap(subscribers ?? 10);
+    return ok({
+      month: monthStamp(),
+      auto,
+      manual,
+      cap,
+      paused: auto >= cap,
+      activeSubscribers: subscribers ?? 10,
+      grants: grants.map((record) => ({
+        id: record.id,
+        appUserId: record.appUserId,
+        grantedAt: record.freeMonthGrantedAt,
+        reason: record.grantReason ?? "manual",
+      })),
+    });
+  } catch (error) {
+    return catchApi(error, "Couldn't list free months.");
   }
 }

@@ -24,6 +24,7 @@
     "api/admin/report-step.ts": { "maxDuration": 15 },
     "api/admin/owed.ts": { "maxDuration": 15 },
     "api/admin/grant.ts": { "maxDuration": 15 },
+    "api/admin/free-months.ts": { "maxDuration": 15 },
     "api/admin/report-cases.ts": { "maxDuration": 15 },
     "api/admin/report-image.ts": { "maxDuration": 15 },
     "api/replies.ts": { "maxDuration": 10 },

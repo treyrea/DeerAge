@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { abuseFlags } from "./abuse.js";
 import { proofEffect } from "./proof.js";
+import { freeMonthCap } from "./free-month.js";
 import { isOverdue } from "./tracker.js";
 
 test("a lab tooth age that disagrees with a firm call owes a free month", () => {
@@ -37,4 +38,10 @@ test("abuse flags mark a repeat month, a new subscriber, a shared photo, and a m
   assert.deepEqual(flags, ["repeat_free_month", "many_reports", "new_subscriber", "same_photo", "no_proof"]);
   assert.equal(isOverdue("verdict", new Date(now - 1000).toISOString(), now), false);
   assert.equal(isOverdue("studying", new Date(now - 1000).toISOString(), now), true);
+});
+
+test("the free-month cap is the larger of the minimum and the percent of subscribers", () => {
+  assert.equal(freeMonthCap(10, { FREE_MONTH_CAP_MIN: "10", FREE_MONTH_CAP_PCT: "5" } as NodeJS.ProcessEnv), 10);
+  assert.equal(freeMonthCap(400, { FREE_MONTH_CAP_MIN: "10", FREE_MONTH_CAP_PCT: "5" } as NodeJS.ProcessEnv), 20);
+  assert.equal(freeMonthCap(0, { FREE_MONTH_CAP_MIN: "10", FREE_MONTH_CAP_PCT: "5" } as NodeJS.ProcessEnv), 10);
 });

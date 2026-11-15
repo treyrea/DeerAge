@@ -511,4 +511,84 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(waiting.status, 200);
     assert.match(payload(waiting).text, /Still working on it/);
   });
+
+  test("a clean free month is granted automatically, and a flagged or over-cap case waits", async () => {
+    const { setGrantForTests } = await import("./entitlement.js");
+    const previousMin = process.env.FREE_MONTH_CAP_MIN;
+    const previousPct = process.env.FREE_MONTH_CAP_PCT;
+    process.env.FREE_MONTH_CAP_MIN = "1";
+    process.env.FREE_MONTH_CAP_PCT = "0";
+    setGrantForTests(async () => "granted");
+    try {
+      const clean = await route(request("POST", "/api/call-report", {
+        appUserId: "free_auto_user",
+        scanId: "scan_auto",
+        kind: "wrong_call",
+        fieldCall: "SHOOTER",
+        reportedAge: "2.5",
+        proofMethod: "lab_tooth",
+        minimum: 4.5,
+      }));
+      assert.equal(clean.status, 200);
+      const thread = await route(request("GET", "/api/replies?appUserId=free_auto_user"));
+      const note = (payload(thread).messages as Array<{ reply?: string; tracker?: { step: string } }>).find((item) => (item.reply ?? "").includes("free month"));
+      assert.match(note?.reply ?? "", /free month was added/i);
+      assert.equal(note?.tracker?.step, "verdict");
+      const listed = await route(request("GET", "/api/admin/free-months", undefined, ADMIN));
+      assert.equal(payload(listed).auto, 1);
+      assert.equal(payload(listed).cap, 1);
+      assert.equal(payload(listed).paused, true);
+      assert.equal(payload(listed).grants[0].reason, "auto");
+      const held = await route(request("POST", "/api/call-report", {
+        appUserId: "free_auto_user_two",
+        scanId: "scan_auto_two",
+        kind: "wrong_call",
+        fieldCall: "SHOOTER",
+        reportedAge: "2.5",
+        proofMethod: "lab_tooth",
+        minimum: 4.5,
+      }));
+      const owed = await route(request("GET", "/api/admin/owed", undefined, ADMIN));
+      const waiting = (payload(owed).owed as Array<{ id: string; flags: string[]; autoGrantError: string | null }>).find((item) => item.id === payload(held).id);
+      assert.ok(waiting);
+      assert.equal(waiting?.autoGrantError, null);
+      const missingKey = await route(request("POST", "/api/call-report", {
+        appUserId: "free_nokey_user",
+        scanId: "scan_nokey",
+        kind: "wrong_call",
+        fieldCall: "LET WALK",
+        reportedAge: "6.5",
+        proofMethod: "lab_tooth",
+        minimum: 4.5,
+        subscribedAt: new Date().toISOString(),
+      }));
+      const flagged = (payload(await route(request("GET", "/api/admin/owed", undefined, ADMIN))).owed as Array<{ id: string; flags: string[]; autoGrantError: string | null }>).find((item) => item.id === payload(missingKey).id);
+      assert.ok(flagged?.flags.includes("new_subscriber"));
+      assert.equal(flagged?.autoGrantError, null);
+    } finally {
+      setGrantForTests(null);
+      if (previousMin === undefined) delete process.env.FREE_MONTH_CAP_MIN;
+      else process.env.FREE_MONTH_CAP_MIN = previousMin;
+      if (previousPct === undefined) delete process.env.FREE_MONTH_CAP_PCT;
+      else process.env.FREE_MONTH_CAP_PCT = previousPct;
+    }
+  });
+
+  test("a missing RevenueCat key records the error and does not grant", async () => {
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_error_user",
+      scanId: "scan_error",
+      kind: "wrong_call",
+      fieldCall: "SHOOTER",
+      reportedAge: "1.5",
+      proofMethod: "jawbone",
+      minimum: 4.5,
+    }));
+    const owed = await route(request("GET", "/api/admin/owed", undefined, ADMIN));
+    const row = (payload(owed).owed as Array<{ id: string; autoGrantError: string | null }>).find((item) => item.id === payload(saved).id);
+    assert.match(row?.autoGrantError ?? "", /not set/);
+    const again = await route(request("GET", "/api/admin/owed", undefined, ADMIN));
+    const still = (payload(again).owed as Array<{ id: string; autoGrantError: string | null }>).find((item) => item.id === payload(saved).id);
+    assert.equal(still?.autoGrantError, row?.autoGrantError);
+  });
 });
