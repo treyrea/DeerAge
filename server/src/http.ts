@@ -5,7 +5,7 @@
 
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
 import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
-import { handleAdminFeedbackRequest, handleAdminReply, handleCallReport, handleDeleteReportPhoto, handleReportCases, handleReportImage, handleReplies, handleRescan, handleRescanAnswer } from "./feedback.js";
+import { handleAdminFeedbackRequest, handleAdminReply, handleCallReport, handleDeleteReportPhoto, handleGrant, handleOwed, handleReportCases, handleReportImage, handleReportStep, handleReplies, handleRescan, handleRescanAnswer } from "./feedback.js";
 import { handleSecondLook } from "./second-look.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
@@ -70,6 +70,9 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/call-report") return handleCallReport(req);
   if (path === "/api/admin/feedback") return handleAdminFeedbackRequest(req);
   if (path === "/api/admin/reply") return handleAdminReply(req);
+  if (path === "/api/admin/report-step") return handleReportStep(req);
+  if (path === "/api/admin/owed") return handleOwed(req);
+  if (path === "/api/admin/grant") return handleGrant(req);
   if (path === "/api/admin/report-cases") return handleReportCases(req);
   if (path === "/api/admin/report-image") return handleReportImage(req);
   if (path === "/api/replies") return handleReplies(req);

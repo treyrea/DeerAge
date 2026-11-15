@@ -79,6 +79,14 @@ export interface DeerMessage {
   offerRescan: boolean;
   dispute?: boolean;
   secondLook?: SecondLook | null;
+  tracker?: {
+    step: string;
+    label: string;
+    expected: string;
+    overdue: boolean;
+    steps: { id: string; label: string; current: boolean }[];
+  };
+  updates?: { at: string; step: string; text: string }[];
   originalCall: string;
   originalAge: string;
   rescan: { fieldCall: string; ageYears: number | null; note: string } | null;

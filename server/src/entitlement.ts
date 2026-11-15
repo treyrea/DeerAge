@@ -27,6 +27,24 @@ export function revenueCatConfigured(): boolean {
   return secret().length > 0;
 }
 
+function grantKey(): string {
+  return process.env.REVENUECAT_SECRET_KEY?.trim() || process.env.REVENUECAT_SECRET_API_KEY?.trim() || "";
+}
+
+/** Grants one promotional month when a secret is set. Returns false when it is not. */
+export async function grantPromotionalMonth(appUserId: string): Promise<boolean> {
+  const key = grantKey();
+  if (!key) return false;
+  const entitlement = process.env.REVENUECAT_ENTITLEMENT_ID?.trim() || "deerage_pro";
+  const response = await fetch(`${RC_BASE}/${encodeUser(appUserId)}/entitlements/${encodeURIComponent(entitlement)}/promotional`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ duration: "monthly" }),
+  });
+  if (!response.ok) throw new Error(`revenuecat_grant_${response.status}`);
+  return true;
+}
+
 function isActive(entitlement: RcEntitlement | undefined): boolean {
   if (!entitlement) return false;
   if (!entitlement.expires_date) return true;

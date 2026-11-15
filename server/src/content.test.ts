@@ -475,4 +475,40 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.doesNotMatch(message?.reply ?? "", /you're wrong/i);
     setSecondLookRunnerForTests(null);
   });
+
+  test("a report starts at Received, an overdue note waits for approval, and a free month is listed until granted", async () => {
+    const saved = await route(request("POST", "/api/call-report", {
+      appUserId: "free_owed_user",
+      scanId: "scan_owed",
+      kind: "wrong_call",
+      fieldCall: "SHOOTER",
+      reportedAge: "2.5",
+      proofMethod: "lab_tooth",
+      minimum: 4.5,
+      subscribedAt: new Date().toISOString(),
+    }));
+    const id = payload(saved).id as string;
+    assert.equal(payload(saved).trackerStep, "reviewing");
+    const thread = await route(request("GET", "/api/replies?appUserId=free_owed_user"));
+    const message = (payload(thread).messages as Array<{ tracker?: { step: string; expected: string }; updates?: unknown[] }>).find((item) => item.tracker);
+    assert.equal(message?.tracker?.step, "reviewing");
+    assert.ok((message?.updates ?? []).length >= 1);
+    const owed = await route(request("GET", "/api/admin/owed", undefined, ADMIN));
+    const row = (payload(owed).owed as Array<{ id: string; appUserId: string; hoursWaiting: number }>).find((item) => item.id === id);
+    assert.equal(row?.appUserId, "free_owed_user");
+    assert.ok((row?.hoursWaiting ?? -1) >= 0);
+    const grant = await route(request("POST", "/api/admin/grant", { id }, ADMIN));
+    assert.equal(payload(grant).granted, true);
+    assert.equal(payload(grant).grantedInStore, false);
+    const after = await route(request("GET", "/api/admin/owed", undefined, ADMIN));
+    assert.equal((payload(after).owed as Array<{ id: string }>).some((item) => item.id === id), false);
+    const verdict = await route(request("GET", "/api/replies?appUserId=free_owed_user"));
+    const done = (payload(verdict).messages as Array<{ reply?: string }>).find((item) => (item.reply ?? "").includes("free month"));
+    assert.match(done?.reply ?? "", /free month was added/i);
+    const late = await route(request("POST", "/api/admin/report-step", { id, step: "studying", hours: 0 }, ADMIN));
+    assert.equal(payload(late).overdue, true);
+    const waiting = await route(request("POST", "/api/admin/report-step", { id, approveOverdue: true, expected: "Usually within 24 hours" }, ADMIN));
+    assert.equal(waiting.status, 200);
+    assert.match(payload(waiting).text, /Still working on it/);
+  });
 });

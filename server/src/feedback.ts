@@ -7,7 +7,11 @@
 import { randomBytes } from "node:crypto";
 import { allowBucket, ensureRedis, kv, membersOf, readJson, redisSet } from "./kv.js";
 import { sendReportReplyPush } from "./outreach.js";
+import { createHash } from "node:crypto";
+import { abuseFlags } from "./abuse.js";
+import { grantPromotionalMonth } from "./entitlement.js";
 import { disputeReply, proofEffect, proofMethodOf, type ProofMethod } from "./proof.js";
+import { STILL_WORKING, TRACKER_DEFAULTS, dueAtFrom, isOverdue, stepText, trackerStepOf, type TrackerStep, type TrackerUpdate } from "./tracker.js";
 import { loadSecondLook } from "./second-look.js";
 import { deleteReportImages, readReportImage, reportImageSignatureOk, safeImageFile, saveReportImage, signedImagePath } from "./report-media.js";
 import { rescanKeptPhoto } from "./report-rescan.js";
@@ -65,6 +69,14 @@ export interface FeedbackRecord {
   freeMonthOwed: boolean;
   proofReview: boolean;
   dispute: boolean;
+  trackerStep: TrackerStep;
+  trackerDueAt: string | null;
+  trackerExpected: string;
+  updates: TrackerUpdate[];
+  owedAt: string | null;
+  freeMonthGrantedAt: string | null;
+  photoHash: string | null;
+  subscribedAt: string | null;
   photoDeletedAt: string | null;
   resolvedAt: string | null;
   retainUntil: string | null;
@@ -135,6 +147,14 @@ function filled(record: Partial<FeedbackRecord> & Pick<FeedbackRecord, "id" | "a
     freeMonthOwed: false,
     proofReview: false,
     dispute: false,
+    trackerStep: "received",
+    trackerDueAt: null,
+    trackerExpected: "",
+    updates: [],
+    owedAt: null,
+    freeMonthGrantedAt: null,
+    photoHash: null,
+    subscribedAt: null,
     photoDeletedAt: null,
     resolvedAt: null,
     retainUntil: null,
@@ -197,10 +217,27 @@ function applyProof(record: FeedbackRecord, method: ProofMethod, ageYears: numbe
   record.proofReview = effect === "review";
   if (effect === "free_month") {
     record.freeMonthOwed = true;
+    record.owedAt = record.owedAt ?? new Date().toISOString();
     record.status = "open";
+    moveTracker(record, "reviewing");
   } else if (effect === "review") {
     record.status = "open";
+    moveTracker(record, "reviewing");
   }
+}
+
+function moveTracker(record: FeedbackRecord, step: TrackerStep, expected = TRACKER_DEFAULTS[step].expected, hours = TRACKER_DEFAULTS[step].hours): void {
+  const now = new Date().toISOString();
+  record.trackerStep = step;
+  record.trackerExpected = expected;
+  record.trackerDueAt = step === "verdict" ? null : dueAtFrom(Date.now(), hours);
+  const text = step === "verdict" && record.freeMonthGrantedAt
+    ? "Verdict. Your free month was added."
+    : stepText(step, expected);
+  record.updates = [...(record.updates ?? []), { at: now, step, text }];
+  record.reply = text;
+  record.replyAt = now;
+  record.replyRead = false;
 }
 
 export async function saveFeedback(input: {
@@ -218,6 +255,7 @@ export async function saveFeedback(input: {
   resultSnapshot?: unknown;
   proofMethod?: ProofMethod | null;
   minimum?: number;
+  subscribedAt?: string | null;
 }): Promise<{ record: FeedbackRecord; photoStored: boolean }> {
   const photo = typeof input.photoBase64 === "string" ? input.photoBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "") : "";
   const photoStored = photo.length > 0 && photo.length <= MAX_PHOTO;
@@ -238,6 +276,7 @@ export async function saveFeedback(input: {
     keepPhoto: input.kind === "wrong_call",
     resultSnapshot: input.kind === "wrong_call" ? snapshot : null,
     status: "open",
+    subscribedAt: input.subscribedAt ?? null,
     createdAt: new Date().toISOString(),
   });
   if (input.kind === "wrong_call" && Array.isArray(input.scanImages)) {
@@ -249,7 +288,13 @@ export async function saveFeedback(input: {
       }
     }
     record.imageFiles = files;
+    const first = input.scanImages.find((item) => typeof item === "string" && item.length > 0) as string | undefined;
+    if (first) {
+      record.photoHash = createHash("sha256").update(first).digest("hex");
+      await kv().command(["SADD", `deerage:photohash:${record.photoHash}`, userKey(input.appUserId)]);
+    }
   }
+  if (input.kind === "wrong_call") moveTracker(record, "received");
   if (input.proofMethod && input.reportedAge) {
     const ageYears = Number(input.reportedAge);
     if (Number.isFinite(ageYears)) applyProof(record, input.proofMethod, ageYears, input.minimum ?? 4.5);
@@ -318,6 +363,7 @@ export async function handleCallReport(req: Incoming): Promise<Outgoing> {
       followUpEmail: optionalEmail(body.followUpEmail),
       proofMethod: proofMethodOf(body.proofMethod),
       minimum: Number(body.minimum) || 4.5,
+      subscribedAt: typeof body.subscribedAt === "string" && body.subscribedAt ? body.subscribedAt : null,
       keepPhoto: body.keepPhoto === true,
       scanImages: body.scanImages,
       resultSnapshot: body.resultSnapshot,
@@ -327,7 +373,9 @@ export async function handleCallReport(req: Incoming): Promise<Outgoing> {
       scanId: saved.record.scanId,
       photoStored: saved.photoStored,
       imagesKept: saved.record.imageFiles.length,
+      trackerStep: saved.record.trackerStep,
     });
+    if (saved.record.kind === "wrong_call") await sendReportReplyPush(saved.record.appUserId);
   } catch (error) {
     return catchApi(error, "Couldn't save that note.");
   }
@@ -374,7 +422,29 @@ export async function handleAdminFeedbackRequest(req: Incoming): Promise<Outgoin
       };
     }
     const includeContact = queryParam(req, "includeContact") === "1";
-    return ok({ reports: records.map((record) => jsonRow(record, includeContact)) }, { "cache-control": "no-store" });
+    const reports = await Promise.all(records.map(async (record) => {
+      const owners = record.photoHash ? await membersOf(`deerage:photohash:${record.photoHash}`) : [];
+      const mine = records.filter((item) => item.appUserId === record.appUserId && item.kind === "wrong_call");
+      const recentReportCount = mine.filter((item) => Date.now() - Date.parse(item.createdAt) <= 30 * 24 * 60 * 60 * 1000).length;
+      const flags = record.kind === "wrong_call" ? abuseFlags({
+        appUserId: record.appUserId,
+        createdAt: record.createdAt,
+        reportedAge: record.reportedAge,
+        proofMethod: record.proofMethod,
+        photoHash: record.photoHash,
+        subscribedAt: record.subscribedAt,
+        grants: mine.map((item) => item.freeMonthGrantedAt).filter((at): at is string => Boolean(at)),
+        recentReportCount,
+        hashOwners: owners,
+      }) : [];
+      return {
+        ...jsonRow(record, includeContact),
+        flags,
+        overdue: isOverdue(record.trackerStep, record.trackerDueAt),
+        trackerStep: record.trackerStep,
+      };
+    }));
+    return ok({ reports }, { "cache-control": "no-store" });
   } catch (error) {
     return catchApi(error, "Couldn't export reports.");
   }
@@ -408,6 +478,9 @@ export async function handleAdminReply(req: Incoming): Promise<Outgoing> {
         agree: look?.agree ?? null,
       });
       record.dispute = true;
+      moveTracker(record, "waiting_proof");
+      const last = record.updates[record.updates.length - 1];
+      if (last) last.text = reply;
     }
     const status = statusOf(body.status);
     const fixedIn = body.fixedIn == null || body.fixedIn === "" ? null : cleanText(body.fixedIn, 80);
@@ -511,10 +584,22 @@ export async function handleReplies(req: Incoming): Promise<Outgoing> {
       const messages = [];
       for (const id of ids) {
         const record = await loadRecord(id);
-        if (!record?.reply && !record?.rescanResult) continue;
+        if (!record || (record.kind !== "wrong_call" && !record.reply && !record.rescanResult)) continue;
         messages.push({
           id: record.id,
           scanId: record.scanId,
+          tracker: {
+            step: record.trackerStep,
+            label: TRACKER_DEFAULTS[record.trackerStep].label,
+            expected: record.trackerExpected,
+            overdue: isOverdue(record.trackerStep, record.trackerDueAt),
+            steps: (["received", "studying", "waiting_proof", "reviewing", "verdict"] as TrackerStep[]).map((step) => ({
+              id: step,
+              label: TRACKER_DEFAULTS[step].label,
+              current: step === record.trackerStep,
+            })),
+          },
+          updates: record.updates,
           status: record.status,
           reply: record.reply,
           replyAt: record.replyAt,
@@ -613,5 +698,94 @@ export async function handleDeleteReportPhoto(req: Incoming): Promise<Outgoing> 
     return ok({ id: record.id, deleted: true });
   } catch (error) {
     return catchApi(error, "Couldn't delete that photo.");
+  }
+}
+
+export async function handleReportStep(req: Incoming): Promise<Outgoing> {
+  if (req.method !== "POST") return fail(405, "invalid_request", "Use POST.");
+  try {
+    ensureRedis();
+    await allowBucket("admin", `admin:${callerKey(req)}`, limitFromEnv("ADMIN_RATE_LIMIT_PER_MINUTE", 30));
+    requireAdmin(req);
+    const body = asRecord(req.body);
+    const record = await loadRecord(cleanText(body.id, 40));
+    if (!record) throw new ApiError(404, "invalid_request", "No report with that id.");
+    if (body.approveOverdue === true) {
+      if (!isOverdue(record.trackerStep, record.trackerDueAt)) {
+        throw new ApiError(400, "invalid_request", "That step is not overdue.");
+      }
+      const hours = Number(body.hours);
+      const nextHours = Number.isFinite(hours) && hours >= 0 ? hours : TRACKER_DEFAULTS[record.trackerStep].hours;
+      const expected = typeof body.expected === "string" && body.expected.trim()
+        ? cleanText(body.expected, 120)
+        : TRACKER_DEFAULTS[record.trackerStep].expected;
+      record.trackerExpected = expected;
+      record.trackerDueAt = dueAtFrom(Date.now(), nextHours || 24);
+      const text = `${STILL_WORKING} ${expected}`.trim();
+      record.updates = [...record.updates, { at: new Date().toISOString(), step: record.trackerStep, text }];
+      record.reply = text;
+      record.replyAt = record.updates[record.updates.length - 1].at;
+      record.replyRead = false;
+      await storeRecord(record);
+      const pushSent = await sendReportReplyPush(record.appUserId);
+      return ok({ id: record.id, overdue: false, pushSent, text });
+    }
+    const step = trackerStepOf(body.step);
+    if (!step) throw new ApiError(400, "invalid_request", "That step is not recognized.");
+    const hours = Number(body.hours);
+    const expected = typeof body.expected === "string" && body.expected.trim()
+      ? cleanText(body.expected, 120)
+      : TRACKER_DEFAULTS[step].expected;
+    moveTracker(record, step, expected, Number.isFinite(hours) && hours >= 0 ? hours : TRACKER_DEFAULTS[step].hours);
+    await storeRecord(record);
+    const pushSent = await sendReportReplyPush(record.appUserId);
+    return ok({ id: record.id, step, overdue: isOverdue(record.trackerStep, record.trackerDueAt), pushSent });
+  } catch (error) {
+    return catchApi(error, "Couldn't update that step.");
+  }
+}
+
+export async function handleOwed(req: Incoming): Promise<Outgoing> {
+  if (req.method !== "GET") return fail(405, "invalid_request", "Use GET.");
+  try {
+    ensureRedis();
+    await allowBucket("admin", `admin:${callerKey(req)}`, limitFromEnv("ADMIN_RATE_LIMIT_PER_MINUTE", 30));
+    requireAdmin(req);
+    const records = await loadAll();
+    const owed = records.filter((record) => record.freeMonthOwed && !record.freeMonthGrantedAt).map((record) => {
+      const owedAt = record.owedAt ?? record.createdAt;
+      const hoursWaiting = Math.max(0, (Date.now() - Date.parse(owedAt)) / (60 * 60 * 1000));
+      return { id: record.id, appUserId: record.appUserId, owedAt, hoursWaiting: Math.round(hoursWaiting * 10) / 10 };
+    });
+    return ok({ owed });
+  } catch (error) {
+    return catchApi(error, "Couldn't list owed months.");
+  }
+}
+
+export async function handleGrant(req: Incoming): Promise<Outgoing> {
+  if (req.method !== "POST") return fail(405, "invalid_request", "Use POST.");
+  try {
+    ensureRedis();
+    await allowBucket("admin", `admin:${callerKey(req)}`, limitFromEnv("ADMIN_RATE_LIMIT_PER_MINUTE", 30));
+    requireAdmin(req);
+    const body = asRecord(req.body);
+    const record = await loadRecord(cleanText(body.id, 40));
+    if (!record) throw new ApiError(404, "invalid_request", "No report with that id.");
+    if (!record.freeMonthOwed) throw new ApiError(400, "invalid_request", "That report does not have a free month owed.");
+    if (record.freeMonthGrantedAt) return ok({ id: record.id, granted: true, grantedInStore: false, already: true });
+    let grantedInStore = false;
+    try {
+      grantedInStore = await grantPromotionalMonth(record.appUserId);
+    } catch {
+      return fail(502, "upstream", "RevenueCat did not grant the month. It is still owed.");
+    }
+    record.freeMonthGrantedAt = new Date().toISOString();
+    moveTracker(record, "verdict");
+    await storeRecord(record);
+    const pushSent = await sendReportReplyPush(record.appUserId);
+    return ok({ id: record.id, granted: true, grantedInStore, pushSent });
+  } catch (error) {
+    return catchApi(error, "Couldn't grant that month.");
   }
 }

@@ -72,7 +72,21 @@ export const MessagesScreen = () => {
         ) : null}
         {messages.map((item) => (
           <View key={item.id} style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 16, marginBottom: 14 }}>
-            <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>{item.status.toUpperCase()}</Text>
+            {item.tracker ? (
+              <View style={{ marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {item.tracker.steps.map((step) => (
+                    <Text key={step.id} style={{ color: step.current ? "#D4AF37" : "#8B7355", marginRight: 10, marginBottom: 4, fontWeight: step.current ? "800" : "500" }}>
+                      {step.label}
+                    </Text>
+                  ))}
+                </View>
+                {item.tracker.expected ? <Text style={{ color: "#E5D4B8", marginTop: 4 }}>{item.tracker.expected}</Text> : null}
+                {item.tracker.overdue ? <Text style={{ color: "#D4AF37", marginTop: 4 }}>This step is past the time we expected.</Text> : null}
+              </View>
+            ) : (
+              <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>{item.status.toUpperCase()}</Text>
+            )}
             {item.reply ? <Text style={{ color: "#F5F5DC", marginTop: 8, lineHeight: 22 }}>{item.reply}</Text> : null}
             {item.scanId ? (
               <SecondLookLink scanId={item.scanId} fieldCall={item.originalCall} age={Number(item.originalAge) || null} />
