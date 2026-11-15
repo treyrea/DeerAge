@@ -1,5 +1,7 @@
 /**
- * Product identifiers the app looks up in the RevenueCat current offering.
+ * Product identifiers the app looks up in RevenueCat offerings.
+ * Season Pass and Monthly come from DEFAULT_OFFERING_ID.
+ * The current offering stays LEGACY_OFFERING_ID for live 1.0.7 subscribers.
  * Prices are never hardcoded. If a package is missing, that plan cannot be purchased.
  *
  * Create these in App Store Connect, then attach them in RevenueCat.
@@ -17,6 +19,9 @@ export const LEGACY_PRODUCT_IDS = [
 ] as const;
 
 export const LEGACY_OFFERING_ID = "tiers";
+
+/** Non-current offering that holds season_annual and deerage_monthly. */
+export const DEFAULT_OFFERING_ID = "default";
 
 /** Entitlement both new products should grant. Legacy entitlements still unlock the app. */
 export const SEASON_ENTITLEMENT_ID = "deerage_pro";

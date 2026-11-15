@@ -1,5 +1,6 @@
 /**
- * Season Pass and Monthly. Prices come from the RevenueCat current offering.
+ * Season Pass and Monthly. Prices come from the RevenueCat "default" offering,
+ * or the current offering when "default" is missing.
  * Nothing is granted unless CustomerInfo contains an active entitlement.
  */
 
@@ -20,6 +21,7 @@ import {
   trackPaywallImpression,
 } from "../lib/revenuecatClient";
 import {
+  DEFAULT_OFFERING_ID,
   LEGACY_OFFERING_ID,
   LEGACY_PRODUCT_IDS,
   MONTHLY_PRODUCT_ID,
@@ -110,8 +112,9 @@ export const TierPaywallScreen = () => {
         return;
       }
       const current = offerings.data.current;
-      await trackPaywallImpression(current);
-      const packages = current.availablePackages;
+      const planOffering = offerings.data.all[DEFAULT_OFFERING_ID] ?? current;
+      await trackPaywallImpression(planOffering);
+      const packages = planOffering.availablePackages;
       const seasonPackage = packages.find((pkg) => pkg.product.identifier === SEASON_PRODUCT_ID)
         ?? packages.find((pkg) => pkg.packageType === "ANNUAL" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
         ?? null;
@@ -138,7 +141,7 @@ export const TierPaywallScreen = () => {
       });
       if (!seasonPackage && monthlyPackage) setSelected("monthly");
       const legacyPool = uniquePackages([
-        ...packages,
+        ...current.availablePackages,
         ...(offerings.data.all[LEGACY_OFFERING_ID]?.availablePackages ?? []),
       ]).filter((pkg) => (LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier));
       setLegacy(legacyPool);
