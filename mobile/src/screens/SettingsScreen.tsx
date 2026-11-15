@@ -83,11 +83,11 @@ export const SettingsScreen = () => {
   };
 
   const presetAges = [
-    { label: "1.5 years (Young)", value: 1.5 },
-    { label: "2.5 years (Immature)", value: 2.5 },
-    { label: "3.5 years (Mature)", value: 3.5 },
-    { label: "4.5 years (Prime)", value: 4.5 },
-    { label: "5.5+ years (Trophy)", value: 5.5 },
+    { label: "1.5 years", value: 1.5 },
+    { label: "2.5 years", value: 2.5 },
+    { label: "3.5 years", value: 3.5 },
+    { label: "4.5 years", value: 4.5 },
+    { label: "5.5 years", value: 5.5 },
   ];
 
   return (
@@ -95,9 +95,11 @@ export const SettingsScreen = () => {
       {/* Header */}
       <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
-            <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
-          </Pressable>
+          {navigation.canGoBack() ? (
+            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+              <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
+            </Pressable>
+          ) : <View className="w-10" />}
           <View className="flex-1 items-center">
             <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
               Settings
@@ -212,8 +214,7 @@ export const SettingsScreen = () => {
                 MINIMUM SHOOTER AGE
               </Text>
               <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-                Set the minimum age threshold for harvest decisions. Bucks below this age will be
-                marked as &quot;LET WALK&quot; to encourage population management.
+                This is your lease minimum. A buck read under it is LET WALK. Shooting under the lease age can mean a fine or a lost membership.
               </Text>
 
               {/* Quick Presets */}
@@ -297,7 +298,7 @@ export const SettingsScreen = () => {
                 Minimum Shooter Age: {propertyRules.minimumShooterAge} years
               </Text>
               <Text className="text-sm mt-2" style={{ color: "#E5D4B8" }}>
-                Deer estimated below this age will be marked as &quot;LET WALK&quot; in the Age My Deer analysis.
+                Under this age the call is LET WALK. Quick Check, Age, and History all use this number.
               </Text>
             </View>
           </View>

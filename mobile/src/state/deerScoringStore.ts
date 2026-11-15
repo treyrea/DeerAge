@@ -115,7 +115,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
   history: [],
   analysisMode: "score" as "age" | "score",
   propertyRules: {
-    minimumShooterAge: 3.5,
+    minimumShooterAge: 4.5,
     species: "whitetail",
     isRutSeason: false,
     region: undefined,

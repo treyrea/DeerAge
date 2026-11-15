@@ -14,6 +14,7 @@ import { formatScore } from "../utils/boone-crockett-calculator";
 import { DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
+import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { ErrorModal } from "../components/ErrorModal";
 import { DistanceChip } from "../components/DistanceDisplay";
 import * as Haptics from "expo-haptics";
@@ -192,6 +193,7 @@ interface HistoryCardProps {
 }
 
 const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) => {
+  const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   // Swipe-to-delete gesture - hooks must be called before any conditional returns
   const translateX = useSharedValue(0);
   const DELETE_THRESHOLD = -80;
@@ -295,25 +297,18 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                             </Text>
                           ) : null}
                         </View>
-                        {result.explainableAge?.shooterPassLabel ? (
-                          <View className="flex-row items-center mt-1">
-                            <View
-                              className="px-2 py-0.5 rounded"
-                              style={{
-                                backgroundColor:
-                                  result.explainableAge.shooterPassLabel === "SHOOTER"
-                                    ? "#22c55e"
-                                    : result.explainableAge.shooterPassLabel === "NICE HARVEST" || result.explainableAge.shooterPassLabel === "NICE MOUNT"
-                                    ? "#3b82f6"
-                                    : "#f59e0b",
-                              }}
-                            >
-                              <Text className="text-white text-xs font-bold">
-                                {result.explainableAge.shooterPassLabel}
-                              </Text>
-                            </View>
-                          </View>
-                        ) : null}
+                        {(() => {
+                          const minimum = result.explainableAge?.minimumAgeThreshold ?? leaseMinimum;
+                          const years = result.explainableAge?.estimatedAgeYears ?? 0;
+                          const call = normalizeFieldCall(result.explainableAge?.fieldCall)
+                            ?? (years ? fieldRead(years, result.explainableAge?.overallConfidence ?? 60, minimum).fieldCall : result.explainableAge?.shooterPassLabel);
+                          if (!call) return null;
+                          return (
+                            <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700", marginTop: 4 }}>
+                              {call} · minimum {minimum}
+                            </Text>
+                          );
+                        })()}
                         <Text className="text-gray-500 text-xs mt-2">
                           Quick est: approx {displayedPointCount}pt rack
                         </Text>

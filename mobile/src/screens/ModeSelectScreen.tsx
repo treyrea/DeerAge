@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
+import { useDeerScoringStore } from "../state/deerScoringStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { DeerMark } from "../components/DeerMark";
@@ -34,6 +35,7 @@ export const ModeSelectScreen = () => {
     ? "Estimate deer maturity from body characteristics"
     : "Measure rack and calculate Boone & Crockett score";
 
+  const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   const entitled = useSubscriptionStore((s) => s.entitled);
   const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
   const remaining = useSubscriptionStore((s) => s.remainingFree());
@@ -85,6 +87,9 @@ export const ModeSelectScreen = () => {
           </Text>
           <Text className="text-sm mt-1" style={{ color: "#E5D4B8" }}>
             {modeDescription}
+          </Text>
+          <Text className="text-sm mt-1" style={{ color: "#D4AF37" }}>
+            Your lease minimum: {leaseMinimum}
           </Text>
         </View>
       </View>

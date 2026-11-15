@@ -205,9 +205,9 @@ export const OnboardingScreen = () => {
       {step === 2 ? (
         <View style={{ margin: 24, backgroundColor: "#1a1f16", borderRadius: 18, padding: 18 }}>
           <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>SAMPLE</Text>
-          <Text style={{ color: "#F5F5DC", fontSize: 32, fontWeight: "800", marginTop: 6 }}>4.5–5.5 years</Text>
-          <Text style={{ color: "#bbf7d0", fontSize: 18, fontWeight: "700", marginTop: 4 }}>Mature · 78%</Text>
-          <Text style={{ color: "#E5D4B8", marginTop: 10 }}>Neck blends into the chest. Belly sags. Legs look short for the body.</Text>
+          <Text style={{ color: "#F5F5DC", fontSize: 32, fontWeight: "800", marginTop: 6 }}>4.5 · SHOOTER</Text>
+          <Text style={{ color: "#D4AF37", fontSize: 16, fontWeight: "700", marginTop: 4 }}>Your lease minimum: 4.5</Text>
+          <Text style={{ color: "#E5D4B8", marginTop: 10 }}>Neck blends into the chest. Belly has some sag. Legs look short for the body.</Text>
           <Text style={{ color: "#8B7355", marginTop: 14 }}>Aged with DeerAge</Text>
         </View>
       ) : null}

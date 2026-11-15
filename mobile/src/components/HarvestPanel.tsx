@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { useHarvestStore, type HarvestMethod } from "../state/harvestStore";
+import { harvestComparedToMinimum } from "../utils/field-call";
 
 const METHODS: { id: HarvestMethod; label: string }[] = [
   { id: "jawbone", label: "Jawbone" },
@@ -9,7 +10,7 @@ const METHODS: { id: HarvestMethod; label: string }[] = [
   { id: "other", label: "Other" },
 ];
 
-export const HarvestPanel = ({ scanId }: { scanId: string }) => {
+export const HarvestPanel = ({ scanId, leaseMinimum }: { scanId: string; leaseMinimum: number }) => {
   const entry = useHarvestStore((s) => s.entries[scanId]);
   const save = useHarvestStore((s) => s.save);
   const [age, setAge] = useState(entry?.confirmedAge ?? "");
@@ -19,6 +20,7 @@ export const HarvestPanel = ({ scanId }: { scanId: string }) => {
   if (!harvestOn || !scanId) return null;
 
   const harvested = Boolean(entry?.harvested);
+  const comparison = entry?.confirmedAge ? harvestComparedToMinimum(entry.confirmedAge, leaseMinimum) : null;
 
   return (
     <View style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 16, marginBottom: 16 }}>
@@ -35,6 +37,8 @@ export const HarvestPanel = ({ scanId }: { scanId: string }) => {
         </Pressable>
       ) : (
         <View style={{ marginTop: 12 }}>
+          <Text style={{ color: "#8B7355", marginBottom: 8 }}>Your lease minimum: {leaseMinimum}</Text>
+          {comparison ? <Text style={{ color: "#F5F5DC", marginBottom: 8, lineHeight: 20 }}>{comparison}</Text> : null}
           <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>CONFIRMED AGE</Text>
           <TextInput
             value={age}

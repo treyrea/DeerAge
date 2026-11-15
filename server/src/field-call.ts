@@ -1,10 +1,9 @@
 /**
- * Field call shown ahead of the age class and the score.
+ * Lease call. Compared with the hunter's minimum shooter age, not a fixed 4.5.
  * Old clients ignore these fields. decision and shooterPassLabel stay as they were.
  */
 
-export type FieldCall = "Shooter" | "Pass" | "Borderline";
-export type Maturity = "young" | "mature";
+export type FieldCall = "SHOOTER" | "LET WALK" | "BORDERLINE";
 
 export interface CueBullet {
   area: string;
@@ -12,11 +11,14 @@ export interface CueBullet {
 }
 
 export interface FieldRead {
-  maturity: Maturity;
   fieldCall: FieldCall;
   fieldCallNote: string;
+  ageClass: string;
+  leaseMinimum: number;
   cueBullets: CueBullet[];
 }
+
+const STEPS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
 
 const AREA_FOR: Record<string, string> = {
   neck_thickness: "Neck",
@@ -37,6 +39,24 @@ const AREA_FOR: Record<string, string> = {
   rack: "Rack",
   antler: "Rack",
 };
+
+export function classStep(years: number): number {
+  let picked = STEPS[0];
+  for (const step of STEPS) {
+    if (years + 0.001 >= step) picked = step;
+  }
+  return picked;
+}
+
+export function classLabel(step: number): string {
+  return step >= 6.5 ? "6.5+" : step.toFixed(1);
+}
+
+function shiftStep(years: number, delta: number): number {
+  const index = STEPS.indexOf(classStep(years));
+  const next = Math.max(0, Math.min(STEPS.length - 1, index + delta));
+  return STEPS[next];
+}
 
 function areaOf(name: unknown, fallback = "Body"): string {
   if (typeof name !== "string") return fallback;
@@ -69,32 +89,54 @@ export function cueBulletsFrom(rawCues: unknown, topCues: unknown): CueBullet[] 
   return bullets.slice(0, 6);
 }
 
-export function fieldRead(ageYears: number, confidence: number, spread = 0): Omit<FieldRead, "cueBullets"> {
-  const mature = ageYears >= 4.5;
-  const straddles = ageYears >= 3.5 && ageYears < 4.5;
-  const uncertain = confidence < 55 || spread >= 1.5 || straddles;
-  const maturity: Maturity = mature ? "mature" : "young";
-  if (uncertain) {
+function windowSteps(confidence: number, spread: number): number {
+  if (confidence < 55 || spread >= 1.5) return 2;
+  if (confidence < 75 || spread >= 1) return 1;
+  return 0;
+}
+
+export function fieldRead(ageYears: number, confidence: number, minimum = 4.5, spread = 0): Omit<FieldRead, "cueBullets"> {
+  const leaseMinimum = classStep(minimum);
+  const estimate = classStep(ageYears);
+  const steps = windowSteps(confidence, spread);
+  const low = shiftStep(ageYears, -steps);
+  const high = shiftStep(ageYears, steps);
+  const ageClass = classLabel(estimate);
+  const minimumLabel = classLabel(leaseMinimum);
+
+  if (low >= leaseMinimum) {
     return {
-      maturity,
-      fieldCall: "Borderline",
-      fieldCallNote: "Borderline, take a closer look. The photo does not settle whether this buck is 4.5 or older. This is a field read, not a known age.",
+      fieldCall: "SHOOTER",
+      ageClass,
+      leaseMinimum,
+      fieldCallNote: `Reads ${ageClass}, at or above your lease minimum of ${minimumLabel}. This is a field read from the photo, not a jawbone age.`,
     };
   }
-  if (mature) {
+  if (high < leaseMinimum) {
     return {
-      maturity,
-      fieldCall: "Shooter",
-      fieldCallNote: "The body reads mature, likely 4.5 or older. This is a field read from the photo, not a known age.",
+      fieldCall: "LET WALK",
+      ageClass,
+      leaseMinimum,
+      fieldCallNote: `Reads ${ageClass}, under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`,
     };
   }
+  const below = classLabel(Math.min(estimate, shiftStep(leaseMinimum, -1)));
+  const above = classLabel(Math.max(estimate, leaseMinimum));
   return {
-    maturity,
-    fieldCall: "Pass",
-    fieldCallNote: "The body reads young, likely under 4.5. This is a field read from the photo, not a known age.",
+    fieldCall: "BORDERLINE",
+    ageClass,
+    leaseMinimum,
+    fieldCallNote: `Could be ${below} or ${above}, and your minimum is ${minimumLabel}. Don't risk the fine.`,
   };
 }
 
-export function fieldBundle(ageYears: number, confidence: number, rawCues: unknown, topCues: unknown, spread = 0): FieldRead {
-  return { ...fieldRead(ageYears, confidence, spread), cueBullets: cueBulletsFrom(rawCues, topCues) };
+export function fieldBundle(
+  ageYears: number,
+  confidence: number,
+  rawCues: unknown,
+  topCues: unknown,
+  minimum = 4.5,
+  spread = 0,
+): FieldRead {
+  return { ...fieldRead(ageYears, confidence, minimum, spread), cueBullets: cueBulletsFrom(rawCues, topCues) };
 }

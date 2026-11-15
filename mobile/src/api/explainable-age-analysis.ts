@@ -13,6 +13,7 @@ import {
 import { analyzeImages } from "./proxy";
 import { rememberScale } from "./deer-analysis";
 import { useHunterProfile } from "../state/hunterProfile";
+import { normalizeFieldCall } from "../utils/field-call";
 import type { ScaleEstimation } from "../types/deer-scoring";
 
 const BANDS: AgeBand[] = ["1.5-2.5 years", "2.5-3.5 years", "3.5-4.5 years", "4.5-5.5 years", "5.5+ years"];
@@ -115,7 +116,7 @@ export async function analyzeExplainableAge(
     imageQuality: quality,
     occlusionLevel: "minimal",
     photoTips: quality === "poor" ? ["Use a broadside photo with the whole body in daylight."] : undefined,
-    fieldCall: result.fieldCall === "Shooter" || result.fieldCall === "Pass" || result.fieldCall === "Borderline" ? result.fieldCall : undefined,
+    fieldCall: normalizeFieldCall(result.fieldCall),
     fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
     cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
   };

@@ -14,8 +14,9 @@ import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ShareableResultCard } from "../components/ShareableResultCard";
-import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
+import { formatAgeClass } from "../utils/age-class";
 import { FieldCallCard } from "../components/FieldCallCard";
+import { normalizeFieldCall } from "../utils/field-call";
 import { useRemoteConfig } from "../state/remoteConfig";
 import * as Haptics from "expo-haptics";
 
@@ -41,11 +42,11 @@ export const QuickCheckResultScreen = () => {
   const isShoot = result.decision === "SHOOT";
   const isInvalidImage = result.isValidImage === false;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
-  const ageCall = ageCallFromClass(ageClassLabel);
+  const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   const followUp = useResultFollowUp(!isInvalidImage, {
     imageUri,
     headline: ageClassLabel,
-    call: ageCall,
+    call: result.decision === "SHOOT" ? "SHOOTER" : "LET WALK",
     confidence: result.confidence,
   });
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
@@ -185,8 +186,6 @@ export const QuickCheckResultScreen = () => {
   }
 
   // Age class display (NOT exact age - TPWD compliant)
-  const ageClassDisplay = ageClassLabel;
-
   // Format key feature for display
   const keyFeatureDisplay = result.keyFeature === "neck_brisket"
     ? "Neck-Brisket"
@@ -209,16 +208,24 @@ export const QuickCheckResultScreen = () => {
 
         {/* Main Result */}
         <View className="flex-1 justify-center px-6">
-          <FieldCallCard
-            ageYears={result.ageYears ?? 3.5}
-            confidence={result.confidence}
-            ageClass={ageClassDisplay}
-            cueBullets={(result as { cueBullets?: unknown }).cueBullets}
-            fallbackCues={result.topCues ?? [result.explanation]}
-            fieldCall={shootOrPass ? (result as { fieldCall?: "Shooter" | "Pass" | "Borderline" }).fieldCall : undefined}
-            note={shootOrPass ? (result as { fieldCallNote?: string }).fieldCallNote : result.explanation}
-            title={shootOrPass ? undefined : (isShoot ? "SHOOT" : "LET WALK")}
-          />
+          {shootOrPass ? (
+            <FieldCallCard
+              ageYears={result.ageYears ?? leaseMinimum}
+              confidence={result.confidence}
+              minimum={leaseMinimum}
+              cueBullets={result.cueBullets}
+              fallbackCues={result.topCues ?? [result.explanation]}
+              fieldCall={normalizeFieldCall(result.fieldCall)}
+              note={result.fieldCallNote}
+            />
+          ) : (
+            <FieldCallCard
+              ageYears={result.ageYears ?? leaseMinimum}
+              confidence={result.confidence}
+              minimum={leaseMinimum}
+              fallbackCues={result.topCues ?? [result.explanation]}
+            />
+          )}
           <Text style={{ color: "#8B7355", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{result.disclaimer}</Text>
 
           {/* Thumbnail */}
@@ -265,7 +272,8 @@ export const QuickCheckResultScreen = () => {
                   ageRange: ageClassLabel,
                   confidence: result.confidence,
                   decision: result.decision,
-                  call: ageCall,
+                  call: result.decision === "SHOOT" ? "SHOOTER" : "LET WALK",
+                  leaseMinimum,
                   topCues: result.topCues ?? [result.explanation],
                 }}
               />

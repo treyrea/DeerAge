@@ -317,7 +317,7 @@ async function runQuick(image: string, context: HuntContext, usage: TokenUsage) 
     confidence,
     isValidImage: true,
     disclaimer: "Age estimates are based on proportional body characteristics and represent age classes, not exact age.",
-    ...fieldBundle(ageYears, confidence, raw.cueBullets ?? raw.cues, raw.topCues),
+    ...fieldBundle(ageYears, confidence, raw.cueBullets ?? raw.cues, raw.topCues, goal),
   };
 }
 
@@ -413,7 +413,7 @@ async function runAge(images: string[], context: HuntContext, usage: TokenUsage)
     shooterPassReason: closest.explanation || `Across ${frames.length} frame${frames.length === 1 ? "" : "s"}, the body reads ${callLabel} (${ageYears} years).`,
     topCues: closest.topCues,
     cues: closest.cues,
-    ...fieldBundle(ageYears, confidence, closest.cues, closest.topCues, spread),
+    ...fieldBundle(ageYears, confidence, closest.cues, closest.topCues, goal, spread),
     imageQuality: closest.imageQuality,
     scale: frames.find((frame) => frame.scale.pixelsPerInch > 0)?.scale ?? closest.scale,
     frameVotes: years,
@@ -461,7 +461,7 @@ async function runScore(images: string[], context: HuntContext, usage: TokenUsag
     ...merged,
     frameCount: usable.length,
     consensus: "median-measurements",
-    ...fieldBundle(merged.ageYears, rackConfidence, merged.topCues, merged.topCues),
+    ...fieldBundle(merged.ageYears, rackConfidence, merged.topCues, merged.topCues, context.minimumShooterAge ?? 4.5),
   };
 }
 

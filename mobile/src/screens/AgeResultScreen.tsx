@@ -21,7 +21,8 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { useRemoteConfig } from "../state/remoteConfig";
-import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
+import { normalizeFieldCall } from "../utils/field-call";
+import { formatAgeClass } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { ErrorModal } from "../components/ErrorModal";
@@ -53,12 +54,11 @@ export const AgeResultScreen = () => {
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const explainable = currentResult?.explainableAge;
   const ageClassLabel = formatAgeClass(explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
-  const ageCall = ageCallFromClass(ageClassLabel);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
   const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
     headline: ageClassLabel,
-    call: ageCall,
+    call: explainable?.fieldCall ?? (explainable?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
     confidence: explainable.overallConfidence,
   } : null);
 
@@ -125,7 +125,8 @@ export const AgeResultScreen = () => {
 
     const message = `DeerAge – Age My Deer Analysis
 
-Estimated age: ${formatAgeClass(explainableAge.estimatedAge)} (${ageCall})
+Estimated age: ${formatAgeClass(explainableAge.estimatedAge)} (${explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")})
+Lease minimum: ${explainableAge.minimumAgeThreshold}
 Confidence: ${explainableAge.overallConfidence}%
 ${explainableAge.shooterPassLabel}: ${explainableAge.shooterPassReason}
 
@@ -217,9 +218,9 @@ Powered by RackScore™ AI`;
             <FieldCallCard
               ageYears={explainable.estimatedAgeYears}
               confidence={explainable.overallConfidence}
-              ageClass={ageClassLabel}
+              minimum={explainable.minimumAgeThreshold}
               cueBullets={explainable.cueBullets ?? explainable.detectedCues}
-              fieldCall={explainable.fieldCall}
+              fieldCall={normalizeFieldCall(explainable.fieldCall)}
               note={explainable.fieldCallNote}
             />
           ) : null}
@@ -266,7 +267,10 @@ Powered by RackScore™ AI`;
                 {formatAgeClass(explainableAge.estimatedAge)}
               </Text>
               <Text className="text-lg" style={{ color: "#E5D4B8" }}>
-                {ageCall}
+                {explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")}
+              </Text>
+              <Text style={{ color: "#8B7355", marginTop: 4 }}>
+                Your lease minimum: {explainableAge.minimumAgeThreshold}
               </Text>
             </View>
 
@@ -291,7 +295,7 @@ Powered by RackScore™ AI`;
               </View>
             </View>
 
-            {/* Shooter/Let Walk/Nice Harvest/Nice Mount Badge */}
+            {shootOrPass ? null : (
             <View
               className="rounded-lg p-4 mt-2"
               style={{
@@ -333,6 +337,7 @@ Powered by RackScore™ AI`;
                 {explainableAge.shooterPassReason}
               </Text>
             </View>
+            )}
           </View>
 
           {/* Image with Overlays */}
@@ -802,7 +807,8 @@ Powered by RackScore™ AI`;
                   ageRange: formatAgeClass(explainableAge.estimatedAge),
                   confidence: explainableAge.overallConfidence,
                   decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
-                  call: ageCall,
+                  call: explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
+                  leaseMinimum: explainableAge.minimumAgeThreshold,
                   topCues: explainableAge.detectedCues.slice(0, 3).map((cue) => `${cue.displayName}: ${cue.detectedPattern}`),
                 }}
               />

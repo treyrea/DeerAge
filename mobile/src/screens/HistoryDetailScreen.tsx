@@ -13,6 +13,8 @@ import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/d
 import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
+import { fieldRead, normalizeFieldCall } from "../utils/field-call";
+import { useDeerScoringStore } from "../state/deerScoringStore";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -22,6 +24,7 @@ export const HistoryDetailScreen = () => {
   const insets = useSafeAreaInsets();
 
   const result = (route.params as { result: DeerScoringResult }).result;
+  const savedMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
 
   if (!result) {
     navigation.goBack();
@@ -51,7 +54,9 @@ export const HistoryDetailScreen = () => {
     const imageUri = capturedFrames[0]?.imageUri;
 
     if (isAgeMode) {
-      const message = `Deer Age Analysis:\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nRecommendation: ${explainableAge?.shooterPassLabel || "N/A"}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
+      const minimum = explainableAge?.minimumAgeThreshold ?? savedMinimum;
+      const call = explainableAge?.fieldCall ?? explainableAge?.shooterPassLabel ?? "N/A";
+      const message = `Deer Age Analysis:\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\n${call}\nLease minimum: ${minimum}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
 
       try {
         await Share.share({
@@ -92,7 +97,7 @@ export const HistoryDetailScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
-          <HarvestPanel scanId={result.analysisId} />
+          <HarvestPanel scanId={result.analysisId} leaseMinimum={explainableAge?.minimumAgeThreshold ?? savedMinimum} />
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">
@@ -147,23 +152,21 @@ export const HistoryDetailScreen = () => {
                 <Text className="text-white text-5xl font-bold mb-3">
                   {formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
                 </Text>
-                {explainableAge?.shooterPassLabel && (
-                  <View className="flex-row items-center mt-2">
-                    <View
-                      className="px-3 py-1.5 rounded-lg"
-                      style={{
-                        backgroundColor:
-                          explainableAge.shooterPassLabel === "SHOOTER"
-                            ? "#22c55e"
-                            : explainableAge.shooterPassLabel === "NICE HARVEST" || explainableAge.shooterPassLabel === "NICE MOUNT"
-                            ? "#3b82f6"
-                            : "#f59e0b",
-                      }}
-                    >
-                      <Text className="text-white text-sm font-bold">{explainableAge.shooterPassLabel}</Text>
+                {(() => {
+                  const minimum = explainableAge?.minimumAgeThreshold ?? savedMinimum;
+                  const years = explainableAge?.estimatedAgeYears ?? 0;
+                  const read = years
+                    ? fieldRead(years, explainableAge?.overallConfidence ?? 60, minimum)
+                    : null;
+                  const call = normalizeFieldCall(explainableAge?.fieldCall) ?? read?.fieldCall ?? explainableAge?.shooterPassLabel;
+                  if (!call) return null;
+                  return (
+                    <View style={{ marginTop: 8 }}>
+                      <Text className="text-white text-xl font-bold">{call}</Text>
+                      <Text className="text-white/80 text-sm mt-1">Your lease minimum: {minimum}</Text>
                     </View>
-                  </View>
-                )}
+                  );
+                })()}
                 <Text className="text-white/70 text-sm mt-3">{age.regionalPrior || "Based on body and antler characteristics"}</Text>
               </View>
 

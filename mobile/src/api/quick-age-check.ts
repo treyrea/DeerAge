@@ -6,6 +6,7 @@ import { AgeClass } from "../types/deer-scoring";
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
 import { useHunterProfile } from "../state/hunterProfile";
+import { normalizeFieldCall } from "../utils/field-call";
 
 export interface QuickAgeResult {
   decision: "SHOOT" | "LET WALK";
@@ -26,7 +27,7 @@ export interface QuickAgeResult {
   disclaimer: string;
   ageYears?: number;
   topCues?: string[];
-  fieldCall?: "Shooter" | "Pass" | "Borderline";
+  fieldCall?: "SHOOTER" | "LET WALK" | "BORDERLINE";
   fieldCallNote?: string;
   cueBullets?: { area: string; text: string }[];
 }
@@ -119,7 +120,7 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     disclaimer: DISCLAIMER,
     ageYears: years,
     topCues,
-    fieldCall: result.fieldCall === "Shooter" || result.fieldCall === "Pass" || result.fieldCall === "Borderline" ? result.fieldCall : undefined,
+    fieldCall: normalizeFieldCall(result.fieldCall),
     fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
     cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
   };

@@ -11,6 +11,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { normalizeFieldCall } from "../utils/field-call";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { useNavigation } from "@react-navigation/native";
@@ -141,7 +142,8 @@ export const ResultsScreen = () => {
   const followUp = useResultFollowUp(Boolean(currentResult), currentResult ? {
     imageUri: currentResult.capturedFrames?.[0]?.imageUri,
     headline: ageLabel,
-    call: ageCallFromClass(ageLabel),
+    call: currentResult?.explainableAge?.fieldCall
+      ?? (currentResult?.explainableAge?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
     confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : undefined,
   } : null);
 
@@ -270,8 +272,8 @@ export const ResultsScreen = () => {
   };
 
   const displayedAge = formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge);
-  const isYoung = ageCallFromClass(displayedAge) === "Young";
-  const shooterSuggestion = isYoung ? "Pass - Let him grow" : "Shooter - Mature buck";
+  const leaseMinimum = currentResult.explainableAge?.minimumAgeThreshold
+    ?? useDeerScoringStore.getState().propertyRules.minimumShooterAge;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
@@ -369,13 +371,13 @@ export const ResultsScreen = () => {
 
           {shootOrPass && currentResult ? (
             <FieldCallCard
-              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || 3.5}
+              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || leaseMinimum}
               confidence={currentResult.explainableAge?.overallConfidence ?? 60}
-              ageClass={displayedAge}
+              minimum={leaseMinimum}
               cueBullets={currentResult.explainableAge?.cueBullets ?? currentResult.explainableAge?.detectedCues}
-              fieldCall={currentResult.explainableAge?.fieldCall}
+              fieldCall={normalizeFieldCall(currentResult.explainableAge?.fieldCall)}
               note={currentResult.explainableAge?.fieldCallNote}
-              scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C` : undefined}
+              scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : undefined}
             />
           ) : null}
           {/* Unified Metrics Card - Shows ALL key metrics */}
@@ -443,26 +445,6 @@ export const ResultsScreen = () => {
               </View>
             </View>
 
-            {/* Shooter/Pass Suggestion */}
-            {isYoung && (
-              <View className="rounded-lg p-4 mt-2" style={{ backgroundColor: "#5A6447" }}>
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name={isYoung ? "pause-circle" : "checkmark-circle"}
-                    size={24}
-                    color={isYoung ? "#FFA500" : "#22c55e"}
-                  />
-                  <View className="flex-1 ml-3">
-                    <Text className="text-white font-bold mb-1">{shooterSuggestion}</Text>
-                    <Text className="text-xs" style={{ color: "#E5D4B8" }}>
-                      {isYoung
-                        ? "This buck is under 3.5 years old. Consider letting him mature for better genetics and larger rack development."
-                        : "This is a mature buck suitable for harvest."}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
 
           {/* Overall Score Card */}
