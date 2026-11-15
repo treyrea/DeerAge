@@ -11,6 +11,8 @@ interface FieldCallCardProps {
   fieldCall?: FieldCall;
   note?: string;
   scoreLabel?: string;
+  bodyOnlyAge?: number | null;
+  betterAngle?: string;
 }
 
 const CALL_COLOR: Record<FieldCall, string> = {
@@ -28,6 +30,8 @@ export const FieldCallCard = ({
   fieldCall,
   note,
   scoreLabel,
+  bodyOnlyAge,
+  betterAngle,
 }: FieldCallCardProps) => {
   const read = fieldRead(ageYears, confidence, minimum);
   const call = fieldCall ?? read.fieldCall;
@@ -54,6 +58,12 @@ export const FieldCallCard = ({
             </Text>
           ))}
         </View>
+      ) : null}
+      {bodyOnlyAge != null ? (
+        <Text style={{ color: "#E5D4B8", marginTop: 8 }}>Body-only read: {bodyOnlyAge}</Text>
+      ) : null}
+      {betterAngle ? (
+        <Text style={{ color: "#D4AF37", marginTop: 8, lineHeight: 20 }}>{betterAngle}</Text>
       ) : null}
       {scoreLabel ? (
         <Text style={{ color: "#8B7355", marginTop: 10, fontSize: 13 }}>{scoreLabel}</Text>

@@ -39,6 +39,7 @@ export const QuickCheckCameraScreen = () => {
   const [zoom, setZoom] = useState(1);
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
+  const provisional = useDeerScoringStore((s) => s.provisional);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Get min and max zoom from device
@@ -182,8 +183,10 @@ export const QuickCheckCameraScreen = () => {
               <View className="w-24 h-24 bg-amber-500/30 rounded-full items-center justify-center mb-4">
                 <ActivityIndicator size="large" color="#f59e0b" />
               </View>
-              <Text className="text-white text-xl font-bold">Analyzing...</Text>
-              <Text className="text-white/70 text-sm mt-2">3-5 seconds</Text>
+              <Text className="text-white text-xl font-bold text-center">
+                {provisional?.fieldCall === "LET WALK" ? "LET WALK" : "Hold, checking his body."}
+              </Text>
+              <Text className="text-white/70 text-sm mt-2 text-center">{provisional?.note || "The first look never calls a shooter."}</Text>
             </View>
           ) : (
             // Ready to capture - LARGER viewer window

@@ -1,4 +1,4 @@
-import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, reserveUsd, type TokenUsage } from "./cost.js";
+import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, type TokenUsage } from "./cost.js";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config.js";
 import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement.js";
 import {
@@ -13,11 +13,25 @@ import {
   reserveFairUse,
   reserveSpend,
 } from "./limits.js";
-import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai.js";
-import { fieldBundle } from "./field-call.js";
+import { UpstreamError } from "./openai.js";
 import { issueRecord } from "./record.js";
-import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts.js";
-import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring.js";
+import { runAgeCall } from "./age-pipeline.js";
+import { runScoreCall } from "./score-pipeline.js";
+import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
+import type { ModelCall } from "./gateway.js";
+interface HuntContext {
+  state?: string;
+  ecoregion?: string;
+  homeState?: string;
+  homeEcoregion?: string;
+  landType?: string;
+  goal?: string;
+  minimumShooterAge?: number;
+  species?: string;
+  month?: number;
+  distanceYards?: number;
+  fenceType?: string;
+}
 
 export interface AnalyzeBody {
   mode?: string;
@@ -178,9 +192,6 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   let fairUseHeld = false;
   let spendReserved = 0;
   const usage = emptyUsage();
-  const calls = images.length;
-  const maxOutput = (mode === "quick" ? 500 : mode === "score" ? 900 : mode === "age" ? 700 : 200)
-    + (usesCompletionTokenCap() ? reasoningTokenHeadroom() : 0);
 
   try {
     if (access?.entitled) {
@@ -194,7 +205,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       fairUseHeld = true;
     }
 
-    spendReserved = reserveUsd(body.baseline ? 1 : calls, maxOutput);
+    spendReserved = mode === "score" ? 0.05 : 0.12;
     const underCap = await reserveSpend(spendReserved);
     if (!underCap) {
       if (fairUseHeld) await releaseFairUse(appUserId);
@@ -204,47 +215,26 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     }
 
     const context = contextOf(body);
-    const result = body.baseline
-      ? await runBaseline(images[0], usage)
-      : mode === "quick"
-        ? await runQuick(images[0], context, usage)
-        : mode === "age"
-          ? await runAge(images, context, usage)
-          : await runScore(images, context, usage);
-
-    const estimatedCostUsd = await settleCost(usage, spendReserved, mode, appUserId);
+    const minimum = context.minimumShooterAge ?? 4.5;
+    const jobId = newJobId();
+    const job: ScanJob = { id: jobId, status: "running", mode, provisional: null, final: null, error: null };
+    await saveJob(job);
+    const reserved = spendReserved;
     spendReserved = 0;
-
-    if (result && typeof result === "object" && "invalid" in result) {
-      await refund();
-      return fail(result.status, result.code, result.message);
-    }
-
-    const remaining = !access || access.entitled || isEval ? null : Math.max(0, FREE_LIFETIME_ANALYSES - (access.freeUsesUsed + 1));
-    const record = await issueRecord({
-      appUserId,
+    keepAlive(finishJob({
+      job,
       images,
       mode,
-      result: result as Record<string, unknown>,
-      minimum: context.minimumShooterAge ?? 4.5,
-    });
-    return {
-      status: 200,
-      body: {
-        ok: true,
-        mode,
-        model: modelName(),
-        baseline: Boolean(body.baseline),
-        latencyMs: Date.now() - started,
-        entitled: Boolean(access?.entitled),
-        freeUsesRemaining: remaining,
-        fairUsePerDay: fairUsePerDay(),
-        estimatedCostUsd,
-        serverTime: record?.serverTime ?? null,
-        record,
-        result,
+      minimum,
+      appUserId,
+      reserved,
+      usage,
+      refund,
+      releaseFairUse: async () => {
+        if (fairUseHeld) await releaseFairUse(appUserId);
       },
-    };
+    }));
+    return { status: 202, body: { ok: true, jobId, mode } };
   } catch (error) {
     if (spendReserved > 0) {
       await settleCost(usage, spendReserved, mode, appUserId).catch(() => undefined);
@@ -283,215 +273,112 @@ async function settleCost(usage: TokenUsage, reserved: number, mode: string, app
   return Number(estimatedCostUsd.toFixed(6));
 }
 
-interface InvalidPhoto {
-  invalid: true;
-  status: number;
-  code: FailureCode;
-  message: string;
-}
+const STOP_MESSAGE = {
+  not_deer: "This photo doesn't show a deer.",
+  no_antlers: "No antlers are visible in this photo.",
+  unreadable: "The photo is too dark or blurry to read.",
+} as const;
 
-function invalidFrom(reason: string | undefined, fallback: string): InvalidPhoto {
-  if (reason === "head_only" || reason === "head_mount" || reason === "no_body" || reason === "no_body_visible") {
-    return { invalid: true, status: 422, code: "no_body", message: "The deer's body isn't visible enough to age. Use a broadside photo of the whole deer." };
-  }
-  if (reason === "no_antlers") {
-    return { invalid: true, status: 422, code: "no_antlers", message: "No antlers are visible in this photo." };
-  }
-  if (reason === "poor_quality") {
-    return { invalid: true, status: 422, code: "poor_quality", message: "The photo is too dark or blurry to analyze. Try a clearer shot." };
-  }
-  return { invalid: true, status: 422, code: "not_deer", message: fallback };
-}
-
-async function runQuick(image: string, context: HuntContext, usage: TokenUsage) {
-  const raw = await visionJson({
-    prompt: quickPrompt(context),
-    images: [image],
-    detail: "low",
-    maxTokens: 500,
-    timeoutMs: 25_000,
-    retries: 1,
-    usage,
-  });
-  if (raw.isValidImage === false) {
-    return invalidFrom(typeof raw.invalidImageReason === "string" ? raw.invalidImageReason : "not_deer", "This photo doesn't show a deer.");
-  }
-  const ageYears = roundHalf(num(raw.ageYears) || 3.5);
-  const goal = context.minimumShooterAge ?? 4.5;
-  const decision = raw.decision === "SHOOT" || raw.decision === "LET WALK" ? raw.decision : ageYears >= goal ? "SHOOT" : "LET WALK";
-  const confidence = Math.max(0, Math.min(100, Math.round(num(raw.confidence) || 50)));
-  return {
-    ...raw,
-    decision,
-    ageYears,
-    confidence,
-    isValidImage: true,
-    disclaimer: "Age estimates are based on proportional body characteristics and represent age classes, not exact age.",
-    ...fieldBundle(ageYears, confidence, raw.cueBullets ?? raw.cues, raw.topCues, goal),
-  };
-}
-
-interface AgeFrame {
-  ageYears: number;
-  confidence: number;
-  ageCall: "young" | "middle-aged" | "mature";
-  meetsMinimum: boolean;
-  explanation: string;
-  imageQuality: "good" | "fair" | "poor";
-  topCues: string[];
-  cues: Array<Record<string, unknown>>;
-  scale: ScaleEstimate;
-  isValidDeer: boolean;
-  invalidReason?: string;
-}
-
-function ageCallOf(years: number): "young" | "middle-aged" | "mature" {
-  if (years >= 4.5) return "mature";
-  if (years >= 3.5) return "middle-aged";
-  return "young";
-}
-
-function ageBand(years: number): string {
-  if (years < 2.5) return "1.5-2.5 years";
-  if (years < 3.5) return "2.5-3.5 years";
-  if (years < 4.5) return "3.5-4.5 years";
-  if (years < 5.5) return "4.5-5.5 years";
-  return "5.5+ years";
-}
-
-async function oneAge(image: string, context: HuntContext, usage: TokenUsage): Promise<AgeFrame | InvalidPhoto> {
-  const raw = await visionJson({
-    prompt: agePrompt(context),
-    images: [image],
-    detail: "low",
-    maxTokens: 700,
-    timeoutMs: 25_000,
-    usage,
-  });
-  if (raw.isValidDeer === false) {
-    return invalidFrom(typeof raw.invalidReason === "string" ? raw.invalidReason : "not_deer", "This photo doesn't show a deer.");
-  }
-  const ageYears = roundHalf(num(raw.ageYears) || 2.5);
-  const quality = raw.imageQuality === "good" || raw.imageQuality === "poor" ? raw.imageQuality : "fair";
-  return {
-    ageYears,
-    confidence: Math.max(0, Math.min(100, Math.round(num(raw.confidence) || 50))),
-    ageCall: ageCallOf(ageYears),
-    meetsMinimum: ageYears >= (context.minimumShooterAge ?? 4.5),
-    explanation: typeof raw.explanation === "string" ? raw.explanation : "",
-    imageQuality: quality,
-    topCues: Array.isArray(raw.topCues) ? raw.topCues.filter((cue): cue is string => typeof cue === "string").slice(0, 3) : [],
-    cues: Array.isArray(raw.cues) ? (raw.cues as Array<Record<string, unknown>>) : [],
-    scale: readScale(raw.scale),
-    isValidDeer: true,
-  };
-}
-
-async function runAge(images: string[], context: HuntContext, usage: TokenUsage) {
-  const settled = await Promise.all(images.map(async (image) => {
-    try {
-      return await oneAge(image, context, usage);
-    } catch (error) {
-      return error;
-    }
-  }));
-  const frames = settled.filter((item): item is AgeFrame => Boolean(item) && !(item instanceof Error) && !("invalid" in (item as object)));
-  if (frames.length === 0) {
-    const invalid = settled.find((item) => item && typeof item === "object" && "invalid" in item) as InvalidPhoto | undefined;
-    if (invalid) return invalid;
-    const upstream = settled.find((item) => item instanceof UpstreamError);
-    if (upstream) throw upstream;
-    throw new UpstreamError("No frame could be analyzed.", 502, false);
-  }
-  const years = frames.map((frame) => frame.ageYears);
-  const ageYears = roundHalf(median(years));
-  const spread = Math.max(...years) - Math.min(...years);
-  const agreement = Math.max(0.45, 1 - spread / 6);
-  const confidence = Math.round((frames.reduce((total, frame) => total + frame.confidence, 0) / frames.length) * agreement);
-  const closest = [...frames].sort((a, b) => Math.abs(a.ageYears - ageYears) - Math.abs(b.ageYears - ageYears))[0];
-  const goal = context.minimumShooterAge ?? 4.5;
-  const call = ageCallOf(ageYears);
-  const callLabel = call === "middle-aged" ? "middle-aged" : call;
-  return {
-    estimatedAgeYears: ageYears,
-    estimatedAge: ageBand(ageYears),
-    ageCall: call,
-    overallConfidence: confidence,
-    meetsMinimumAge: ageYears >= goal,
-    minimumAgeThreshold: goal,
-    shooterPassLabel: ageYears >= goal ? "SHOOTER" : "LET WALK",
-    shooterPassReason: closest.explanation || `Across ${frames.length} frame${frames.length === 1 ? "" : "s"}, the body reads ${callLabel} (${ageYears} years).`,
-    topCues: closest.topCues,
-    cues: closest.cues,
-    ...fieldBundle(ageYears, confidence, closest.cues, closest.topCues, goal, spread),
-    imageQuality: closest.imageQuality,
-    scale: frames.find((frame) => frame.scale.pixelsPerInch > 0)?.scale ?? closest.scale,
-    frameVotes: years,
-    frameCount: frames.length,
-    consensus: "median",
-  };
-}
-
-async function runScore(images: string[], context: HuntContext, usage: TokenUsage) {
-  const settled = await Promise.all(images.map(async (image) => {
-    try {
-      const raw = await visionJson({
-        prompt: scorePrompt(context),
-        images: [image],
-        detail: "auto",
-        maxTokens: 900,
-        timeoutMs: 25_000,
-        usage,
+async function finishJob(input: {
+  job: ScanJob;
+  images: string[];
+  mode: "quick" | "age" | "score";
+  minimum: number;
+  appUserId: string;
+  reserved: number;
+  usage: TokenUsage;
+  refund: () => Promise<void>;
+  releaseFairUse: () => Promise<void>;
+}): Promise<void> {
+  try {
+    if (input.mode === "score") {
+      const score = await runScoreCall(input.images);
+      const usd = await settleCalls(score.costs, input.reserved, input.mode, input.appUserId, input.usage);
+      const record = await issueRecord({
+        appUserId: input.appUserId,
+        images: input.images,
+        mode: input.mode,
+        result: score.result,
+        minimum: input.minimum,
       });
-      return scoreRack(raw);
-    } catch (error) {
-      return error;
+      await saveJob({
+        ...input.job,
+        status: "done",
+        final: { ok: true, mode: input.mode, estimatedCostUsd: usd, record, result: score.result, backupEstimate: score.backup },
+      });
+      return;
     }
-  }));
-  const racks = settled.filter((item): item is RackEstimate => item instanceof Object && !(item instanceof Error) && "beams" in item);
-  const usable = racks.filter((rack) => rack.isValidDeer);
-  if (usable.length === 0) {
-    const reason = racks.find((rack) => rack.invalidReason)?.invalidReason;
-    if (racks.length > 0) return invalidFrom(reason, "No antlers could be scored from these photos.");
-    const upstream = settled.find((item) => item instanceof UpstreamError);
-    if (upstream) throw upstream;
-    throw new UpstreamError("No frame could be scored.", 502, false);
+    const age = await runAgeCall(input.images[0], input.minimum, (provisional) => {
+      void saveJob({ ...input.job, provisional });
+    });
+    if (age.stop || !age.result) {
+      await input.refund();
+      await input.releaseFairUse();
+      const code = age.stop ?? "unreadable";
+      await saveJob({
+        ...input.job,
+        status: "error",
+        error: { code, message: STOP_MESSAGE[code] },
+      });
+      return;
+    }
+    const usd = await settleCalls(age.costs, input.reserved, input.mode, input.appUserId, input.usage);
+    const record = await issueRecord({
+      appUserId: input.appUserId,
+      images: input.images,
+      mode: input.mode,
+      result: age.result,
+      minimum: input.minimum,
+    });
+    await saveJob({
+      ...input.job,
+      status: "done",
+      provisional: age.provisional,
+      final: {
+        ok: true,
+        mode: input.mode,
+        estimatedCostUsd: usd,
+        record,
+        readings: age.readings,
+        result: age.result,
+      },
+    });
+  } catch {
+    await input.refund().catch(() => undefined);
+    await input.releaseFairUse().catch(() => undefined);
+    await saveJob({
+      ...input.job,
+      status: "error",
+      error: { code: "upstream", message: "Analysis failed. Try again in a moment." },
+    });
   }
-  const merged = consensusRack(usable);
-  if (rackIsUnmeasurable(merged)) {
-    return {
-      invalid: true as const,
-      status: 422,
-      code: "poor_quality" as const,
-      message: "The rack couldn't be measured in this photo. Try a clearer, head-on shot of the antlers.",
-    };
-  }
-  const rackConfidence = merged.confidence === "High" ? 80 : merged.confidence === "Low" ? 40 : 60;
-  return {
-    ...merged,
-    frameCount: usable.length,
-    consensus: "median-measurements",
-    ...fieldBundle(merged.ageYears, rackConfidence, merged.topCues, merged.topCues, context.minimumShooterAge ?? 4.5),
-  };
 }
 
-async function runBaseline(image: string, usage: TokenUsage) {
-  const raw = await visionJson({
-    prompt: baselinePrompt(),
-    images: [image],
-    detail: "low",
-    maxTokens: 200,
-    timeoutMs: 25_000,
-    usage,
-  });
-  if (raw.isValidDeer === false) {
-    return invalidFrom("not_deer", "This photo doesn't show a deer.");
+async function settleCalls(calls: ModelCall[], reserved: number, mode: string, appUserId: string, usage: TokenUsage): Promise<number> {
+  for (const call of calls) {
+    usage.promptTokens += call.promptTokens;
+    usage.completionTokens += call.completionTokens;
   }
-  const ageYears = roundHalf(num(raw.ageYears));
-  return {
-    estimatedAgeYears: ageYears,
-    ageCall: raw.mature === true || ageYears >= 4.5 ? "mature" : ageCallOf(ageYears),
-    grossScore: num(raw.grossScore),
-    baseline: true,
-  };
+  const gateway = calls.reduce((sum, call) => sum + call.usd, 0);
+  const estimated = gateway > 0 ? gateway : costUsd(usage);
+  await reconcileSpend(reserved, estimated);
+  console.log(JSON.stringify({
+    event: "analysis_cost",
+    mode,
+    model: calls.map((call) => `${call.role}:${call.model}`).join(","),
+    models: calls.map((call) => ({ role: call.role, model: call.model, usd: call.usd, ms: call.ms })),
+    estimatedCostUsd: Number(estimated.toFixed(6)),
+    appUserIdPrefix: appUserId.slice(0, 16),
+  }));
+  return Number(estimated.toFixed(6));
 }
+
+export async function handleJobStatus(id: string): Promise<{ status: number; body: unknown }> {
+  if (!/^job_[a-f0-9]{16}$/.test(id)) {
+    return { status: 400, body: { ok: false, code: "invalid_request", message: "That job id is not valid." } };
+  }
+  const job = await loadJob(id);
+  if (!job) return { status: 404, body: { ok: false, code: "invalid_request", message: "No scan with that id." } };
+  return { status: 200, body: { ok: true, ...job } };
+}
+

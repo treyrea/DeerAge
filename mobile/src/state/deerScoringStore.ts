@@ -72,6 +72,7 @@ interface DeerScoringState {
   currentResult: DeerScoringResult | null;
   error: string | null;
   errorCode: AnalysisErrorCode | null;
+  provisional: { fieldCall: string; note: string; ageClass: string } | null;
   history: DeerScoringResult[];
   analysisMode: "age" | "score";
 
@@ -112,6 +113,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
   currentResult: null,
   error: null,
   errorCode: null,
+  provisional: null,
   history: [],
   analysisMode: "score" as "age" | "score",
   propertyRules: {

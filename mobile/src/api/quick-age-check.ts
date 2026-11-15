@@ -31,6 +31,10 @@ export interface QuickAgeResult {
   fieldCallNote?: string;
   cueBullets?: { area: string; text: string }[];
   shotReceipt?: import("../types/shot-record").ShotReceipt | null;
+  fastAge?: number | null;
+  mainAge?: number | null;
+  bodyOnlyAge?: number | null;
+  betterAngle?: string;
 }
 
 interface FeatureRead {
@@ -51,6 +55,11 @@ function feature(raw: unknown): FeatureRead {
     indicator: safe,
     confidence: Math.max(0, Math.min(100, Math.round(Number(source.confidence) || 50))),
   };
+}
+
+function numberOrNull(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function ageClass(value: unknown, years: number): AgeClass {
@@ -125,5 +134,9 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
     cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
     shotReceipt: response.receipt,
+    fastAge: numberOrNull(result.fastAge),
+    mainAge: numberOrNull(result.mainAge),
+    bodyOnlyAge: numberOrNull(result.bodyOnlyAge),
+    betterAngle: typeof result.betterAngle === "string" ? result.betterAngle : "",
   };
 }

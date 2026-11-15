@@ -119,5 +119,9 @@ export async function analyzeExplainableAge(
     fieldCall: normalizeFieldCall(result.fieldCall),
     fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
     cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
+    fastAge: Number.isFinite(Number(result.fastAge)) ? Number(result.fastAge) : null,
+    mainAge: Number.isFinite(Number(result.mainAge)) ? Number(result.mainAge) : null,
+    bodyOnlyAge: Number.isFinite(Number(result.bodyOnlyAge)) ? Number(result.bodyOnlyAge) : null,
+    betterAngle: typeof result.betterAngle === "string" ? result.betterAngle : "",
   };
 }

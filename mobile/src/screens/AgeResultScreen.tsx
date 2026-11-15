@@ -194,6 +194,8 @@ export const AgeResultScreen = () => {
               cueBullets={explainable.cueBullets ?? explainable.detectedCues}
               fieldCall={normalizeFieldCall(explainable.fieldCall)}
               note={explainable.fieldCallNote}
+              bodyOnlyAge={explainable.bodyOnlyAge}
+              betterAngle={explainable.betterAngle}
             />
           ) : null}
           <PreShotBar
@@ -210,6 +212,9 @@ export const AgeResultScreen = () => {
               fieldCallNote: explainableAge.fieldCallNote || "",
               cues: (explainableAge.cueBullets ?? []).map((cue) => `${cue.area}: ${cue.text}`),
               huntLabel: activeHunt(useHunterProfile.getState()).label,
+              fastAge: explainableAge.fastAge,
+              mainAge: explainableAge.mainAge,
+              bodyOnlyAge: explainableAge.bodyOnlyAge,
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />

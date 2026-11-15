@@ -278,6 +278,10 @@ export interface ExplainableAgeEstimation {
   fieldCall?: "SHOOTER" | "LET WALK" | "BORDERLINE";
   fieldCallNote?: string;
   cueBullets?: { area: string; text: string }[];
+  fastAge?: number | null;
+  mainAge?: number | null;
+  bodyOnlyAge?: number | null;
+  betterAngle?: string;
 }
 
 export interface PropertyRules {

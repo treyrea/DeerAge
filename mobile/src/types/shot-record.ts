@@ -40,6 +40,9 @@ export interface ShotRecord {
   longitude: number | null;
   scoreLabel: string | null;
   huntLabel: string;
+  fastAge: number | null;
+  mainAge: number | null;
+  bodyOnlyAge: number | null;
 }
 
 export interface ShotDraft {
@@ -56,4 +59,7 @@ export interface ShotDraft {
   cues: string[];
   scoreLabel?: string | null;
   huntLabel?: string;
+  fastAge?: number | null;
+  mainAge?: number | null;
+  bodyOnlyAge?: number | null;
 }

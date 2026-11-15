@@ -71,6 +71,7 @@ export const ProcessingScreen = () => {
   const errorCode = useDeerScoringStore((s) => s.errorCode);
   const capturedFrames = useDeerScoringStore((s) => s.capturedFrames);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const provisional = useDeerScoringStore((s) => s.provisional);
   const clearCurrentResult = useDeerScoringStore((s) => s.clearCurrentResult);
 
   // Get the image URI for error display
@@ -262,9 +263,17 @@ export const ProcessingScreen = () => {
             </View>
 
             {/* Title */}
-            <Text className="text-white text-2xl font-bold mb-2">Analyzing Deer</Text>
+            <Text className="text-white text-2xl font-bold mb-2 text-center">
+              {analysisMode === "score"
+                ? "Scoring"
+                : provisional?.fieldCall === "LET WALK"
+                  ? "LET WALK"
+                  : "Hold, checking his body."}
+            </Text>
             <Text className="text-gray-400 text-center mb-8">
-              Processing {capturedFrames.length} {capturedFrames.length === 1 ? "image" : "frames"} using advanced AI
+              {analysisMode === "score"
+                ? "This can take a couple of minutes. DeerAge will not guess early."
+                : provisional?.note || "Checking the body before the rack."}
             </Text>
 
             {/* Processing Steps */}

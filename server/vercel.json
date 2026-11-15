@@ -1,6 +1,9 @@
 {
   "functions": {
     "api/analyze.ts": { "maxDuration": 60 },
+    "api/analyze-status.ts": { "maxDuration": 10 },
+    "api/score.ts": { "maxDuration": 300 },
+    "api/score-status.ts": { "maxDuration": 10 },
     "api/config.ts": { "maxDuration": 10 },
     "api/access.ts": { "maxDuration": 10 },
     "api/feed.ts": { "maxDuration": 10 },

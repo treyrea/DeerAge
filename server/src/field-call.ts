@@ -52,12 +52,6 @@ export function classLabel(step: number): string {
   return step >= 6.5 ? "6.5+" : step.toFixed(1);
 }
 
-function shiftStep(years: number, delta: number): number {
-  const index = STEPS.indexOf(classStep(years));
-  const next = Math.max(0, Math.min(STEPS.length - 1, index + delta));
-  return STEPS[next];
-}
-
 function areaOf(name: unknown, fallback = "Body"): string {
   if (typeof name !== "string") return fallback;
   const key = name.trim().toLowerCase().replace(/\s+/g, "_");
@@ -89,22 +83,39 @@ export function cueBulletsFrom(rawCues: unknown, topCues: unknown): CueBullet[] 
   return bullets.slice(0, 6);
 }
 
-function windowSteps(confidence: number, spread: number): number {
-  if (confidence < 55 || spread >= 1.5) return 2;
-  if (confidence < 75 || spread >= 1) return 1;
-  return 0;
+export function fieldRead(ageYears: number, _confidence: number, minimum = 4.5, _spread = 0): Omit<FieldRead, "cueBullets"> {
+  return finalCall({ mainYears: ageYears, bodyYears: null, minimum, confirmed: true });
 }
 
-export function fieldRead(ageYears: number, confidence: number, minimum = 4.5, spread = 0): Omit<FieldRead, "cueBullets"> {
-  const leaseMinimum = classStep(minimum);
-  const estimate = classStep(ageYears);
-  const steps = windowSteps(confidence, spread);
-  const low = shiftStep(ageYears, -steps);
-  const high = shiftStep(ageYears, steps);
-  const ageClass = classLabel(estimate);
+/** Point estimate against the lease minimum. A 1.5 or 2.5 body vetoes a SHOOTER. */
+export function finalCall(input: {
+  mainYears: number | null;
+  bodyYears: number | null;
+  minimum: number;
+  confirmed: boolean;
+}): Omit<FieldRead, "cueBullets"> {
+  const leaseMinimum = classStep(input.minimum);
   const minimumLabel = classLabel(leaseMinimum);
-
-  if (low >= leaseMinimum) {
+  if (!input.confirmed || input.mainYears == null) {
+    return {
+      fieldCall: "BORDERLINE",
+      ageClass: input.bodyYears == null ? "" : classLabel(classStep(input.bodyYears)),
+      leaseMinimum,
+      fieldCallNote: `Couldn't confirm this buck, and your minimum is ${minimumLabel}. Don't risk the fine.`,
+    };
+  }
+  const estimate = classStep(input.mainYears);
+  const ageClass = classLabel(estimate);
+  const body = input.bodyYears == null ? null : classStep(input.bodyYears);
+  if (estimate >= leaseMinimum && body != null && body <= 2.5) {
+    return {
+      fieldCall: "BORDERLINE",
+      ageClass,
+      leaseMinimum,
+      fieldCallNote: `Big rack, young body. The body reads ${classLabel(body)}, and your minimum is ${minimumLabel}.`,
+    };
+  }
+  if (estimate >= leaseMinimum) {
     return {
       fieldCall: "SHOOTER",
       ageClass,
@@ -112,21 +123,11 @@ export function fieldRead(ageYears: number, confidence: number, minimum = 4.5, s
       fieldCallNote: `Reads ${ageClass}, at or above your lease minimum of ${minimumLabel}. This is a field read from the photo, not a jawbone age.`,
     };
   }
-  if (high < leaseMinimum) {
-    return {
-      fieldCall: "LET WALK",
-      ageClass,
-      leaseMinimum,
-      fieldCallNote: `Reads ${ageClass}, under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`,
-    };
-  }
-  const below = classLabel(Math.min(estimate, shiftStep(leaseMinimum, -1)));
-  const above = classLabel(Math.max(estimate, leaseMinimum));
   return {
-    fieldCall: "BORDERLINE",
+    fieldCall: "LET WALK",
     ageClass,
     leaseMinimum,
-    fieldCallNote: `Could be ${below} or ${above}, and your minimum is ${minimumLabel}. Don't risk the fine.`,
+    fieldCallNote: `Reads ${ageClass}, under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`,
   };
 }
 

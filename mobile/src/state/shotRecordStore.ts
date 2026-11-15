@@ -120,6 +120,9 @@ export async function saveShotRecord(draft: ShotDraft): Promise<ShotRecord | nul
     longitude: location?.longitude ?? null,
     scoreLabel: draft.scoreLabel ?? null,
     huntLabel: draft.huntLabel ?? "",
+    fastAge: draft.fastAge ?? null,
+    mainAge: draft.mainAge ?? null,
+    bodyOnlyAge: draft.bodyOnlyAge ?? null,
   };
   useShotRecordStore.getState().put(record);
   return record;

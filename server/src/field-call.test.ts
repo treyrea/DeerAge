@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { fieldBundle, fieldRead } from "./field-call.js";
+import { fieldBundle, fieldRead, finalCall } from "./field-call.js";
 
 test("a clear 5.5 is a shooter when the lease minimum is 4.5", () => {
   const read = fieldRead(5.5, 80, 4.5, 0);
@@ -22,12 +22,17 @@ test("a clear 3.5 meets a 3.5 lease minimum", () => {
   assert.equal(read.ageClass, "3.5");
 });
 
-test("uncertainty that crosses the lease minimum is borderline", () => {
+test("a 3.5 point read under a 4.5 minimum is let walk", () => {
   const read = fieldRead(3.5, 60, 4.5, 0);
+  assert.equal(read.fieldCall, "LET WALK");
+});
+
+test("a shooter with a 1.5 body is borderline", () => {
+  const read = finalCall({ mainYears: 5.5, bodyYears: 1.5, minimum: 4.5, confirmed: true });
   assert.equal(read.fieldCall, "BORDERLINE");
-  assert.match(read.fieldCallNote, /Could be 3.5 or 4.5/);
-  assert.match(read.fieldCallNote, /your minimum is 4.5/);
-  assert.match(read.fieldCallNote, /Don't risk the fine/);
+  assert.match(read.fieldCallNote, /Big rack, young body/);
+  assert.match(read.fieldCallNote, /1\.5/);
+  assert.match(read.fieldCallNote, /4\.5/);
 });
 
 test("the same 4.5 buck is let walk when the lease minimum is 5.5", () => {

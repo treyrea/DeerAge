@@ -4,7 +4,7 @@
  */
 
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
-import { getAccess, runAnalysis, type AnalyzeBody } from "./analyze.js";
+import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
 import { handleVerifyRecord } from "./record.js";
@@ -43,6 +43,14 @@ export async function handleAccessRequest(req: Incoming): Promise<Outgoing> {
 export async function route(req: Incoming): Promise<Outgoing> {
   const path = (req.url ?? "").split("?")[0];
   if (path === "/api/analyze") return handleAnalyzeRequest(req);
+  if (path === "/api/score") {
+    const body = req.body && typeof req.body === "object" ? { ...(req.body as Record<string, unknown>), mode: "score" } : { mode: "score" };
+    return handleAnalyzeRequest({ ...req, body });
+  }
+  if (path === "/api/analyze-status" || path === "/api/score-status") {
+    if (req.method !== "GET") return { status: 405, body: { ok: false, code: "invalid_request", message: "Use GET." } };
+    return handleJobStatus(queryParam(req, "id"));
+  }
   if (path === "/api/config") return handleConfigRequest(req);
   if (path === "/api/access") return handleAccessRequest(req);
   if (path === "/api/feed") return handleFeedRequest(req);

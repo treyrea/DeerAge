@@ -58,6 +58,7 @@ const CODES = new Set<AnalysisErrorCode>([
   "no_body",
   "no_antlers",
   "poor_quality",
+  "unreadable",
   "timeout",
   "upstream",
   "network",
@@ -85,6 +86,43 @@ async function jpegBase64(uri: string): Promise<string> {
     format: SaveFormat.JPEG,
   });
   return FileSystem.readAsStringAsync(compressed.uri, { encoding: FileSystem.EncodingType.Base64 });
+}
+
+async function pollJob(jobId: string, mode: string): Promise<{
+  result: Record<string, unknown>;
+  record?: unknown;
+  estimatedCostUsd?: number;
+  mode?: string;
+}> {
+  const base = apiBaseUrl();
+  const path = mode === "score" ? "score-status" : "analyze-status";
+  const deadline = Date.now() + 300_000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const response = await fetch(`${base}/api/${path}?id=${encodeURIComponent(jobId)}`);
+    const job = (await response.json().catch(() => null)) as {
+      status?: string;
+      provisional?: { fieldCall?: string; note?: string; ageClass?: string };
+      final?: { result?: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
+      error?: { code?: string; message?: string };
+    } | null;
+    if (job?.provisional?.note) {
+      const { useDeerScoringStore } = await import("../state/deerScoringStore");
+      useDeerScoringStore.setState({
+        provisional: {
+          fieldCall: job.provisional.fieldCall ?? "HOLD",
+          note: job.provisional.note,
+          ageClass: job.provisional.ageClass ?? "",
+        },
+      });
+    }
+    if (job?.status === "done" && job.final?.result) return job.final as { result: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
+    if (job?.status === "error") {
+      const code = job.error?.code && CODES.has(job.error.code as AnalysisErrorCode) ? job.error.code as AnalysisErrorCode : "upstream";
+      throw new AnalysisError(code, job.error?.message);
+    }
+  }
+  throw new AnalysisError("timeout");
 }
 
 export async function analyzeImages(input: {
@@ -165,7 +203,16 @@ export async function analyzeImages(input: {
     record?: unknown;
   } | null;
 
-  if (!response.ok || !payload?.ok || !payload.result) {
+  if (response.status === 202 && payload?.ok && typeof (payload as { jobId?: unknown }).jobId === "string") {
+    const done = await pollJob((payload as { jobId: string }).jobId, input.mode);
+    payload.result = done.result;
+    payload.record = done.record;
+    payload.serverTime = done.record && typeof done.record === "object" && "serverTime" in done.record ? String((done.record as { serverTime?: unknown }).serverTime ?? "") : null;
+    payload.estimatedCostUsd = done.estimatedCostUsd;
+    payload.mode = done.mode ?? input.mode;
+  }
+
+  if ((!response.ok && response.status !== 202) || !payload?.ok || !payload.result) {
     const code = payload?.code && CODES.has(payload.code as AnalysisErrorCode) ? (payload.code as AnalysisErrorCode) : response.status === 402 ? "quota" : response.status === 429 ? "rate_limited" : "upstream";
     if (code === "quota") {
       useSubscriptionStore.getState().noteServerUsage(0);

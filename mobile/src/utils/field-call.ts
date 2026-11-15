@@ -38,9 +38,7 @@ function shiftStep(years: number, delta: number): number {
   return STEPS[next];
 }
 
-function windowSteps(confidence: number): number {
-  if (confidence < 55) return 2;
-  if (confidence < 75) return 1;
+function windowSteps(_confidence: number): number {
   return 0;
 }
 

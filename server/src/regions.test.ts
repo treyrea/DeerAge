@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { contextBlock } from "./prompts.js";
+import { bodyFirstAgePrompt } from "./prompts.js";
 import { regionAt, regionHeadsUp, sameHunt, type Place } from "./regions.js";
 
 const pineywoods: Place = { stateCode: "TX", stateName: "Texas", ecoregion: "Pineywoods", label: "Pineywoods" };
@@ -34,16 +34,10 @@ test("a sourced antler gap is quoted and an unsourced pair stays generic", () =>
   assert.equal(remote, "Hunting Trans-Pecos, home is Pineywoods.");
 });
 
-test("the prompt applies the regional prior to the hunt region", () => {
-  const block = contextBlock({
-    state: "TX",
-    ecoregion: "Pineywoods",
-    homeState: "TX",
-    homeEcoregion: "Edwards Plateau",
-    minimumShooterAge: 4.5,
-  });
-  assert.ok(block.includes("Hunt ecoregion: Pineywoods"));
-  assert.ok(block.includes("Home ecoregion: Edwards Plateau"));
-  assert.ok(block.includes("hunt ecoregion"));
-  assert.ok(block.includes("Edwards Plateau about 118"));
+test("the age prompt does not tell the model it is the rut", () => {
+  const prompt = bodyFirstAgePrompt(4.5);
+  assert.equal(/Month:/.test(prompt), false);
+  assert.equal(/rut-swollen/i.test(prompt), false);
+  assert.ok(prompt.includes("FINAL"));
+  assert.ok(prompt.includes("4.5"));
 });

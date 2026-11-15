@@ -223,6 +223,8 @@ export const QuickCheckResultScreen = () => {
               fallbackCues={result.topCues ?? [result.explanation]}
               fieldCall={normalizeFieldCall(result.fieldCall)}
               note={result.fieldCallNote}
+              bodyOnlyAge={result.bodyOnlyAge}
+              betterAngle={result.betterAngle}
             />
           ) : (
             <FieldCallCard
@@ -247,6 +249,9 @@ export const QuickCheckResultScreen = () => {
               fieldCallNote: result.fieldCallNote || "",
               cues: result.cueBullets?.map((cue) => `${cue.area}: ${cue.text}`) ?? result.topCues ?? [],
               huntLabel: activeHunt(useHunterProfile.getState()).label,
+              fastAge: result.fastAge,
+              mainAge: result.mainAge,
+              bodyOnlyAge: result.bodyOnlyAge,
             } satisfies ShotDraft}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
