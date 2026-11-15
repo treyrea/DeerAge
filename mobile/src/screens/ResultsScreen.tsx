@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ScrollView, Pressable, Share, Image as RNImage, Modal } from "react-native";
+import { View, Text, ScrollView, Pressable, Image as RNImage, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -12,7 +12,7 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
-import { LeaseManagerButton } from "../components/LeaseManagerButton";
+import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
@@ -210,68 +210,18 @@ export const ResultsScreen = () => {
   const handleExportPDF = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowShareSheet(false);
-
-    // Get the image URI from captured frames
-    const imageUri = currentResult.capturedFrames?.[0]?.imageUri;
-
-    // Build comprehensive message with all details
-    const scoreToShow = adjustedScore !== null ? adjustedScore.toFixed(1) : formatScore(score.netNonTypical);
-    const pointCountToShow = manualOverride ? displayedPointCount : (score.measurements.totalPoints + score.measurements.totalAbnormalPoints);
-
-    let message = `DeerAge Analysis Summary\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `Mode: ${analysisMode === "age" ? "Age My Deer" : "Score My Rack"}\n\n`;
-
-    message += `📊 RESULTS\n`;
-    message += `• Age class: ${formatAgeClass(age.estimatedAge)}\n`;
-    message += `• Rack Score (B&C): ${scoreToShow}″`;
-    if (adjustedScore !== null) {
-      message += ` (Adjusted)\n`;
-      message += `  Original AI Score: ${formatScore(score.netNonTypical)}″\n`;
-    } else {
-      message += `\n`;
-    }
-    message += `• Point Count: ${pointCountToShow}`;
-    if (manualOverride) {
-      message += ` (Manual)\n`;
-      message += `  AI Count: ${score.measurements.totalPoints + score.measurements.totalAbnormalPoints}\n`;
-      message += `  Left: ${manualLeftCount} | Right: ${manualRightCount}\n`;
-    } else {
-      message += `\n`;
-      message += `  Left: ${score.measurements.leftSidePoints} | Right: ${score.measurements.rightSidePoints}\n`;
-    }
-    message += `• Confidence: ${score.overallConfidence}\n\n`;
-
-    // B&C Qualification
-    const scoreForQualification = adjustedScore !== null ? adjustedScore : getValue(score.netNonTypical);
-    const qualifiesTypical = scoreForQualification >= 160;
-    const qualifiesNonTypical = scoreForQualification >= 185;
-
-    message += `🏆 B&C QUALIFICATION\n`;
-    message += `• Typical (160″): ${qualifiesTypical ? "✓ Qualified" : "Not Met"}\n`;
-    message += `• Non-Typical (185″): ${qualifiesNonTypical ? "✓ Qualified" : "Not Met"}\n\n`;
-
-    message += `Analyzed with DeerAge - AI Deer Scoring`;
-
-    // Small delay to let modal close before showing share sheet
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Share with both message and image
     try {
-      await Share.share(
-        {
-          message,
-          url: imageUri, // iOS only - include the photo
-        },
-        {
-          subject: "My Deer Analysis Results", // Email subject if shared via email
-        }
-      );
-    } catch (error: any) {
-      // User cancelled share - this is normal, don't log as error
-      if (error?.message !== "User did not share") {
-        console.log("Share cancelled or failed:", error?.message);
-      }
+      await shareRead({
+        ageClass: formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge),
+        call: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
+        minimum: currentResult.explainableAge?.minimumAgeThreshold ?? useDeerScoringStore.getState().propertyRules.minimumShooterAge,
+        region: activeHunt(useHunterProfile.getState()).label,
+        time: new Date(currentResult.timestamp).toLocaleString(),
+        receiptId: currentResult.shotReceipt?.id,
+        photoUri: currentResult.capturedFrames?.[0]?.imageUri,
+      }, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
@@ -1274,8 +1224,8 @@ export const ResultsScreen = () => {
                 <Ionicons name="share-social" size={24} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-bold text-base">Share Analysis</Text>
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Share score, age, and photo</Text>
+                <Text className="text-white font-bold text-base">Share...</Text>
+                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Any recipient, same read</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
             </Pressable>

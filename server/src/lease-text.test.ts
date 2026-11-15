@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { leaseManagerMessage } from "./lease-text.js";
+import { leaseButtonLabel, leaseManagerMessage } from "./lease-text.js";
 
 test("the lease text names the class, the call, and the minimum", () => {
   const text = leaseManagerMessage({
@@ -30,6 +30,12 @@ test("a missing verification link is omitted without blocking the text", () => {
   assert.ok(text.includes("3.5 · LET WALK · lease minimum 4.5"));
   assert.ok(text.includes("isn't available"));
   assert.equal(text.includes("http"), false);
+});
+
+test("the primary button uses the saved name, or asks for setup", () => {
+  assert.deepEqual(leaseButtonLabel("Jake", "5550100"), { ready: true, label: "Text Jake · Lease Manager" });
+  assert.deepEqual(leaseButtonLabel("", ""), { ready: false, label: "Set up lease manager" });
+  assert.equal(leaseButtonLabel("Jake", "5550100", "Text the lease").label, "Text the lease");
 });
 
 test("remote copy replaces the lease text", () => {

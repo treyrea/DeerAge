@@ -14,6 +14,13 @@ export interface LeaseTextInput {
 
 export const DEFAULT_LEASE_TEXT = "{age} · {call} · lease minimum {minimum}\n{region}\n{time}\n{link}";
 
+/** Primary button. A saved number is required before the text can be addressed. */
+export function leaseButtonLabel(name: string, phone: string, remote = ""): { ready: boolean; label: string } {
+  if (!phone.trim()) return { ready: false, label: "Set up lease manager" };
+  if (remote.trim()) return { ready: true, label: remote.trim() };
+  return { ready: true, label: `Text ${name.trim() || "Lease Manager"} · Lease Manager` };
+}
+
 const MISSING_LINK = "Verification link isn't available for this read.";
 
 export function leaseManagerMessage(input: LeaseTextInput, template = ""): string {

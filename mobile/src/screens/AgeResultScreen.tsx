@@ -9,7 +9,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Share,
   Modal,
   TextInput,
 } from "react-native";
@@ -22,7 +21,7 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
-import { LeaseManagerButton } from "../components/LeaseManagerButton";
+import { LeaseManagerButton, shareRead, type LeaseNote } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -111,42 +110,23 @@ export const AgeResultScreen = () => {
     navigation.navigate("HomeMain");
   };
 
+  const readNote: LeaseNote = {
+    ageClass: ageClassLabel,
+    call: explainableAge.fieldCall || explainableAge.shooterPassLabel,
+    minimum: explainableAge.minimumAgeThreshold,
+    region: activeHunt(useHunterProfile.getState()).label,
+    time: new Date(currentResult.timestamp).toLocaleString(),
+    receiptId: currentResult.shotReceipt?.id,
+    photoUri: imageUri,
+  };
+
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowShareSheet(false);
-
-    const message = `DeerAge – Age My Deer Analysis
-
-Estimated age: ${formatAgeClass(explainableAge.estimatedAge)} (${explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")})
-Lease minimum: ${explainableAge.minimumAgeThreshold}
-Confidence: ${explainableAge.overallConfidence}%
-${explainableAge.shooterPassLabel}: ${explainableAge.shooterPassReason}
-
-Detected Cues:
-${explainableAge.detectedCues.map((cue) => `• ${cue.displayName}: ${cue.detectedPattern} (${cue.confidence}%)`).join("\n")}
-
-Know before you pull the trigger.
-Powered by RackScore™ AI`;
-
-    // Small delay to let modal close before showing share sheet
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Share with both message and image
     try {
-      await Share.share(
-        {
-          message,
-          url: imageUri, // iOS only - include the photo
-        },
-        {
-          subject: "My Deer Age Analysis Results",
-        }
-      );
-    } catch (error: any) {
-      // User cancelled share - this is normal, don't log as error
-      if (error?.message !== "User did not share") {
-        console.log("Share cancelled or failed:", error?.message);
-      }
+      await shareRead(readNote, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
@@ -234,15 +214,7 @@ Powered by RackScore™ AI`;
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
           <RegionHeadsUp />
-          <LeaseManagerButton
-            ageClass={ageClassLabel}
-            call={explainableAge.fieldCall || explainableAge.shooterPassLabel}
-            minimum={explainableAge.minimumAgeThreshold}
-            region={activeHunt(useHunterProfile.getState()).label}
-            time={new Date(currentResult.timestamp).toLocaleString()}
-            receiptId={currentResult.shotReceipt?.id}
-            photoUri={imageUri}
-          />
+          <LeaseManagerButton {...readNote} />
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}
@@ -842,8 +814,8 @@ Powered by RackScore™ AI`;
                 <Ionicons name="share-social" size={24} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-bold text-base">Share Analysis</Text>
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Share age estimate and photo</Text>
+                <Text className="text-white font-bold text-base">Share...</Text>
+                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Any recipient, same read</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
             </Pressable>

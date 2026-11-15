@@ -15,16 +15,14 @@
  */
 
 import React, { useRef, useCallback } from "react";
-import { View, Text, Pressable, Share, Platform } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { DeerMark } from "./DeerMark";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import ViewShot from "react-native-view-shot";
-import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
-import { recordShare } from "../lib/review";
 import { formatAgeClass } from "../utils/age-class";
 
 // ============================================================================
@@ -63,42 +61,14 @@ export type ShareableResultData = AgeResultData | ScoreResultData;
 
 interface ShareableResultCardProps {
   data: ShareableResultData;
-  onShare?: () => void;
   compact?: boolean;
 }
 
 export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
   data,
-  onShare,
   compact = false,
 }) => {
   const viewShotRef = useRef<ViewShot>(null);
-
-  const handleShare = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      if (viewShotRef.current?.capture) {
-        const uri = await viewShotRef.current.capture();
-
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            mimeType: "image/png",
-            dialogTitle: "Share your DeerAge result",
-          });
-          onShare?.();
-          void recordShare();
-        } else {
-          const text = getShareText(data);
-          await Share.share({ message: text });
-          onShare?.();
-          void recordShare();
-        }
-      }
-    } catch (error) {
-      console.log("[Share] Error sharing result:", error);
-    }
-  }, [data, onShare]);
 
   const handleSaveToGallery = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -133,19 +103,7 @@ export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
         )}
       </ViewShot>
 
-      {/* Share Actions */}
-      <View className="flex-row justify-center mt-4 space-x-4">
-        <Pressable
-          onPress={handleShare}
-          className="flex-row items-center px-6 py-3 rounded-xl"
-          style={{ backgroundColor: "#D4AF37" }}
-        >
-          <Ionicons name="share-outline" size={20} color="#1a1f16" />
-          <Text className="font-bold ml-2" style={{ color: "#1a1f16" }}>
-            Share
-          </Text>
-        </Pressable>
-
+      <View className="flex-row justify-center mt-4">
         <Pressable
           onPress={handleSaveToGallery}
           className="flex-row items-center px-6 py-3 rounded-xl"
@@ -353,15 +311,6 @@ const BrandingWatermark: React.FC = () => {
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-const getShareText = (data: ShareableResultData): string => {
-  if (data.type === "age") {
-    const minimum = typeof data.leaseMinimum === "number" ? `\nLease minimum: ${data.leaseMinimum}` : "";
-    return `DeerAge\n\nAge class: ${formatAgeClass(data.ageRange || data.ageEstimate)}\n${data.call ? data.call + "\n" : ""}Confidence: ${data.confidence}%${minimum}\n\nAged with DeerAge`;
-  }
-
-  return `DeerAge B&C Score\n\n${data.pointCount} Points\nNet Score: ${data.netScore.toFixed(1)}"\nGross Score: ${data.grossScore.toFixed(1)}"\nCategory: ${data.category}\n${data.meetsMinimum ? "Meets B&C minimum" : ""}\n\nKnow before you pull the trigger.`;
-};
 
 // ============================================================================
 // MINI SHARE BADGE (for inline sharing)

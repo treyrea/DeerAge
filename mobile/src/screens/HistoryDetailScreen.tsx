@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { View, Text, ScrollView, Pressable, Share, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
-import { LeaseManagerButton } from "../components/LeaseManagerButton";
+import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { useShotRecordStore } from "../state/shotRecordStore";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -51,7 +51,6 @@ export const HistoryDetailScreen = () => {
 
   // Determine if this is age mode or rack mode
   const isAgeMode = analysisMode === "age";
-  const isRackMode = analysisMode === "score";
 
   // Use manual count if override is active, otherwise use AI count
   const displayedPointCount = manualOverride && manualPointCount
@@ -65,33 +64,18 @@ export const HistoryDetailScreen = () => {
   };
 
   const handleExportPDF = async () => {
-    // Get the image URI from captured frames
-    const imageUri = capturedFrames[0]?.imageUri;
-
-    if (isAgeMode) {
-      const minimum = explainableAge?.minimumAgeThreshold ?? savedMinimum;
-      const call = explainableAge?.fieldCall ?? explainableAge?.shooterPassLabel ?? "N/A";
-      const message = `Deer Age Analysis:\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\n${call}\nLease minimum: ${minimum}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
-
-      try {
-        await Share.share({
-          message,
-          url: imageUri, // Include the photo
-        });
-      } catch (error) {
-        console.error("Share failed:", error);
-      }
-    } else {
-      const message = `Deer Score Summary:\nNet Typical: ${formatScore(score.netTypical)}\nNet Non-Typical: ${formatScore(score.netNonTypical)}\nTotal Points: ${displayedPointCount}\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${score.overallConfidence}`;
-
-      try {
-        await Share.share({
-          message,
-          url: imageUri, // Include the photo
-        });
-      } catch (error) {
-        console.error("Share failed:", error);
-      }
+    try {
+      await shareRead({
+        ageClass: formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge),
+        call: linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || "",
+        minimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
+        region: linked?.huntLabel || "Hunt region not set",
+        time: new Date(timestamp).toLocaleString(),
+        receiptId: linked?.receiptId || result.shotReceipt?.id,
+        photoUri: capturedFrames[0]?.imageUri,
+      }, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
