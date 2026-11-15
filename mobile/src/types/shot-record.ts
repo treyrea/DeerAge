@@ -39,6 +39,7 @@ export interface ShotRecord {
   latitude: number | null;
   longitude: number | null;
   scoreLabel: string | null;
+  huntLabel: string;
 }
 
 export interface ShotDraft {
@@ -54,4 +55,5 @@ export interface ShotDraft {
   fieldCallNote: string;
   cues: string[];
   scoreLabel?: string | null;
+  huntLabel?: string;
 }

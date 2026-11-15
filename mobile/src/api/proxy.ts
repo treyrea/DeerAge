@@ -1,7 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
-import { useHunterProfile } from "../state/hunterProfile";
+import { activeHunt, homePlace, useHunterProfile } from "../state/hunterProfile";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { getRevenueCatAppUserId } from "../lib/revenuecatClient";
 import type { ShotReceipt } from "../types/shot-record";
@@ -109,6 +109,8 @@ export async function analyzeImages(input: {
   lastShotReceipt = null;
   const images = await Promise.all(sampleFrames(input.imageUris, max).map((uri) => jpegBase64(uri)));
   const profile = useHunterProfile.getState();
+  const hunt = activeHunt(profile);
+  const home = homePlace(profile);
   const appUserId = (await getRevenueCatAppUserId()) || useSubscriptionStore.getState().ensureLocalUserId();
 
   const controller = new AbortController();
@@ -125,8 +127,10 @@ export async function analyzeImages(input: {
         images,
         minimumShooterAge: input.minimumShooterAge,
         context: {
-          state: profile.stateCode,
-          ecoregion: profile.ecoregion,
+          state: hunt.stateCode,
+          ecoregion: hunt.ecoregion,
+          homeState: home.stateCode,
+          homeEcoregion: home.ecoregion,
           landType: profile.landType,
           fenceType: profile.landType === "high_fence" ? "high" : profile.landType,
           goal: profile.goal,

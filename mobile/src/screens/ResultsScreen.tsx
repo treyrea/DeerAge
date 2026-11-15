@@ -11,6 +11,8 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
 import { ShareableResultCard } from "../components/ShareableResultCard";
@@ -396,9 +398,11 @@ export const ResultsScreen = () => {
               fieldCallNote: currentResult.explainableAge?.fieldCallNote || currentResult.shotReceipt?.summary.fieldCallNote || "",
               cues: currentResult.shotReceipt?.summary.cues ?? [],
               scoreLabel: typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : null,
+              huntLabel: activeHunt(useHunterProfile.getState()).label,
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
+          <RegionHeadsUp />
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>

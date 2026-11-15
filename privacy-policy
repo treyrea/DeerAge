@@ -20,7 +20,7 @@ We collect only the data necessary to provide app functionality, improve perform
 
 | Data Type                             | Purpose of Collection                                                                                     |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Precise Location**                  | Optional. Only if you allow it, DeerAge can attach the stand's location to a pre-shot record kept on your phone. It is linked to your own records, stays there unless you share a record, and is not used to track you. DeerAge does not collect location in the background. |
+| **Precise Location**                  | Optional. Only while you are using the app, and only if you allow it. DeerAge uses it on the phone to suggest today's hunt region and, if you keep a pre-shot record, to attach the stand. The region name (not the GPS point) is sent with an analysis so the age prior matches the hunt. The GPS point stays on your phone unless you share a record. It is linked to your own records and is not used to track you. DeerAge does not collect location in the background. |
 | **Email Address** | Optional. Only if you sign up for rut-timing alerts and an end-of-season recap. DeerAge does not require an email, a name, or a phone number. Unsubscribe anytime in Settings. |
 | **Push notification token** | Optional. Only if you turn notifications on, so we can send an update or a poll to this install. |
 | **Photos or Videos**                  | To allow users to upload deer images for ageing analysis and to store or display these within the app.    |

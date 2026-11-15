@@ -17,6 +17,8 @@ import { DeerAnalysisFrame } from "../types/deer-scoring";
 import type { DistanceMeasurement } from "../types/distance";
 import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -33,6 +35,7 @@ export const PhotoSelectScreen = () => {
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const stopCapture = useDeerScoringStore((s) => s.stopCapture);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Distance store
   const distanceSettings = useDistanceStore((s) => s.settings);
@@ -142,6 +145,8 @@ export const PhotoSelectScreen = () => {
 
   // Get suggested distance for picker
   const suggested = getSuggestedDistance();
+
+  if (!huntReady) return <HuntRegionSheet />;
 
   return (
     <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>

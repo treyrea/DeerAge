@@ -21,6 +21,8 @@ import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
 import { AntlerSilhouette } from "../components/AntlerSilhouette";
 import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -53,6 +55,7 @@ export const DeerCameraScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Distance store
   const distanceSettings = useDistanceStore((s) => s.settings);
@@ -73,10 +76,9 @@ export const DeerCameraScreen = () => {
 
   // Request camera permissions
   useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
+    if (!huntReady || hasPermission) return;
+    requestPermission();
+  }, [huntReady, hasPermission, requestPermission]);
 
   useEffect(() => {
     return () => {
@@ -266,6 +268,8 @@ export const DeerCameraScreen = () => {
 
   // Get suggested distance
   const suggested = getSuggestedDistance();
+
+  if (!huntReady) return <HuntRegionSheet />;
 
   if (!hasPermission) {
     return (

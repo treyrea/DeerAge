@@ -1,6 +1,8 @@
 export interface HuntContext {
   state?: string;
   ecoregion?: string;
+  homeState?: string;
+  homeEcoregion?: string;
   landType?: string;
   goal?: string;
   minimumShooterAge?: number;
@@ -24,8 +26,11 @@ export function contextBlock(context: HuntContext | undefined): string {
   if (!context) return "No region was provided. Lean on body shape and say the antler prior is uncertain.";
   const month = context.month ?? new Date().getMonth() + 1;
   return [
-    `State: ${context.state || "unknown"}`,
-    `Ecoregion: ${context.ecoregion || "unknown"}`,
+    `Hunt state: ${context.state || "unknown"}`,
+    `Hunt ecoregion: ${context.ecoregion || "unknown"}`,
+    `Home state: ${context.homeState || "unknown"}`,
+    `Home ecoregion: ${context.homeEcoregion || "unknown"}`,
+    "Apply the regional antler prior to the hunt ecoregion. Home is where he lives and is not the prior.",
     `Land: ${context.landType || "unknown"}`,
     `Fence: ${context.fenceType || "unknown"}`,
     `Species: ${context.species || "whitetail"}`,

@@ -18,6 +18,8 @@ import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import * as Haptics from "expo-haptics";
 import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -37,6 +39,7 @@ export const QuickCheckCameraScreen = () => {
   const [zoom, setZoom] = useState(1);
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -44,10 +47,9 @@ export const QuickCheckCameraScreen = () => {
 
   // Request camera permissions
   useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
+    if (!huntReady || hasPermission) return;
+    requestPermission();
+  }, [huntReady, hasPermission, requestPermission]);
 
   useEffect(() => {
     return () => {
@@ -107,6 +109,8 @@ export const QuickCheckCameraScreen = () => {
       ] : undefined);
     }
   };
+
+  if (!huntReady) return <HuntRegionSheet />;
 
   if (!hasPermission) {
     return (

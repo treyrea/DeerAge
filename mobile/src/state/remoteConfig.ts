@@ -20,6 +20,7 @@ export interface AppCopy {
   paywallSubhead: string;
   homeTips: string[];
   seasonalBanner: string;
+  regionHeadsUp: string;
 }
 
 const FLAGS: AppFlags = {
@@ -58,7 +59,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
   persist(
     (set) => ({
       flags: FLAGS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "" },
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
       minVersion: "",
@@ -75,6 +76,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             paywallHeadline: typeof copy.paywallHeadline === "string" ? copy.paywallHeadline : "",
             paywallSubhead: typeof copy.paywallSubhead === "string" ? copy.paywallSubhead : "",
             seasonalBanner: typeof copy.seasonalBanner === "string" ? copy.seasonalBanner : "",
+            regionHeadsUp: typeof copy.regionHeadsUp === "string" ? copy.regionHeadsUp : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });

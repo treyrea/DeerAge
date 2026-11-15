@@ -119,6 +119,7 @@ export async function saveShotRecord(draft: ShotDraft): Promise<ShotRecord | nul
     latitude: location?.latitude ?? null,
     longitude: location?.longitude ?? null,
     scoreLabel: draft.scoreLabel ?? null,
+    huntLabel: draft.huntLabel ?? "",
   };
   useShotRecordStore.getState().put(record);
   return record;

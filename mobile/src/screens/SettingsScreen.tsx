@@ -146,8 +146,11 @@ export const SettingsScreen = () => {
               </View>
             </View>
 
+            <Text className="text-sm mb-1" style={{ color: "#E5D4B8" }}>
+              {profile.completed ? `Home: ${profile.stateName}${profile.ecoregion ? ` · ${profile.ecoregion}` : ""}` : "Home region not set"}
+            </Text>
             <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-              {profile.completed ? `${profile.stateName} · ${profile.ecoregion}` : "Hunting profile not set"}
+              {profile.huntDay ? `Last hunt region: ${profile.huntLabel || profile.huntStateName}` : "Hunt region is confirmed on the first scan of the day."}
             </Text>
 
             <Pressable
@@ -155,7 +158,7 @@ export const SettingsScreen = () => {
               className="rounded-xl py-3 items-center mb-3"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
             >
-              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit hunting profile</Text>
+              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit home region</Text>
             </Pressable>
 
             <Pressable

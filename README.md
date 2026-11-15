@@ -48,13 +48,13 @@ Until that key exists, a phone can still show the opt-in, but Apple will not del
 
 ### App Store privacy labels
 
-When shipping 1.0.9, update App Privacy for two optional types. Neither is used for tracking, and neither is required to use the app.
+When shipping 1.0.9, update App Privacy for these optional types. None are used for tracking, and none are required to use the app.
 
 - **Contact Info → Email Address.** Optional. Collected only if the hunter signs up for rut-timing alerts and an end-of-season recap. Linked to the install (the RevenueCat app user id). Purpose: App Functionality. Not used for tracking.
 - **Identifiers → Device ID.** Optional. The Expo push token, collected only if the hunter turns notifications on. Linked to the install. Purpose: App Functionality. Not used for tracking.
-- **Location → Precise Location.** Optional. Collected only if the hunter allows location, and only while he is using the app. It is attached to a pre-shot record stored on his phone. Linked to his own records. Purpose: App Functionality. Not used for tracking. No background location.
+- **Location → Precise Location.** Optional. Only while he is using the app, and only if he allows it. On the phone it suggests today's hunt region and can be attached to a pre-shot record. The region name, not the GPS point, is sent with an analysis. Linked to his own records. Purpose: App Functionality. Not used for tracking. No background location.
 
-Photos and purchases are unchanged. Location is the optional pre-shot use above.
+Photos and purchases are unchanged.
 
 ## Plans
 

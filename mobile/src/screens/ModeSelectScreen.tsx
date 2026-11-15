@@ -16,6 +16,8 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { FREE_LIFETIME_ANALYSES } from "../lib/products";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet, RegionHeadsUp } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 // Custom rack ruler icon for Score My Rack
 const RackRulerIcon = require("../../assets/image-1765760310.png");
@@ -36,6 +38,7 @@ export const ModeSelectScreen = () => {
     : "Measure rack and calculate Boone & Crockett score";
 
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
   const entitled = useSubscriptionStore((s) => s.entitled);
   const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
   const remaining = useSubscriptionStore((s) => s.remainingFree());
@@ -68,6 +71,8 @@ export const ModeSelectScreen = () => {
 
   const statusDisplay = getStatusDisplay();
 
+  if (!huntReady) return <HuntRegionSheet />;
+
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
@@ -91,6 +96,7 @@ export const ModeSelectScreen = () => {
           <Text className="text-sm mt-1" style={{ color: "#D4AF37" }}>
             Your lease minimum: {leaseMinimum}
           </Text>
+          <RegionHeadsUp />
         </View>
       </View>
 

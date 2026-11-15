@@ -21,6 +21,8 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
@@ -226,9 +228,11 @@ Powered by RackScore™ AI`;
               fieldCall: explainableAge.fieldCall || "",
               fieldCallNote: explainableAge.fieldCallNote || "",
               cues: (explainableAge.cueBullets ?? []).map((cue) => `${cue.area}: ${cue.text}`),
+              huntLabel: activeHunt(useHunterProfile.getState()).label,
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
+          <RegionHeadsUp />
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}

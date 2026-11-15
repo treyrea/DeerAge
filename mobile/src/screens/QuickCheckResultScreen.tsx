@@ -17,6 +17,8 @@ import { ShareableResultCard } from "../components/ShareableResultCard";
 import { formatAgeClass } from "../utils/age-class";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
+import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import type { ShotDraft } from "../types/shot-record";
 import { normalizeFieldCall } from "../utils/field-call";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -242,9 +244,11 @@ export const QuickCheckResultScreen = () => {
               fieldCall: result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
               fieldCallNote: result.fieldCallNote || "",
               cues: result.cueBullets?.map((cue) => `${cue.area}: ${cue.text}`) ?? result.topCues ?? [],
+              huntLabel: activeHunt(useHunterProfile.getState()).label,
             } satisfies ShotDraft}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
+          <RegionHeadsUp />
 
           {/* Thumbnail */}
           <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.5, height: SCREEN_WIDTH * 0.5 }}>

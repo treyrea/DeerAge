@@ -134,11 +134,11 @@ export const OnboardingScreen = () => {
       <View style={{ paddingHorizontal: 24, paddingTop: 12 }}>
         <Text style={{ color: "#D4AF37", fontWeight: "700" }}>{step + 1} of 3</Text>
         <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800", marginTop: 8 }}>
-          {step === 0 ? "Where do you hunt?" : step === 1 ? "What are you looking for?" : "Here's a sample"}
+          {step === 0 ? "Where's home?" : step === 1 ? "What are you looking for?" : "Here's a sample"}
         </Text>
         <Text style={{ color: "#E5D4B8", marginTop: 6 }}>
           {step === 0
-            ? "Body shape travels. Antler size does not. Your state keeps the age call honest."
+            ? "This is where you live. You'll confirm where you're hunting when you scan."
             : step === 1
               ? "This sets the shoot or let-walk line. You can change it later in Settings."
               : "Your first real check is next. No account."}

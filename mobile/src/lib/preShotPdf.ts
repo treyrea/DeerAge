@@ -62,6 +62,7 @@ export async function sharePreShotRecord(localId: string): Promise<void> {
     <p class="call">${escapeHtml(record.fieldCall || "No call")}</p>
     <p>${escapeHtml(record.fieldCallNote)}</p>
     <p>Your lease minimum at this moment: <strong>${escapeHtml(String(record.leaseMinimum))}</strong></p>
+    ${record.huntLabel ? `<p>Aged against ${escapeHtml(record.huntLabel)} norms</p>` : ""}
     <p>Confidence: ${escapeHtml(String(record.confidence))}%</p>
     ${record.scoreLabel ? `<p>${escapeHtml(record.scoreLabel)}</p>` : ""}
     ${cues ? `<p style="margin-bottom:0">Why this age class</p><ul>${cues}</ul>` : ""}

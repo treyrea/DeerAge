@@ -124,6 +124,7 @@ Commands
   config:get
   config:set [--min-supported 1.0.8] [--recommended 1.0.9] [--banner "The rut is on"]
              [--paywall-headline "..."] [--paywall-subhead "..."] [--home-tip "..."]
+             [--region-note "Hunting {hunt}. Home is {home}. {sourced}"]
              [--flag shootOrPass=true]
 
 Omitted announcement status is published. Omitted poll status is open.
@@ -206,6 +207,7 @@ async function main() {
     if (bools.has("clear-banner")) body.seasonalBanner = "";
     if (flags.has("paywall-headline")) body.paywallHeadline = one(flags, "paywall-headline");
     if (flags.has("paywall-subhead")) body.paywallSubhead = one(flags, "paywall-subhead");
+    if (flags.has("region-note")) body.regionHeadsUp = one(flags, "region-note");
     const tips = flags.get("home-tip");
     if (tips) body.homeTips = tips;
     const flagArgs = flags.get("flag") ?? [];
