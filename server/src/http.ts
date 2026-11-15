@@ -7,6 +7,7 @@ import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleA
 import { getAccess, runAnalysis, type AnalyzeBody } from "./analyze.js";
 import { handleAdminHarvestsRequest, handleHarvestRequest } from "./harvest.js";
 import { handleAdminConfigRequest, publicConfigPayload } from "./remote-config.js";
+import { handleVerifyRecord } from "./record.js";
 import { handleAdminEmailsRequest, handleAdminPushRequest, handleEmailOptInRequest, handleEmailUnsubscribeRequest, handlePushTokenRequest } from "./outreach.js";
 import { header, queryParam, type Incoming, type Outgoing } from "./wire.js";
 
@@ -57,5 +58,6 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/harvest") return handleHarvestRequest(req);
   if (path === "/api/admin/harvests") return handleAdminHarvestsRequest(req);
   if (path === "/api/admin/config") return handleAdminConfigRequest(req);
+  if (path === "/api/verify-record") return handleVerifyRecord(req);
   return { status: 404, body: { ok: false, code: "invalid_request", message: "Not found." } };
 }

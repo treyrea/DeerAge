@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx src/dev-server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/content.test.ts src/field-call.test.ts",
+    "test": "tsx --test src/content.test.ts src/field-call.test.ts src/record.test.ts src/qr.test.ts",
     "admin": "tsx src/admin-cli.ts"
   },
   "devDependencies": {

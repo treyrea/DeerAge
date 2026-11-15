@@ -30,6 +30,7 @@ export interface QuickAgeResult {
   fieldCall?: "SHOOTER" | "LET WALK" | "BORDERLINE";
   fieldCallNote?: string;
   cueBullets?: { area: string; text: string }[];
+  shotReceipt?: import("../types/shot-record").ShotReceipt | null;
 }
 
 interface FeatureRead {
@@ -123,5 +124,6 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     fieldCall: normalizeFieldCall(result.fieldCall),
     fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
     cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
+    shotReceipt: response.receipt,
   };
 }

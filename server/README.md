@@ -22,6 +22,7 @@ Set the Vercel project **Root Directory** to `server`. Framework preset: Other. 
 | `POST` | `/api/admin/push` | Admin. Broadcast, or `dryRun: true` to count only. |
 | `GET` | `/api/admin/emails` | Admin. CSV export. |
 | `POST` | `/api/harvest` | Mark a scan harvested and store a confirmed age. |
+| `GET` | `/api/verify-record?id=rec_…` | Confirms a pre-shot record's signature and server time. `?json=1` returns JSON. No photos. |
 | `GET` | `/api/admin/harvests` | Admin. CSV of harvest checks. |
 | `GET` `PATCH` | `/api/admin/config` | Admin. Versions, feature flags, and remote copy. |
 
@@ -85,6 +86,8 @@ Set these in the Vercel project. Copy `server/.env.example` to `server/.env` for
 | `UPSTASH_REDIS_REST_URL` | yes | Upstash Redis REST URL. Falls back to `KV_REST_API_URL` when unset. |
 | `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash Redis REST token. Falls back to `KV_REST_API_TOKEN`. Server-side only. |
 | `ADMIN_TOKEN` | yes, for admin routes | Bearer token for `/api/admin/*`. Long random string. The app never sends it. |
+| `RECORD_SIGNING_SECRET` | yes, for pre-shot records | HMAC secret. Long random string. Never commit it. If it is unset, analysis still succeeds and the receipt is empty. |
+| `VERIFY_RATE_LIMIT_PER_MINUTE` | no | Checks of `/api/verify-record` per caller. Default `30`. |
 | `EXPO_ACCESS_TOKEN` | no | Optional Expo push access token. Broadcasts work without it. |
 | `FEED_RATE_LIMIT_PER_MINUTE` | no | Feed reads per app user id. Default `40`. |
 | `VOTE_RATE_LIMIT_PER_MINUTE` | no | Votes per app user id. Default `12`. |

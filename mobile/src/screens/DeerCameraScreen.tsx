@@ -20,7 +20,7 @@ import * as Haptics from "expo-haptics";
 import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
 import { AntlerSilhouette } from "../components/AntlerSilhouette";
-import { DeerBodyMark } from "../components/DeerMark";
+import { DeerMark } from "../components/DeerMark";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -345,7 +345,7 @@ export const DeerCameraScreen = () => {
                 style={{ width: width * 0.85, height: analysisMode === "age" ? height * 0.35 : height * 0.30 }}
               >
                 {analysisMode === "age" ? (
-                  <DeerBodyMark size={180} color="#F5F5DC" opacity={0.85} />
+                  <DeerMark size={120} opacity={0.7} />
                 ) : (
                   <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
                 )}
@@ -367,8 +367,7 @@ export const DeerCameraScreen = () => {
                 }}
               >
                 {analysisMode === "age" ? (
-                  // Full deer body silhouette for age estimation
-                  <DeerBodyMark size={200} color="#F5F5DC" opacity={0.9} />
+                  <DeerMark size={132} opacity={0.55} />
                 ) : (
                   <AntlerSilhouette size={150} color="#F5F5DC" opacity={0.85} />
                 )}

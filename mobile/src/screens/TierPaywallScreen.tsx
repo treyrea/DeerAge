@@ -78,6 +78,7 @@ export const TierPaywallScreen = () => {
   const fairUsePerDay = useFairUseAllowance();
   const paywallHeadline = useRemoteConfig((s) => s.copy.paywallHeadline);
   const paywallSubhead = useRemoteConfig((s) => s.copy.paywallSubhead);
+  const recordsOn = useRemoteConfig((s) => s.flags.preShotRecord);
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
@@ -234,9 +235,14 @@ export const TierPaywallScreen = () => {
           ) : null}
 
           <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>{paywallHeadline || "Keep aging deer"}</Text>
-          <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: 18 }}>
+          <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: recordsOn ? 8 : 18 }}>
             {paywallSubhead || `Three free analyses are included. A plan is everyday use: ${fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.`}
           </Text>
+          {recordsOn ? (
+            <Text style={{ color: "#E5D4B8", marginBottom: 18, lineHeight: 20 }}>
+              A plan includes every pre-shot record. The most recent record stays free.
+            </Text>
+          ) : null}
 
           {loading ? <ActivityIndicator color="#D4AF37" /> : null}
 

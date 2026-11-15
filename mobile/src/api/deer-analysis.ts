@@ -18,6 +18,7 @@ export { generateExplainableRackScoring } from "./explainable-rack";
 
 export let lastProxyScale: ScaleEstimation | null = null;
 export let lastProxyAgeYears: number | null = null;
+export { lastShotReceipt } from "./proxy";
 
 export function rememberScale(scale: ScaleEstimation | null) {
   lastProxyScale = scale;
@@ -121,6 +122,7 @@ function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
 export async function fuseMultiFrameMeasurements(
   frames: DeerAnalysisFrame[],
   _scale?: ScaleEstimation,
+  minimumShooterAge?: number,
 ): Promise<AntlerMeasurements> {
   if (frames.length === 0) {
     throw new AnalysisError("zero_frames");
@@ -130,6 +132,7 @@ export async function fuseMultiFrameMeasurements(
     mode: "score",
     imageUris: frames.map((frame) => frame.imageUri),
     species: profile.species,
+    minimumShooterAge,
   });
   if (response.result.isValidDeer === false) {
     const reason = typeof response.result.invalidReason === "string" ? response.result.invalidReason : "no_antlers";

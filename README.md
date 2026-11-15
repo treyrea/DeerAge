@@ -52,8 +52,9 @@ When shipping 1.0.9, update App Privacy for two optional types. Neither is used 
 
 - **Contact Info → Email Address.** Optional. Collected only if the hunter signs up for rut-timing alerts and an end-of-season recap. Linked to the install (the RevenueCat app user id). Purpose: App Functionality. Not used for tracking.
 - **Identifiers → Device ID.** Optional. The Expo push token, collected only if the hunter turns notifications on. Linked to the install. Purpose: App Functionality. Not used for tracking.
+- **Location → Precise Location.** Optional. Collected only if the hunter allows location, and only while he is using the app. It is attached to a pre-shot record stored on his phone. Linked to his own records. Purpose: App Functionality. Not used for tracking. No background location.
 
-Photos, location, and purchases are unchanged.
+Photos and purchases are unchanged. Location is the optional pre-shot use above.
 
 ## Plans
 
@@ -73,7 +74,7 @@ Free hunters get 3 lifetime analyses, shared by Quick Check, Age, and Score. The
 | Where | Names |
 | --- | --- |
 | EAS | `EXPO_PUBLIC_REVENUECAT_APPLE_KEY`, `EXPO_PUBLIC_API_BASE_URL` |
-| Vercel (`deerage-api`) | `OPENAI_API_KEY`, `REVENUECAT_SECRET_API_KEY`, `ADMIN_TOKEN`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`), optional `EXPO_ACCESS_TOKEN`, `OPENAI_MODEL`, `DEERAGE_EVAL_TOKEN`, `MIN_APP_VERSION`, `LATEST_APP_VERSION`, `FAIR_USE_DAILY`, `FAIR_USE_MONTHLY`, `DAILY_SPEND_CAP_USD`, `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION` |
+| Vercel (`deerage-api`) | `OPENAI_API_KEY`, `REVENUECAT_SECRET_API_KEY`, `ADMIN_TOKEN`, `RECORD_SIGNING_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`), optional `EXPO_ACCESS_TOKEN`, `OPENAI_MODEL`, `DEERAGE_EVAL_TOKEN`, `MIN_APP_VERSION`, `LATEST_APP_VERSION`, `FAIR_USE_DAILY`, `FAIR_USE_MONTHLY`, `DAILY_SPEND_CAP_USD`, `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION`, `VERIFY_RATE_LIMIT_PER_MINUTE` |
 
 Set `ADMIN_TOKEN` before anyone posts an update. `server/README.md` has the curl examples and `npm run admin`.
 

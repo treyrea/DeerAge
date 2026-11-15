@@ -199,7 +199,7 @@ export const HomeScreen = () => {
               }}
             >
               <View className="w-14 h-14 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: "#3D4A2F" }}>
-                <DeerMark size={36} color="#F5F5DC" />
+                <DeerMark size={44} />
               </View>
               <View className="flex-1">
                 <Text className="text-white text-lg font-bold">Age My Deer</Text>

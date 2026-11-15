@@ -8,6 +8,8 @@ import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useShotRecordStore } from "../state/shotRecordStore";
+import type { ShotRecord } from "../types/shot-record";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore } from "../utils/boone-crockett-calculator";
@@ -28,6 +30,9 @@ export const HistoryScreen = () => {
   const insets = useSafeAreaInsets();
 
   const { history, deleteFromHistory, clearHistory } = useDeerScoringStore();
+  const quickRecords = useShotRecordStore((s) => Object.values(s.records)
+    .filter((record) => record.mode === "quick")
+    .sort((a, b) => (a.deviceTime < b.deviceTime ? 1 : -1)));
   const [activeTab, setActiveTab] = useState<"all" | "age" | "score">("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
@@ -87,7 +92,7 @@ export const HistoryScreen = () => {
             className={`flex-1 py-2 px-3 rounded-md ${activeTab === "all" ? "bg-green-600" : ""}`}
           >
             <Text className={`text-center text-sm font-semibold ${activeTab === "all" ? "text-white" : "text-gray-400"}`}>
-              All ({history.length})
+              All ({history.length + quickRecords.length})
             </Text>
           </Pressable>
           <Pressable
@@ -110,7 +115,7 @@ export const HistoryScreen = () => {
       </View>
 
       {/* Content */}
-      {filteredHistory.length === 0 ? (
+      {filteredHistory.length === 0 && (activeTab !== "all" || quickRecords.length === 0) ? (
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-24 h-24 bg-neutral-800 rounded-full items-center justify-center mb-6">
             <Ionicons name="file-tray-outline" size={48} color="#666" />
@@ -134,10 +139,17 @@ export const HistoryScreen = () => {
         <ScrollView className="flex-1">
           <View className="px-6 py-4">
             <Text className="text-gray-400 text-sm mb-4">
-              {`${filteredHistory.length} ${filteredHistory.length === 1 ? "entry" : "entries"}`}
+              {`${filteredHistory.length + (activeTab === "all" ? quickRecords.length : 0)} entries`}
               {activeTab !== "all" && ` - ${activeTab === "age" ? "Age My Deer" : "Score My Rack"}`}
             </Text>
 
+            {activeTab === "all" && quickRecords.map((record) => (
+              <QuickRecordCard
+                key={record.localId}
+                record={record}
+                onPress={() => navigation.navigate("HistoryDetail", { shotId: record.localId })}
+              />
+            ))}
             {filteredHistory.length > 0 ? (
               filteredHistory.map((result, index) => (
                 <HistoryCard
@@ -192,8 +204,21 @@ interface HistoryCardProps {
   onDelete: () => void;
 }
 
+const QuickRecordCard = ({ record, onPress }: { record: ShotRecord; onPress: () => void }) => (
+  <Pressable onPress={onPress} style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 14, marginBottom: 12 }}>
+    <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>PRE-SHOT RECORD · QUICK</Text>
+    <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "800", marginTop: 4 }}>
+      {record.ageClass || "Age class"} · {record.fieldCall}
+    </Text>
+    <Text style={{ color: "#E5D4B8", marginTop: 4 }}>Your lease minimum: {record.leaseMinimum}</Text>
+    <Text style={{ color: "#8B7355", marginTop: 6 }}>{format(new Date(record.deviceTime), "MMM d, yyyy h:mm a")}</Text>
+    <Text style={{ color: "#D4AF37", marginTop: 8, fontWeight: "700" }}>Mark as harvested</Text>
+  </Pressable>
+);
+
 const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) => {
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
+  const shot = useShotRecordStore((s) => s.records[result.analysisId]);
   // Swipe-to-delete gesture - hooks must be called before any conditional returns
   const translateX = useSharedValue(0);
   const DELETE_THRESHOLD = -80;
@@ -351,6 +376,11 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                   </Pressable>
                 </View>
 
+                {shot ? (
+                  <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700", marginTop: 6 }}>
+                    Pre-shot record · Mark as harvested
+                  </Text>
+                ) : null}
                 <View className="flex-row items-center mt-2">
                   <Ionicons name="calendar-outline" size={14} color="#666" />
                   <Text className="text-gray-500 text-xs ml-1">

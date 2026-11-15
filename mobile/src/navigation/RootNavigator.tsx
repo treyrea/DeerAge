@@ -49,7 +49,7 @@ export type HomeStackParamList = {
 
 export type HistoryStackParamList = {
   HistoryMain: undefined;
-  HistoryDetail: { result: DeerScoringResult };
+  HistoryDetail: { result?: DeerScoringResult; shotId?: string };
 };
 
 export type SettingsStackParamList = {

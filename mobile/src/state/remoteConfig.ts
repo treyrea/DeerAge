@@ -12,6 +12,7 @@ export interface AppFlags {
   harvestCheck: boolean;
   ratingPrompt: boolean;
   shootOrPass: boolean;
+  preShotRecord: boolean;
 }
 
 export interface AppCopy {
@@ -30,6 +31,7 @@ const FLAGS: AppFlags = {
   harvestCheck: true,
   ratingPrompt: true,
   shootOrPass: true,
+  preShotRecord: true,
 };
 
 interface RemoteConfigState {

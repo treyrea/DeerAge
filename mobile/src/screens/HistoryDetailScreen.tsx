@@ -13,6 +13,8 @@ import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/d
 import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
+import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
+import { useShotRecordStore } from "../state/shotRecordStore";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 
@@ -23,12 +25,24 @@ export const HistoryDetailScreen = () => {
   const route = useRoute();
   const insets = useSafeAreaInsets();
 
-  const result = (route.params as { result: DeerScoringResult }).result;
+  const params = route.params as { result?: DeerScoringResult; shotId?: string };
+  const result = params.result;
   const savedMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
+  const linkedId = result?.analysisId ?? params.shotId ?? "";
+  const linked = useShotRecordStore((s) => (linkedId ? s.records[linkedId] : undefined));
 
   if (!result) {
-    navigation.goBack();
-    return null;
+    if (!params.shotId) {
+      navigation.goBack();
+      return null;
+    }
+    return (
+      <ShotRecordPage
+        localId={params.shotId}
+        onBack={() => navigation.goBack()}
+        onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
+      />
+    );
   }
 
   const { score, age, scale, fusedFrameCount, processingTime, cloudRefinementUsed, timestamp, capturedFrames, manualPointCount, manualOverride, analysisMode, explainableAge, explainableRackScore } = result;
@@ -98,6 +112,25 @@ export const HistoryDetailScreen = () => {
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
           <HarvestPanel scanId={result.analysisId} leaseMinimum={explainableAge?.minimumAgeThreshold ?? savedMinimum} />
+          {result.shotReceipt || linked ? (
+            <PreShotBar
+              draft={{
+                localId: result.analysisId,
+                mode: result.analysisMode,
+                photoUris: result.capturedFrames.map((frame) => frame.imageUri),
+                receipt: result.shotReceipt ?? null,
+                ageClass: linked?.ageClass || result.shotReceipt?.summary.ageClass || formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge),
+                ageRange: linked?.ageRange || result.shotReceipt?.summary.ageRange || String(explainableAge?.estimatedAge || age.estimatedAge || ""),
+                confidence: linked?.confidence ?? result.shotReceipt?.summary.confidence ?? explainableAge?.overallConfidence ?? 0,
+                leaseMinimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
+                fieldCall: linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || "",
+                fieldCallNote: linked?.fieldCallNote || result.shotReceipt?.summary.fieldCallNote || "",
+                cues: linked?.cues ?? result.shotReceipt?.summary.cues ?? [],
+                scoreLabel: linked?.scoreLabel ?? null,
+              }}
+              onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
+            />
+          ) : null}
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">

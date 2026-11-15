@@ -497,6 +497,9 @@ export interface DeerScoringResult {
   // NEW: Whether distance adjustment was applied
   distanceAdjusted?: boolean;
 
+  /** Signed pre-shot receipt from the analysis that produced this result. */
+  shotReceipt?: import("./shot-record").ShotReceipt | null;
+
   // NEW: Distance history for audit trail (last 5 edits)
   distanceHistory?: Array<{
     distanceYards: number;

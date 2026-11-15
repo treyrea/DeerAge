@@ -98,7 +98,7 @@ export const ModeSelectScreen = () => {
         {/* Mode Icon */}
         <View className="items-center mb-8" style={{ height: 100, justifyContent: "center" }}>
           {isAgeMode ? (
-            <DeerMark size={88} color="#F5F5DC" />
+            <DeerMark size={96} />
           ) : (
             <View
               style={{

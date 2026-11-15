@@ -20,13 +20,14 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
+import { PreShotBar } from "../components/PreShotBar";
+import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
 import { formatAgeClass } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { ErrorModal } from "../components/ErrorModal";
-import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -66,30 +67,18 @@ export const AgeResultScreen = () => {
   useEffect(() => {
     if (currentResult && !hasSaved) {
       const timer = setTimeout(async () => {
-        // Try to get GPS location
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const location = await Location.getCurrentPositionAsync({});
-            setGpsLocation({
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            });
-
-            // Save with GPS
+          const location = await optionalStandLocation();
+          if (location) {
+            setGpsLocation(location);
             await saveToHistory({
               ...currentResult,
-              gpsLocation: {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                accuracy: location.coords.accuracy || undefined,
-              },
+              gpsLocation: location,
             });
           } else {
             await saveToHistory(currentResult);
           }
-        } catch (error) {
-          // GPS not available, save without location
+        } catch {
           await saveToHistory(currentResult);
         }
         setHasSaved(true);
@@ -224,6 +213,22 @@ Powered by RackScore™ AI`;
               note={explainable.fieldCallNote}
             />
           ) : null}
+          <PreShotBar
+            draft={{
+              localId: currentResult.analysisId,
+              mode: "age",
+              photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+              receipt: currentResult.shotReceipt ?? null,
+              ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
+              ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
+              confidence: explainableAge.overallConfidence,
+              leaseMinimum: explainableAge.minimumAgeThreshold,
+              fieldCall: explainableAge.fieldCall || "",
+              fieldCallNote: explainableAge.fieldCallNote || "",
+              cues: (explainableAge.cueBullets ?? []).map((cue) => `${cue.area}: ${cue.text}`),
+            }}
+            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          />
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}

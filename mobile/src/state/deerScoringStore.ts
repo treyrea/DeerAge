@@ -17,7 +17,7 @@ import {
   PropertyRules,
   ExplainableAgeEstimation,
 } from "../types/deer-scoring";
-import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyScale } from "../api/deer-analysis";
+import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyScale, lastShotReceipt } from "../api/deer-analysis";
 import { formatAgeClass } from "../utils/age-class";
 import { calculateBooneAndCrockettScore } from "../utils/boone-crockett-calculator";
 import {
@@ -293,6 +293,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           zoomMeta: pendingZoomMetaAge ?? undefined,
           analysisConfidence: analysisConfidenceAge,
           distanceAdjusted: !!pendingDistanceAge,
+          shotReceipt: lastShotReceipt,
         };
 
         // Record telemetry
@@ -331,7 +332,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       const fallbackScale = estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
 
       // Step 2: Fuse measurements from the sampled frames on the proxy
-      let measurements = await fuseMultiFrameMeasurements(capturedFrames, fallbackScale);
+      let measurements = await fuseMultiFrameMeasurements(capturedFrames, fallbackScale, propertyRules.minimumShooterAge);
       const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0 ? lastProxyScale : fallbackScale;
 
       // Step 3: Calculate B&C score
@@ -398,6 +399,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         zoomMeta: pendingZoomMeta ?? undefined,
         analysisConfidence,
         distanceAdjusted: !!pendingDistance,
+        shotReceipt: lastShotReceipt,
       };
 
       // Record telemetry

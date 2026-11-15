@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
+import { PreShotBar } from "../components/PreShotBar";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
 import { ShareableResultCard } from "../components/ShareableResultCard";
@@ -371,15 +372,33 @@ export const ResultsScreen = () => {
 
           {shootOrPass && currentResult ? (
             <FieldCallCard
-              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || leaseMinimum}
-              confidence={currentResult.explainableAge?.overallConfidence ?? 60}
-              minimum={leaseMinimum}
+              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || Number(currentResult.shotReceipt?.summary.ageClass) || Number(String(age.estimatedAge).match(/[\d.]+/)?.[0]) || leaseMinimum}
+              confidence={currentResult.explainableAge?.overallConfidence ?? currentResult.shotReceipt?.summary.confidence ?? 60}
+              minimum={currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum}
               cueBullets={currentResult.explainableAge?.cueBullets ?? currentResult.explainableAge?.detectedCues}
-              fieldCall={normalizeFieldCall(currentResult.explainableAge?.fieldCall)}
-              note={currentResult.explainableAge?.fieldCallNote}
+              fallbackCues={currentResult.shotReceipt?.summary.cues}
+              fieldCall={normalizeFieldCall(currentResult.explainableAge?.fieldCall ?? currentResult.shotReceipt?.summary.fieldCall)}
+              note={currentResult.explainableAge?.fieldCallNote ?? currentResult.shotReceipt?.summary.fieldCallNote}
               scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : undefined}
             />
           ) : null}
+          <PreShotBar
+            draft={{
+              localId: currentResult.analysisId,
+              mode: currentResult.analysisMode === "age" ? "age" : "score",
+              photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+              receipt: currentResult.shotReceipt ?? null,
+              ageClass: currentResult.shotReceipt?.summary.ageClass || formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge),
+              ageRange: currentResult.shotReceipt?.summary.ageRange || String(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge ?? ""),
+              confidence: currentResult.explainableAge?.overallConfidence ?? currentResult.shotReceipt?.summary.confidence ?? 60,
+              leaseMinimum: currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum,
+              fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
+              fieldCallNote: currentResult.explainableAge?.fieldCallNote || currentResult.shotReceipt?.summary.fieldCallNote || "",
+              cues: currentResult.shotReceipt?.summary.cues ?? [],
+              scoreLabel: typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : null,
+            }}
+            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          />
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>

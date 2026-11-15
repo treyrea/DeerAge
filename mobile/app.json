@@ -16,7 +16,7 @@
         "NSCameraUsageDescription": "DeerAge uses the camera to photograph deer so it can estimate age and score the rack.",
         "NSPhotoLibraryUsageDescription": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score.",
         "NSPhotoLibraryAddUsageDescription": "DeerAge saves the result card you share into your photo library.",
-        "NSLocationWhenInUseUsageDescription": "DeerAge can save the spot of a result you keep. The state used for the age estimate is the one you pick, and this location stays on your phone."
+        "NSLocationWhenInUseUsageDescription": "DeerAge can attach this stand's location to a pre-shot record kept on this phone. Location is optional, stays with your own records, and is not used to track you. The state used for the age estimate is the one you pick."
       }
     },
     "android": {

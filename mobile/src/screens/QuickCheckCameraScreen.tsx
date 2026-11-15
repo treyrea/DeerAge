@@ -17,7 +17,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import * as Haptics from "expo-haptics";
-import { DeerBodyMark } from "../components/DeerMark";
+import { DeerMark } from "../components/DeerMark";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -188,8 +188,7 @@ export const QuickCheckCameraScreen = () => {
                 className="border-2 border-amber-500/50 rounded-xl items-center justify-center"
                 style={{ width: width * 0.85, height: height * 0.30 }}
               >
-                {/* Body silhouette hint */}
-                <DeerBodyMark size={200} color="#F5F5DC" opacity={0.35} />
+                <DeerMark size={120} opacity={0.45} />
               </View>
 
               <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">

@@ -16,6 +16,8 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { formatAgeClass } from "../utils/age-class";
 import { FieldCallCard } from "../components/FieldCallCard";
+import { PreShotBar } from "../components/PreShotBar";
+import type { ShotDraft } from "../types/shot-record";
 import { normalizeFieldCall } from "../utils/field-call";
 import { useRemoteConfig } from "../state/remoteConfig";
 import * as Haptics from "expo-haptics";
@@ -227,6 +229,22 @@ export const QuickCheckResultScreen = () => {
             />
           )}
           <Text style={{ color: "#8B7355", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{result.disclaimer}</Text>
+          <PreShotBar
+            draft={isInvalidImage ? null : {
+              localId: result.shotReceipt?.id ?? `quick-${imageUri}`,
+              mode: "quick",
+              photoUris: [imageUri],
+              receipt: result.shotReceipt ?? null,
+              ageClass: result.shotReceipt?.summary.ageClass || ageClassLabel,
+              ageRange: result.shotReceipt?.summary.ageRange || result.estimatedAgeClass,
+              confidence: result.confidence,
+              leaseMinimum,
+              fieldCall: result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
+              fieldCallNote: result.fieldCallNote || "",
+              cues: result.cueBullets?.map((cue) => `${cue.area}: ${cue.text}`) ?? result.topCues ?? [],
+            } satisfies ShotDraft}
+            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          />
 
           {/* Thumbnail */}
           <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.5, height: SCREEN_WIDTH * 0.5 }}>

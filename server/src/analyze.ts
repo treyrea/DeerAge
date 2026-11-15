@@ -15,6 +15,7 @@ import {
 } from "./limits.js";
 import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai.js";
 import { fieldBundle } from "./field-call.js";
+import { issueRecord } from "./record.js";
 import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts.js";
 import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring.js";
 
@@ -220,6 +221,13 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     }
 
     const remaining = !access || access.entitled || isEval ? null : Math.max(0, FREE_LIFETIME_ANALYSES - (access.freeUsesUsed + 1));
+    const record = await issueRecord({
+      appUserId,
+      images,
+      mode,
+      result: result as Record<string, unknown>,
+      minimum: context.minimumShooterAge ?? 4.5,
+    });
     return {
       status: 200,
       body: {
@@ -232,6 +240,8 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
         freeUsesRemaining: remaining,
         fairUsePerDay: fairUsePerDay(),
         estimatedCostUsd,
+        serverTime: record?.serverTime ?? null,
+        record,
         result,
       },
     };

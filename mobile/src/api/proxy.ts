@@ -4,6 +4,7 @@ import { AnalysisError, type AnalysisErrorCode } from "./errors";
 import { useHunterProfile } from "../state/hunterProfile";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { getRevenueCatAppUserId } from "../lib/revenuecatClient";
+import type { ShotReceipt } from "../types/shot-record";
 
 export interface ProxySuccess {
   mode: string;
@@ -12,6 +13,38 @@ export interface ProxySuccess {
   freeUsesRemaining: number | null;
   estimatedCostUsd: number;
   result: Record<string, unknown>;
+  serverTime: string | null;
+  receipt: ShotReceipt | null;
+}
+
+export let lastShotReceipt: ShotReceipt | null = null;
+
+function asReceipt(raw: unknown): ShotReceipt | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const summary = row.summary;
+  if (!summary || typeof summary !== "object") return null;
+  const signed = summary as Record<string, unknown>;
+  if (typeof row.id !== "string" || typeof row.signature !== "string" || typeof row.contentHash !== "string" || typeof row.serverTime !== "string") {
+    return null;
+  }
+  return {
+    id: row.id,
+    serverTime: row.serverTime,
+    contentHash: row.contentHash,
+    signature: row.signature,
+    imageHashes: Array.isArray(row.imageHashes) ? row.imageHashes.filter((item): item is string => typeof item === "string") : [],
+    summary: {
+      mode: typeof signed.mode === "string" ? signed.mode : "",
+      ageClass: typeof signed.ageClass === "string" ? signed.ageClass : "",
+      ageRange: typeof signed.ageRange === "string" ? signed.ageRange : "",
+      confidence: Math.round(Number(signed.confidence) || 0),
+      leaseMinimum: Number(signed.leaseMinimum) || 4.5,
+      fieldCall: typeof signed.fieldCall === "string" ? signed.fieldCall : "",
+      fieldCallNote: typeof signed.fieldCallNote === "string" ? signed.fieldCallNote : "",
+      cues: Array.isArray(signed.cues) ? signed.cues.filter((cue): cue is string => typeof cue === "string") : [],
+    },
+  };
 }
 
 const CODES = new Set<AnalysisErrorCode>([
@@ -73,6 +106,7 @@ export async function analyzeImages(input: {
   }
 
   const max = input.mode === "quick" ? 1 : 4;
+  lastShotReceipt = null;
   const images = await Promise.all(sampleFrames(input.imageUris, max).map((uri) => jpegBase64(uri)));
   const profile = useHunterProfile.getState();
   const appUserId = (await getRevenueCatAppUserId()) || useSubscriptionStore.getState().ensureLocalUserId();
@@ -123,6 +157,8 @@ export async function analyzeImages(input: {
     estimatedCostUsd?: number;
     entitled?: boolean;
     mode?: string;
+    serverTime?: string | null;
+    record?: unknown;
   } | null;
 
   if (!response.ok || !payload?.ok || !payload.result) {
@@ -135,12 +171,15 @@ export async function analyzeImages(input: {
 
   const remaining = payload.entitled || payload.freeUsesRemaining == null ? null : payload.freeUsesRemaining;
   useSubscriptionStore.getState().noteServerUsage(remaining);
+  lastShotReceipt = asReceipt(payload.record);
   return {
     mode: payload.mode ?? input.mode,
     model: payload.model ?? "",
     latencyMs: payload.latencyMs ?? 0,
     freeUsesRemaining: remaining,
     estimatedCostUsd: payload.estimatedCostUsd ?? 0,
+    serverTime: typeof payload.serverTime === "string" ? payload.serverTime : lastShotReceipt?.serverTime ?? null,
+    receipt: lastShotReceipt,
     result: payload.result,
   };
 }

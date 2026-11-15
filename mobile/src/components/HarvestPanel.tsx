@@ -33,7 +33,7 @@ export const HarvestPanel = ({ scanId, leaseMinimum }: { scanId: string; leaseMi
           onPress={() => save({ scanId, harvested: true, confirmedAge: "", method: null, notes: "" })}
           style={{ marginTop: 12, backgroundColor: "#D4AF37", borderRadius: 10, paddingVertical: 12, alignItems: "center" }}
         >
-          <Text style={{ color: "#1a1f16", fontWeight: "700" }}>Mark harvested</Text>
+          <Text style={{ color: "#1a1f16", fontWeight: "700" }}>Mark as harvested</Text>
         </Pressable>
       ) : (
         <View style={{ marginTop: 12 }}>

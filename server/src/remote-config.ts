@@ -31,6 +31,7 @@ export const FLAG_NAMES = [
   "harvestCheck",
   "ratingPrompt",
   "shootOrPass",
+  "preShotRecord",
 ] as const;
 
 export type FlagName = (typeof FLAG_NAMES)[number];

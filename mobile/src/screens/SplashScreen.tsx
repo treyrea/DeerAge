@@ -93,7 +93,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               top: "20%",
             }}
           >
-            <DeerMark size={220} color="#F5F5DC" opacity={0.9} />
+            <DeerMark size={168} opacity={0.95} />
           </View>
 
           <Animated.View

@@ -342,7 +342,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
 const BrandingWatermark: React.FC = () => {
   return (
     <View className="flex-row items-center justify-center pt-2 border-t border-white/10">
-      <DeerMark size={16} color="#8B7355" />
+      <DeerMark size={22} />
       <Text className="text-xs ml-1" style={{ color: "#8B7355" }}>
         Aged with DeerAge
       </Text>

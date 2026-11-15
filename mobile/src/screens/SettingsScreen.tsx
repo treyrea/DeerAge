@@ -214,7 +214,7 @@ export const SettingsScreen = () => {
                 MINIMUM SHOOTER AGE
               </Text>
               <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-                This is your lease minimum. A buck read under it is LET WALK. Shooting under the lease age can mean a fine or a lost membership.
+                This is your lease minimum. A buck read under it is LET WALK. Shooting under the lease age can mean a fine or a lost membership. A pre-shot record keeps the minimum that was set when you scanned.
               </Text>
 
               {/* Quick Presets */}
