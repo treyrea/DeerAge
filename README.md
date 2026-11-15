@@ -54,6 +54,8 @@ When shipping 1.0.9, update App Privacy for these optional types. None are used 
 - **Identifiers → Device ID.** Optional. The Expo push token, collected only if the hunter turns notifications on. Linked to the install. Purpose: App Functionality. Not used for tracking.
 - **Location → Precise Location.** Optional. Only while he is using the app, and only if he allows it. On the phone it suggests today's hunt region and can be attached to a pre-shot record. The region name, not the GPS point, is sent with an analysis. Linked to his own records. Purpose: App Functionality. Not used for tracking. No background location.
 
+A lease manager name or phone typed in Settings stays on the phone. DeerAge does not read the Contacts app and does not upload that number.
+
 Photos and purchases are unchanged.
 
 ## Plans

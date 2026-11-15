@@ -125,6 +125,8 @@ Commands
   config:set [--min-supported 1.0.8] [--recommended 1.0.9] [--banner "The rut is on"]
              [--paywall-headline "..."] [--paywall-subhead "..."] [--home-tip "..."]
              [--region-note "Hunting {hunt}. Home is {home}. {sourced}"]
+             [--lease-text "{age} · {call} · lease minimum {minimum}"]
+             [--lease-button "Text this to my lease manager"]
              [--flag shootOrPass=true]
 
 Omitted announcement status is published. Omitted poll status is open.
@@ -208,6 +210,8 @@ async function main() {
     if (flags.has("paywall-headline")) body.paywallHeadline = one(flags, "paywall-headline");
     if (flags.has("paywall-subhead")) body.paywallSubhead = one(flags, "paywall-subhead");
     if (flags.has("region-note")) body.regionHeadsUp = one(flags, "region-note");
+    if (flags.has("lease-text")) body.leaseManagerText = one(flags, "lease-text");
+    if (flags.has("lease-button")) body.leaseManagerButton = one(flags, "lease-button");
     const tips = flags.get("home-tip");
     if (tips) body.homeTips = tips;
     const flagArgs = flags.get("flag") ?? [];

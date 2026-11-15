@@ -48,6 +48,8 @@ export interface RemoteConfig {
     homeTips: string[];
     seasonalBanner: string;
     regionHeadsUp: string;
+    leaseManagerText: string;
+    leaseManagerButton: string;
   };
 }
 
@@ -71,6 +73,8 @@ export function defaultRemoteConfig(): RemoteConfig {
       homeTips: [],
       seasonalBanner: "",
       regionHeadsUp: "",
+      leaseManagerText: "",
+      leaseManagerButton: "",
     },
   };
 }
@@ -93,6 +97,8 @@ function mergeConfig(stored: unknown): RemoteConfig {
     if (typeof incoming.paywallSubhead === "string") copy.paywallSubhead = incoming.paywallSubhead.slice(0, 180);
     if (typeof incoming.seasonalBanner === "string") copy.seasonalBanner = incoming.seasonalBanner.slice(0, 80);
     if (typeof incoming.regionHeadsUp === "string") copy.regionHeadsUp = incoming.regionHeadsUp.slice(0, 280);
+    if (typeof incoming.leaseManagerText === "string") copy.leaseManagerText = incoming.leaseManagerText.slice(0, 500);
+    if (typeof incoming.leaseManagerButton === "string") copy.leaseManagerButton = incoming.leaseManagerButton.slice(0, 80);
     if (Array.isArray(incoming.homeTips)) {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
@@ -163,6 +169,8 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (body.paywallSubhead != null) current.copy.paywallSubhead = body.paywallSubhead === "" ? "" : cleanText(body.paywallSubhead, 180);
     if (body.seasonalBanner != null) current.copy.seasonalBanner = body.seasonalBanner === "" ? "" : cleanText(body.seasonalBanner, 80);
     if (body.regionHeadsUp != null) current.copy.regionHeadsUp = body.regionHeadsUp === "" ? "" : cleanText(body.regionHeadsUp, 280);
+    if (body.leaseManagerText != null) current.copy.leaseManagerText = body.leaseManagerText === "" ? "" : cleanText(body.leaseManagerText, 500);
+    if (body.leaseManagerButton != null) current.copy.leaseManagerButton = body.leaseManagerButton === "" ? "" : cleanText(body.leaseManagerButton, 80);
     if (Array.isArray(body.homeTips)) {
       current.copy.homeTips = body.homeTips.filter((tip): tip is string => typeof tip === "string").map((tip) => tip.trim()).filter(Boolean).slice(0, 4);
     }

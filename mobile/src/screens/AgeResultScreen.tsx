@@ -22,6 +22,7 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -233,6 +234,15 @@ Powered by RackScore™ AI`;
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
           <RegionHeadsUp />
+          <LeaseManagerButton
+            ageClass={ageClassLabel}
+            call={explainableAge.fieldCall || explainableAge.shooterPassLabel}
+            minimum={explainableAge.minimumAgeThreshold}
+            region={activeHunt(useHunterProfile.getState()).label}
+            time={new Date(currentResult.timestamp).toLocaleString()}
+            receiptId={currentResult.shotReceipt?.id}
+            photoUri={imageUri}
+          />
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}

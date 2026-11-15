@@ -18,6 +18,7 @@ import { formatAgeClass } from "../utils/age-class";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import type { ShotDraft } from "../types/shot-record";
 import { normalizeFieldCall } from "../utils/field-call";
@@ -54,6 +55,7 @@ export const QuickCheckResultScreen = () => {
     confidence: result.confidence,
   });
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const readAt = React.useMemo(() => new Date().toLocaleString(), []);
 
   // Haptic feedback on mount
   React.useEffect(() => {
@@ -249,6 +251,17 @@ export const QuickCheckResultScreen = () => {
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
           <RegionHeadsUp />
+          {!isInvalidImage ? (
+            <LeaseManagerButton
+              ageClass={ageClassLabel}
+              call={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
+              minimum={leaseMinimum}
+              region={activeHunt(useHunterProfile.getState()).label}
+              time={readAt}
+              receiptId={result.shotReceipt?.id}
+              photoUri={imageUri}
+            />
+          ) : null}
 
           {/* Thumbnail */}
           <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.5, height: SCREEN_WIDTH * 0.5 }}>

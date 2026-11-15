@@ -72,6 +72,8 @@ export const SettingsScreen = () => {
 
   const [minimumAge, setMinimumAge] = useState(propertyRules.minimumShooterAge.toString());
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [managerName, setManagerName] = useState(profile.leaseManagerName);
+  const [managerPhone, setManagerPhone] = useState(profile.leaseManagerPhone);
 
   const handleSave = () => {
     const ageValue = parseFloat(minimumAge);
@@ -159,6 +161,35 @@ export const SettingsScreen = () => {
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
             >
               <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit home region</Text>
+            </Pressable>
+
+            <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>LEASE MANAGER</Text>
+            <Text className="text-sm mb-3" style={{ color: "#E5D4B8" }}>
+              Optional. Saved on this phone only. DeerAge does not read your contacts and does not send the text.
+            </Text>
+            <TextInput
+              value={managerName}
+              onChangeText={setManagerName}
+              placeholder="Name"
+              placeholderTextColor="#8B7355"
+              className="rounded-lg p-4 mb-2"
+              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+            />
+            <TextInput
+              value={managerPhone}
+              onChangeText={setManagerPhone}
+              placeholder="Phone number"
+              placeholderTextColor="#8B7355"
+              keyboardType="phone-pad"
+              className="rounded-lg p-4 mb-3"
+              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+            />
+            <Pressable
+              onPress={() => useHunterProfile.getState().setLeaseManager(managerName, managerPhone)}
+              className="rounded-xl py-3 items-center mb-3"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Save lease manager</Text>
             </Pressable>
 
             <Pressable

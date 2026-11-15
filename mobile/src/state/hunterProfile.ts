@@ -20,6 +20,8 @@ export interface HunterProfileState {
   huntEcoregion: string;
   huntLabel: string;
   huntDay: string;
+  leaseManagerName: string;
+  leaseManagerPhone: string;
   goodResultCount: number;
   hasRequestedReview: boolean;
   sessionCount: number;
@@ -39,6 +41,7 @@ export interface HunterProfileState {
   markReviewAsked: (version: string) => void;
   dismissUpdate: (version: string) => void;
   confirmHunt: (place: Place) => void;
+  setLeaseManager: (name: string, phone: string) => void;
 }
 
 export function goalToMinimumAge(goal: HuntGoal): number {
@@ -105,6 +108,8 @@ export const useHunterProfile = create<HunterProfileState>()(
       huntEcoregion: "",
       huntLabel: "",
       huntDay: "",
+      leaseManagerName: "",
+      leaseManagerPhone: "",
       goodResultCount: 0,
       hasRequestedReview: false,
       sessionCount: 0,
@@ -138,6 +143,10 @@ export const useHunterProfile = create<HunterProfileState>()(
         huntLabel: place.label,
         huntDay: localDay(),
       }),
+      setLeaseManager: (name, phone) => set({
+        leaseManagerName: name.trim().slice(0, 80),
+        leaseManagerPhone: phone.trim().slice(0, 40),
+      }),
     }),
     {
       name: "deerage-hunter-profile",
@@ -155,6 +164,8 @@ export const useHunterProfile = create<HunterProfileState>()(
         huntEcoregion: state.huntEcoregion,
         huntLabel: state.huntLabel,
         huntDay: state.huntDay,
+        leaseManagerName: state.leaseManagerName,
+        leaseManagerPhone: state.leaseManagerPhone,
         goodResultCount: state.goodResultCount,
         hasRequestedReview: state.hasRequestedReview,
         sessionCount: state.sessionCount,

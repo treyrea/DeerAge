@@ -21,6 +21,8 @@ export interface AppCopy {
   homeTips: string[];
   seasonalBanner: string;
   regionHeadsUp: string;
+  leaseManagerText: string;
+  leaseManagerButton: string;
 }
 
 const FLAGS: AppFlags = {
@@ -59,7 +61,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
   persist(
     (set) => ({
       flags: FLAGS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "" },
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
       minVersion: "",
@@ -77,6 +79,8 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             paywallSubhead: typeof copy.paywallSubhead === "string" ? copy.paywallSubhead : "",
             seasonalBanner: typeof copy.seasonalBanner === "string" ? copy.seasonalBanner : "",
             regionHeadsUp: typeof copy.regionHeadsUp === "string" ? copy.regionHeadsUp : "",
+            leaseManagerText: typeof copy.leaseManagerText === "string" ? copy.leaseManagerText : "",
+            leaseManagerButton: typeof copy.leaseManagerButton === "string" ? copy.leaseManagerButton : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });

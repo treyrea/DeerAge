@@ -12,6 +12,7 @@ import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
@@ -403,6 +404,15 @@ export const ResultsScreen = () => {
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
           <RegionHeadsUp />
+          <LeaseManagerButton
+            ageClass={displayedAge}
+            call={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
+            minimum={currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum}
+            region={activeHunt(useHunterProfile.getState()).label}
+            time={new Date(currentResult.timestamp).toLocaleString()}
+            receiptId={currentResult.shotReceipt?.id}
+            photoUri={currentResult.capturedFrames?.[0]?.imageUri}
+          />
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>

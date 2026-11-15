@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { HarvestPanel } from "./HarvestPanel";
+import { LeaseManagerButton } from "./LeaseManagerButton";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { recordExportAllowed, saveShotRecord, useShotRecordStore } from "../state/shotRecordStore";
 import { sharePreShotRecord } from "../lib/preShotPdf";
@@ -117,6 +118,15 @@ export const ShotRecordPage = ({
         <View style={{ marginTop: 16 }}>
           <HarvestPanel scanId={record.localId} leaseMinimum={record.leaseMinimum} />
         </View>
+        <LeaseManagerButton
+          ageClass={record.ageClass}
+          call={record.fieldCall}
+          minimum={record.leaseMinimum}
+          region={record.huntLabel || "Hunt region not set"}
+          time={new Date(record.deviceTime).toLocaleString()}
+          receiptId={record.receiptId}
+          photoUri={record.photoUris[0]}
+        />
         <PreShotBar draft={draft} onNeedPlan={onNeedPlan} />
       </ScrollView>
     </View>

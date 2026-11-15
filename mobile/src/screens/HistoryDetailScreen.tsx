@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { formatAgeClass } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
+import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { useShotRecordStore } from "../state/shotRecordStore";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -131,6 +132,15 @@ export const HistoryDetailScreen = () => {
               onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
             />
           ) : null}
+          <LeaseManagerButton
+            ageClass={formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
+            call={linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || ""}
+            minimum={linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum}
+            region={linked?.huntLabel || "Hunt region not set"}
+            time={new Date(timestamp).toLocaleString()}
+            receiptId={linked?.receiptId || result.shotReceipt?.id}
+            photoUri={capturedFrames[0]?.imageUri}
+          />
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">
