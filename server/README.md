@@ -34,7 +34,9 @@ Set the Vercel project **Root Directory** to `server`. Framework preset: Other. 
 
 A successful response includes `model`, `latencyMs`, `entitled`, `freeUsesRemaining` (`null` for a subscriber), `fairUsePerDay`, and `estimatedCostUsd`.
 
-Subscribers are capped at `FAIR_USE_DAILY` analyses per day (default 25) and `FAIR_USE_MONTHLY` per month (default 300). The counters live in Upstash Redis, keyed by the RevenueCat app user id, and reset on the `FAIR_USE_TIMEZONE` calendar (default `America/Chicago`). Hitting the daily cap returns `fair_use` and tells the hunter it resets tomorrow. The per-minute rate limit uses the same Redis, so it holds across instances. A global daily spend total, estimated from OpenAI `prompt_tokens` and `completion_tokens`, refuses new analyses with `busy` once it reaches `DAILY_SPEND_CAP_USD` (default 10).
+The default model is `gpt-5.6-sol` with `OPENAI_REASONING_EFFORT=low`. GPT-5 chat completions reject `max_tokens` and `temperature`, so the proxy sends `max_completion_tokens` (the JSON budget plus `OPENAI_REASONING_TOKEN_HEADROOM`, default 4096) and `reasoning_effort`. Older models still get `max_tokens` and temperature 0.1. Each vision call waits 25 seconds. The app waits 30 seconds so that timeout can come back as an error. A timed-out call is not retried.
+
+Subscribers are capped at `FAIR_USE_DAILY` analyses per day (default 10) and `FAIR_USE_MONTHLY` per month (default 40). The counters live in Upstash Redis, keyed by the RevenueCat app user id, and reset on the `FAIR_USE_TIMEZONE` calendar (default `America/Chicago`). Hitting the daily cap returns `fair_use` and tells the hunter it resets tomorrow. The per-minute rate limit uses the same Redis, so it holds across instances. A global daily spend total, estimated from OpenAI `prompt_tokens` and `completion_tokens`, refuses new analyses with `busy` once it reaches `DAILY_SPEND_CAP_USD` (default 25).
 
 Cost math, using the token counts OpenAI returns (image tokens are already inside `prompt_tokens`):
 
@@ -42,7 +44,9 @@ Cost math, using the token counts OpenAI returns (image tokens are already insid
 estimatedCostUsd = (prompt_tokens * OPENAI_INPUT_USD_PER_MILLION + completion_tokens * OPENAI_OUTPUT_USD_PER_MILLION) / 1_000_000
 ```
 
-Defaults are gpt-4.1-mini public rates: input `0.40`, output `1.60` dollars per million tokens. A rough age scan of 4 low-detail frames is on the order of a cent. The proxy reserves that estimate before the call and replaces it with the actual cost after. If Redis is not configured, the proxy refuses the analysis instead of calling OpenAI.
+Defaults are **$4 / 1M input** and **$20 / 1M output**. After Nov 30, 2026 the list price is about **$5 / $30**; set the two env vars when that takes effect. An off-repo run put a full age-plus-score scan on gpt-5.6-sol at about **$0.05** at the $4 / $20 rates. The same token mix at the later list price would be higher, mostly because output tokens go from $20 to $30. The proxy reserves an estimate before the call, including reasoning headroom, and replaces it with the actual cost after. If Redis is not configured, the proxy refuses the analysis instead of calling OpenAI.
+
+A rack whose beams, tines, and spread are all zero is returned as `poor_quality` instead of a 0 score. `SCORE_CALIBRATION` multiplies the finished inches and defaults to 1. It is not fit to the public eval photos.
 
 Errors use a `code`, not a sentence the app has to pattern-match:
 
@@ -58,20 +62,23 @@ Set these in the Vercel project. Copy `server/.env.example` to `server/.env` for
 | --- | --- | --- |
 | `OPENAI_API_KEY` | yes | The owner's OpenAI key. The old Vibecode key is not used. |
 | `REVENUECAT_SECRET_API_KEY` | yes, except eval | RevenueCat **secret** REST key (`sk_...`). Reads CustomerInfo-equivalent subscriber state and stores `deerage_free_uses`. |
-| `OPENAI_MODEL` | no | Vision model. Default `gpt-4.1-mini`. |
+| `OPENAI_MODEL` | no | Vision model. Default `gpt-5.6-sol`. |
+| `OPENAI_REASONING_EFFORT` | no | GPT-5 only. Default `low`. |
+| `OPENAI_REASONING_TOKEN_HEADROOM` | no | Extra completion tokens for reasoning. Default `4096`. |
+| `SCORE_CALIBRATION` | no | Inches multiplier. Default `1`. Do not fit it to the eval set. |
 | `DEERAGE_EVAL_TOKEN` | no | Shared secret for `/eval`. Requests that send it skip entitlement and do not change free-use counts. The app never sends it. |
 | `MIN_APP_VERSION` | no | Builds older than this see the soft update prompt. Default `1.0.8`. |
 | `LATEST_APP_VERSION` | no | Shown as the current release. Default `1.0.8`. |
 | `UPSTASH_REDIS_REST_URL` | yes | Upstash Redis REST URL from the Vercel Marketplace integration. |
 | `UPSTASH_REDIS_REST_TOKEN` | yes | Upstash Redis REST token. Server-side only. |
-| `FAIR_USE_DAILY` | no | Subscriber analyses per day. Default `25`. |
-| `FAIR_USE_MONTHLY` | no | Subscriber analyses per month. Default `300`. |
+| `FAIR_USE_DAILY` | no | Subscriber analyses per day. Default `10`. |
+| `FAIR_USE_MONTHLY` | no | Subscriber analyses per month. Default `40`. |
 | `FAIR_USE_TIMEZONE` | no | Calendar for those caps. Default `America/Chicago`. |
 | `RATE_LIMIT_PER_MINUTE` | no | Per app user id. Default `8`. |
 | `EVAL_RATE_LIMIT_PER_MINUTE` | no | Same limit for the eval token. Default `120`. |
-| `DAILY_SPEND_CAP_USD` | no | Global OpenAI spend for the day. Default `10`. |
-| `OPENAI_INPUT_USD_PER_MILLION` | no | Input token price. Default `0.40` (gpt-4.1-mini). |
-| `OPENAI_OUTPUT_USD_PER_MILLION` | no | Output token price. Default `1.60` (gpt-4.1-mini). |
+| `DAILY_SPEND_CAP_USD` | no | Global OpenAI spend for the day. Default `25`. |
+| `OPENAI_INPUT_USD_PER_MILLION` | no | Input token price. Default `4`. List price after Nov 30, 2026 is about `5`. |
+| `OPENAI_OUTPUT_USD_PER_MILLION` | no | Output token price. Default `20`. List price after Nov 30, 2026 is about `30`. |
 
 The mobile app's EAS secrets are different and public-client values only: `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_API_BASE_URL`. See the repo README.
 

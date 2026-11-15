@@ -27,11 +27,11 @@ function intEnv(name: string, fallback: number): number {
 }
 
 export function fairUsePerDay(): number {
-  return intEnv("FAIR_USE_DAILY", 25);
+  return intEnv("FAIR_USE_DAILY", 10);
 }
 
 export function fairUsePerMonth(): number {
-  return intEnv("FAIR_USE_MONTHLY", 300);
+  return intEnv("FAIR_USE_MONTHLY", 40);
 }
 
 export function rateLimitPerMinute(isEval: boolean): number {
@@ -40,7 +40,7 @@ export function rateLimitPerMinute(isEval: boolean): number {
 
 export function dailySpendCapUsd(): number {
   const parsed = Number(process.env.DAILY_SPEND_CAP_USD);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 25;
 }
 
 function timeZone(): string {

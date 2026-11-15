@@ -1,4 +1,4 @@
-import { costUsd, emptyUsage, reserveUsd, type TokenUsage } from "./cost";
+import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, reserveUsd, type TokenUsage } from "./cost";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config";
 import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement";
 import {
@@ -13,9 +13,9 @@ import {
   reserveFairUse,
   reserveSpend,
 } from "./limits";
-import { UpstreamError, visionJson } from "./openai";
+import { reasoningTokenHeadroom, UpstreamError, usesCompletionTokenCap, visionJson } from "./openai";
 import { agePrompt, baselinePrompt, quickPrompt, scorePrompt, type HuntContext } from "./prompts";
-import { consensusRack, median, num, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring";
+import { consensusRack, median, num, rackIsUnmeasurable, readScale, roundHalf, scoreRack, type RackEstimate, type ScaleEstimate } from "./scoring";
 
 export interface AnalyzeBody {
   mode?: string;
@@ -176,8 +176,9 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   let fairUseHeld = false;
   let spendReserved = 0;
   const usage = emptyUsage();
-  const calls = mode === "quick" ? 2 : images.length;
-  const maxOutput = mode === "quick" ? 500 : mode === "score" ? 900 : mode === "age" ? 700 : 200;
+  const calls = images.length;
+  const maxOutput = (mode === "quick" ? 500 : mode === "score" ? 900 : mode === "age" ? 700 : 200)
+    + (usesCompletionTokenCap() ? reasoningTokenHeadroom() : 0);
 
   try {
     if (access?.entitled) {
@@ -264,8 +265,8 @@ async function settleCost(usage: TokenUsage, reserved: number, mode: string, app
     promptTokens: usage.promptTokens,
     completionTokens: usage.completionTokens,
     estimatedCostUsd: Number(estimatedCostUsd.toFixed(6)),
-    inputUsdPerMillion: Number(process.env.OPENAI_INPUT_USD_PER_MILLION) || 0.4,
-    outputUsdPerMillion: Number(process.env.OPENAI_OUTPUT_USD_PER_MILLION) || 1.6,
+    inputUsdPerMillion: inputUsdPerMillion(),
+    outputUsdPerMillion: outputUsdPerMillion(),
     appUserIdPrefix: appUserId.slice(0, 16),
   }));
   return Number(estimatedCostUsd.toFixed(6));
@@ -297,7 +298,7 @@ async function runQuick(image: string, context: HuntContext, usage: TokenUsage) 
     images: [image],
     detail: "low",
     maxTokens: 500,
-    timeoutMs: 10_000,
+    timeoutMs: 25_000,
     retries: 1,
     usage,
   });
@@ -350,7 +351,7 @@ async function oneAge(image: string, context: HuntContext, usage: TokenUsage): P
     images: [image],
     detail: "low",
     maxTokens: 700,
-    timeoutMs: 10_000,
+    timeoutMs: 25_000,
     usage,
   });
   if (raw.isValidDeer === false) {
@@ -424,7 +425,7 @@ async function runScore(images: string[], context: HuntContext, usage: TokenUsag
         images: [image],
         detail: "auto",
         maxTokens: 900,
-        timeoutMs: 14_000,
+        timeoutMs: 25_000,
         usage,
       });
       return scoreRack(raw);
@@ -442,6 +443,14 @@ async function runScore(images: string[], context: HuntContext, usage: TokenUsag
     throw new UpstreamError("No frame could be scored.", 502, false);
   }
   const merged = consensusRack(usable);
+  if (rackIsUnmeasurable(merged)) {
+    return {
+      invalid: true as const,
+      status: 422,
+      code: "poor_quality" as const,
+      message: "The rack couldn't be measured in this photo. Try a clearer, head-on shot of the antlers.",
+    };
+  }
   return { ...merged, frameCount: usable.length, consensus: "median-measurements" };
 }
 
@@ -451,7 +460,7 @@ async function runBaseline(image: string, usage: TokenUsage) {
     images: [image],
     detail: "low",
     maxTokens: 200,
-    timeoutMs: 15_000,
+    timeoutMs: 25_000,
     usage,
   });
   if (raw.isValidDeer === false) {

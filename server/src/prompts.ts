@@ -119,6 +119,7 @@ ${contextBlock(context)}
 ${SCALE_RULES}
 
 Count every normal point that is at least about an inch and longer than it is wide. Walk the points out loud in pointEnumeration, tine by tine, left then right, from the brow (G1) outward. Do not guess a point you cannot see.
+Report the inches you measure from the landmarks. Do not add or subtract a global fudge. If the beams, tines, and spread are all invisible, set isValidDeer false and invalidReason to poor_quality instead of returning zeros.
 Circumferences H1-H4 only when the beam is visible enough. Leave a mass at 0 when you cannot see it.
 insideSpread is the inside distance between the main beams.
 If this is not a deer or no antlers are visible, set isValidDeer false and invalidReason to not_deer or no_antlers.

@@ -1,6 +1,24 @@
 import { addUsage, type TokenUsage } from "./cost";
 import { modelName } from "./config";
 
+const REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
+
+/** GPT-5 chat completions reject max_tokens and temperature. */
+export function usesCompletionTokenCap(model = modelName()): boolean {
+  return /^gpt-5/i.test(model);
+}
+
+export function reasoningEffort(): string {
+  const value = process.env.OPENAI_REASONING_EFFORT?.trim().toLowerCase() || "low";
+  return REASONING_EFFORTS.has(value) ? value : "low";
+}
+
+/** Reasoning tokens count against max_completion_tokens, so the JSON budget needs room above it. */
+export function reasoningTokenHeadroom(): number {
+  const parsed = Number(process.env.OPENAI_REASONING_TOKEN_HEADROOM);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 4096;
+}
+
 export class UpstreamError extends Error {
   constructor(
     message: string,
@@ -51,13 +69,7 @@ export async function visionJson(options: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: modelName(),
-          temperature: 0.1,
-          max_tokens: options.maxTokens,
-          response_format: { type: "json_object" },
-          messages: [{ role: "user", content }],
-        }),
+        body: JSON.stringify(completionBody(content, options.maxTokens)),
       });
       if (!response.ok) {
         const retryable = response.status === 429 || response.status >= 500;
@@ -73,7 +85,7 @@ export async function visionJson(options: {
     } catch (error) {
       if (error instanceof UpstreamError) throw error;
       if (error instanceof Error && error.name === "AbortError") {
-        throw new UpstreamError("The analysis timed out.", 504, true);
+        throw new UpstreamError("The analysis timed out.", 504, false);
       }
       throw new UpstreamError("The analysis service could not be reached.", 502, true);
     } finally {
@@ -94,6 +106,23 @@ export async function visionJson(options: {
     }
   }
   throw last;
+}
+
+function completionBody(content: ContentPart[], maxTokens: number): Record<string, unknown> {
+  const model = modelName();
+  const body: Record<string, unknown> = {
+    model,
+    response_format: { type: "json_object" },
+    messages: [{ role: "user", content }],
+  };
+  if (usesCompletionTokenCap(model)) {
+    body.max_completion_tokens = maxTokens + reasoningTokenHeadroom();
+    body.reasoning_effort = reasoningEffort();
+    return body;
+  }
+  body.temperature = 0.1;
+  body.max_tokens = maxTokens;
+  return body;
 }
 
 function parseJson(text: string): Record<string, unknown> {

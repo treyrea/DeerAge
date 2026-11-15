@@ -78,7 +78,7 @@ export async function analyzeImages(input: {
   const appUserId = (await getRevenueCatAppUserId()) || useSubscriptionStore.getState().ensureLocalUserId();
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25_000);
+  const timer = setTimeout(() => controller.abort(), 30_000);
   let response: Response;
   try {
     response = await fetch(`${base}/api/analyze`, {

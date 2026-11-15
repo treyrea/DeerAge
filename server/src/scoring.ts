@@ -107,8 +107,10 @@ export function scoreRack(raw: Record<string, unknown>): RackEstimate {
     symmetry += paired((mass.left as Record<string, number>)[key] ?? 0, (mass.right as Record<string, number>)[key] ?? 0);
   }
   const category = abnormalTotal > 10 ? "Non-Typical" : "Typical";
-  const grossScore = category === "Non-Typical" ? num(grossTypical + abnormalTotal) : grossTypical;
-  const netScore = num(Math.max(0, grossScore - symmetry));
+  const grossRaw = num(category === "Non-Typical" ? grossTypical + abnormalTotal : grossTypical);
+  const netRaw = num(Math.max(0, grossRaw - symmetry));
+  const grossScore = calibrateInches(grossRaw);
+  const netScore = calibrateInches(netRaw);
   const confidence = raw.confidence === "High" || raw.confidence === "Low" ? raw.confidence : "Med";
 
   return {
@@ -128,6 +130,21 @@ export function scoreRack(raw: Record<string, unknown>): RackEstimate {
     netScore,
     category,
   };
+}
+
+/**
+ * Optional inches multiplier. Default is 1.
+ * The public eval set is not a fitting sample; leave this at 1 unless a separate check justifies a change.
+ */
+export function calibrateInches(inches: number): number {
+  const factor = Number(process.env.SCORE_CALIBRATION);
+  const scale = Number.isFinite(factor) && factor > 0 ? factor : 1;
+  return num(inches * scale);
+}
+
+export function rackIsUnmeasurable(rack: RackEstimate): boolean {
+  const tineLengths = [rack.tines.left, rack.tines.right].flatMap((side) => Object.values(side));
+  return rack.beams.left <= 0 && rack.beams.right <= 0 && rack.insideSpread <= 0 && tineLengths.every((length) => length <= 0);
 }
 
 export function readScale(value: unknown): ScaleEstimate {

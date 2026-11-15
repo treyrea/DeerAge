@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiBaseUrl } from "../api/proxy";
 
-const DEFAULT_PER_DAY = 25;
+const DEFAULT_PER_DAY = 10;
 
 /** Daily subscriber allowance from the proxy. Falls back to the documented default. */
 export function useFairUseAllowance(): number {

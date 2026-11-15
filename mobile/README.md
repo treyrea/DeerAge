@@ -863,25 +863,25 @@ The app is governed by `/src/lib/CONSTITUTION.ts` which enforces:
 - Purpose: Deliver real value, build trust, create curiosity
 
 #### Scout ($5/month)
-- **Quick Check**: Everyday use, 25 a day fair-use cap
+- **Quick Check**: Everyday use, 10 a day fair-use cap
 - **Age My Deer**: 20/month
 - **Score My Rack**: Not included
 - Identity: "Dedicated hunter building skills"
 
 #### Hunter ($9/month)
-- **Quick Check**: Everyday use, 25 a day fair-use cap
+- **Quick Check**: Everyday use, 10 a day fair-use cap
 - **Age My Deer**: 40/month
 - **Score My Rack**: Not included
 - Identity: "Serious hunter committed to quality harvests"
 
 #### Trophy ($15/month)
-- **Quick Check**: Everyday use, 25 a day fair-use cap
+- **Quick Check**: Everyday use, 10 a day fair-use cap
 - **Age My Deer**: 50/month
 - **Score My Rack**: 12/month
 - Identity: "Trophy hunter pursuing excellence"
 
 #### Outfitter ($25/month)
-- **Quick Check**: Everyday use, 25 a day fair-use cap
+- **Quick Check**: Everyday use, 10 a day fair-use cap
 - **Age My Deer**: 80/month
 - **Score My Rack**: 20/month
 - Identity: "Professional guide or land manager"
