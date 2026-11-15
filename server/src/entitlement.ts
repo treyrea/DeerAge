@@ -1,4 +1,4 @@
-import { ACCESS_ENTITLEMENTS, FREE_LIFETIME_ANALYSES } from "./config";
+import { ACCESS_ENTITLEMENTS, FREE_LIFETIME_ANALYSES } from "./config.js";
 
 const RC_BASE = "https://api.revenuecat.com/v1/subscribers";
 const ATTRIBUTE = "deerage_free_uses";
@@ -44,7 +44,6 @@ async function rc(path: string, init?: RequestInit): Promise<Response> {
       headers: {
         Authorization: `Bearer ${secret()}`,
         "Content-Type": "application/json",
-        "X-Platform": "ios",
         ...(init?.headers ?? {}),
       },
     });

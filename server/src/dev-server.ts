@@ -1,7 +1,7 @@
 import http from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { route, type Incoming } from "./http";
+import { route, type Incoming } from "./http.js";
 
 function loadEnv(file: string) {
   if (!existsSync(file)) return;

@@ -1,4 +1,4 @@
-import { fairUsePerDay, fairUsePerMonth } from "./limits";
+import { fairUsePerDay, fairUsePerMonth } from "./limits.js";
 
 export const FREE_LIFETIME_ANALYSES = 3;
 

@@ -1,5 +1,5 @@
-import { addUsage, type TokenUsage } from "./cost";
-import { modelName } from "./config";
+import { addUsage, type TokenUsage } from "./cost.js";
+import { modelName } from "./config.js";
 
 const REASONING_EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
 
