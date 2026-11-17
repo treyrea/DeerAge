@@ -2,7 +2,7 @@
 
 Small Vercel server that holds the model keys and checks RevenueCat before any analysis runs. The iOS app never sees an AI key. It sends photos, an app user id, and the hunter's state or region. This service returns the age or score.
 
-App 1.0.9 (build 16) sends `appVersion`. Age then uses the Gemini 4 Hydrogen walk when `AGING_PIPELINE` is unset or `hydrogen`: photo check, baby gate, Step A, then the closers from 5.5 vs 4.5 down to 2.5 vs 1.5. A retake is job error `retake` and does not return an age. A range is `ageLabel` (`2.5–3.5`, `3.5–4.5`, or `4.5–5.5+`). Set `AGING_PIPELINE=openai` to keep the gateway age pipeline. Clients that do not send 1.0.9 stay on that gateway pipeline. Quick Check and Score always do. The Hydrogen key is `GEMINI_API_KEY`. The analyze function allows 300 seconds so the walk can finish.
+App version 1.0.9 sends `appVersion`. The production iOS build number is assigned by EAS, not by this repo. Age then uses the Gemini 4 Hydrogen walk when `AGING_PIPELINE` is unset or `hydrogen`: photo check, baby gate, Step A, then the closers from 5.5 vs 4.5 down to 2.5 vs 1.5. A retake is job error `retake` and does not return an age. A range is `ageLabel` (`2.5–3.5`, `3.5–4.5`, or `4.5–5.5+`). Set `AGING_PIPELINE=openai` to keep the gateway age pipeline. Clients that do not send 1.0.9 stay on that gateway pipeline. Quick Check and Score always do. The Hydrogen key is `GEMINI_API_KEY`. The analyze function allows 300 seconds so the walk can finish.
 
 Set the Vercel project **Root Directory** to `server`. Framework preset: Other. Do not point Vercel at `mobile/`.
 

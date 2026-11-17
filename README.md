@@ -27,7 +27,7 @@ npx expo start
 
 Store builds read the same names from EAS secrets. `eas.json` does not set them. An empty value in `eas.json` would override the secret.
 
-Do not run `eas submit` from this repo until the owner asks. Version 1.0.9, iOS build 16, is for review and TestFlight only when the owner ships it. Build 16 is build 15 plus the Hydrogen age walk. Set `AGING_PIPELINE=openai` on the server to keep the gateway age pipeline instead.
+Do not run `eas submit` from this repo until the owner asks. The marketing version stays **1.0.9** in `mobile/app.json`. Production iOS build numbers are not taken from `ios.buildNumber`. `mobile/eas.json` sets `cli.appVersionSource` to `remote` and `autoIncrement` on the production profile, so EAS stores the build number and counts it up on each production build. The checked-in `ios.buildNumber` is only a local fallback. Before the first production build, set the remote app version to 1.0.9 (`eas build:version:set`). That command is not run from this repo. `autoIncrement` bumps the build number, not 1.0.9. Set `AGING_PIPELINE=openai` on the server to keep the gateway age pipeline instead.
 
 `ITSAppUsesNonExemptEncryption` is `false`. The app uses standard HTTPS only.
 
