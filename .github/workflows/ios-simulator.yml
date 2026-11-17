@@ -28,7 +28,7 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.maestro_only == false
     # macos-15 is a free Apple Silicon image. macos-latest was not acquired during the arm64 shortage.
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -133,10 +133,131 @@ jobs:
           path: mobile/sim-dist
           retention-days: 7
           if-no-files-found: error
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Boot a small and a large iPhone and run Maestro
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
+          mkdir -p "$GITHUB_WORKSPACE/maestro-out"
+          {
+            echo "uname=$(uname -m)"
+            xcodebuild -version || true
+            maestro --version || true
+            java -version || true
+          } > "$GITHUB_WORKSPACE/maestro-out/environment.txt" 2>&1
+          APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("DeerAge.app")))' "$GITHUB_WORKSPACE/mobile/sim-dist")
+          test -d "$APP"
+          node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/maestro-out/mock-server.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/maestro-out/mock-server.pid"
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            curl -sf http://127.0.0.1:8787/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/health
+          python3 - << 'PY'
+          import json, subprocess, pathlib
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+          data = json.loads(raw)["devices"]
+          def version(key):
+              tail = key.split("iOS-")[-1]
+              nums = []
+              for part in tail.replace(".", "-").split("-"):
+                  if part.isdigit():
+                      nums.append(int(part))
+              return tuple(nums)
+          latest = max((key for key in data if "iOS" in key), key=version)
+          phones = [row for row in data[latest] if row.get("isAvailable") and row["name"].startswith("iPhone")]
+          if not phones:
+              raise SystemExit("no available iPhone simulators on " + latest)
+          small = next((row for row in phones if "SE" in row["name"]), phones[0])
+          large = next((row for row in reversed(phones) if "Pro Max" in row["name"] or row["name"].endswith("Plus")), phones[-1])
+          if large["udid"] == small["udid"] and len(phones) > 1:
+              large = next(row for row in phones if row["udid"] != small["udid"])
+          pathlib.Path("devices.txt").write_text(
+              small["name"] + "\t" + small["udid"] + "\n" + large["name"] + "\t" + large["udid"] + "\n"
+          )
+          print(latest)
+          print(small["name"], small["udid"])
+          print(large["name"], large["udid"])
+          PY
+          cp devices.txt "$GITHUB_WORKSPACE/maestro-out/devices.txt"
+          open -a Simulator || true
+
+          capture() {
+            local udid="$1"
+            local dest="$2"
+            mkdir -p "$dest"
+            xcrun simctl io "$udid" screenshot "$dest/failure-screen.png" \
+              || xcrun simctl io booted screenshot "$dest/failure-screen.png" \
+              || true
+            xcrun simctl spawn "$udid" log show --last 2m --style compact > "$dest/simulator.log" 2>&1 || true
+          }
+          boot_one() {
+            local udid="$1"
+            xcrun simctl shutdown "$udid" || true
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+          }
+          run_flows() {
+            local udid="$1"
+            local out="$2"
+            shift 2
+            mkdir -p "$out/debug"
+            maestro --device "$udid" test "$@" \
+              --debug-output "$out/debug" \
+              --test-output-dir "$out" \
+              --format junit \
+              --output "$out/report.xml"
+          }
+
+          i=0
+          while IFS=$'\t' read -r NAME UDID; do
+            i=$((i+1))
+            OUT="$GITHUB_WORKSPACE/maestro-out/$i-$NAME"
+            mkdir -p "$OUT"
+            echo "Device $NAME $UDID"
+            boot_one "$UDID"
+            xcrun simctl install "$UDID" "$APP"
+            if ! xcrun simctl launch "$UDID" com.vibecode.deerage-qj3cfq > "$OUT/launch.log" 2>&1; then
+              capture "$UDID" "$OUT/launch-failure"
+              echo "The simulator did not launch com.vibecode.deerage-qj3cfq" | tee "$OUT/launch-failure/why.txt"
+              exit 1
+            fi
+            sleep 4
+            xcrun simctl terminate "$UDID" com.vibecode.deerage-qj3cfq || true
+            if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+              capture "$UDID" "$OUT/failure"
+              echo "Retrying $NAME after a simulator reboot"
+              boot_one "$UDID"
+              xcrun simctl install "$UDID" "$APP"
+              if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+                capture "$UDID" "$OUT-retry/failure"
+                exit 1
+              fi
+            fi
+            xcrun simctl status_bar "$UDID" override --dataNetwork none --wifiBars 0 || true
+            if ! run_flows "$UDID" "$OUT-network" mobile/e2e/flows/03-airplane.yaml; then
+              capture "$UDID" "$OUT-network/failure"
+              exit 1
+            fi
+            xcrun simctl status_bar "$UDID" clear || true
+            xcrun simctl shutdown "$UDID" || true
+          done < devices.txt
+      - name: Upload screenshots, Maestro debug output, and simulator logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios
+          path: maestro-out
+          if-no-files-found: warn
 
   maestro:
-    needs: build
-    if: always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.maestro_only))
+    if: github.event_name == 'workflow_dispatch' && inputs.maestro_only
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -145,14 +266,7 @@ jobs:
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-      - name: Download the app built in this run
-        if: needs.build.result == 'success'
-        uses: actions/download-artifact@v4
-        with:
-          name: deerage-sim-app
-          path: mobile/sim-dist
       - name: Download the last built simulator app
-        if: needs.build.result != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
