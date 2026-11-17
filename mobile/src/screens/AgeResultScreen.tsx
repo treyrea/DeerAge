@@ -27,7 +27,7 @@ import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
-import { formatAgeClass } from "../utils/age-class";
+import { shownAge } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { ErrorModal } from "../components/ErrorModal";
@@ -57,13 +57,13 @@ export const AgeResultScreen = () => {
   const [manualNotes, setManualNotes] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const explainable = currentResult?.explainableAge;
-  const ageClassLabel = formatAgeClass(explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
+  const ageClassLabel = shownAge(explainable?.ageLabel, explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
   const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
     headline: ageClassLabel,
     call: explainable?.fieldCall ?? (explainable?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
-    confidence: explainable.overallConfidence,
+    confidence: explainable.overallConfidence > 0 ? explainable.overallConfidence : undefined,
   } : null);
 
   // Auto-save to history when result is available
@@ -197,6 +197,8 @@ export const AgeResultScreen = () => {
               note={explainable.fieldCallNote}
               bodyOnlyAge={explainable.bodyOnlyAge}
               betterAngle={explainable.betterAngle}
+              ageLabel={explainable.ageLabel}
+              hunterCue={explainable.hunterCue}
             />
           ) : null}
           <WrongCallCard
@@ -274,7 +276,7 @@ export const AgeResultScreen = () => {
 
             <View className="mb-4">
               <Text className="text-4xl font-bold text-white mb-2">
-                {formatAgeClass(explainableAge.estimatedAge)}
+                {ageClassLabel}
               </Text>
               <Text className="text-lg" style={{ color: "#E5D4B8" }}>
                 {explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")}
@@ -813,8 +815,8 @@ export const AgeResultScreen = () => {
                 data={{
                   type: "age",
                   imageUri,
-                  ageEstimate: formatAgeClass(explainableAge.estimatedAge),
-                  ageRange: formatAgeClass(explainableAge.estimatedAge),
+                  ageEstimate: ageClassLabel,
+                  ageRange: ageClassLabel,
                   confidence: explainableAge.overallConfidence,
                   decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
                   call: explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK"),

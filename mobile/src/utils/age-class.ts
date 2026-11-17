@@ -10,9 +10,10 @@ export function formatAgeClass(value: string | number | null | undefined): strin
   }
   const text = String(value ?? "").trim();
   if (!text) return "Age class unavailable";
-  const range = text.match(/(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)/);
-  if (range) return `${range[1]}${EN_DASH}${range[2]}`;
-  if (/5\.5\s*\+/.test(text)) return "5.5+";
+  const range = text.match(/(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)(\+)?/);
+  if (range) return `${range[1]}${EN_DASH}${range[2]}${range[3] ?? ""}`;
+  if (/^5\.5\s*\+/.test(text)) return "5.5+";
+  if (/^(1\.5|2\.5|3\.5|4\.5)$/.test(text)) return text;
   const single = text.match(/(\d+(?:\.\d+)?)/);
   if (single) return classFromMidpoint(Number(single[1]));
   return text;
@@ -24,6 +25,13 @@ function classFromMidpoint(years: number): string {
   if (years < 4.5) return `3.5${EN_DASH}4.5`;
   if (years < 5.5) return `4.5${EN_DASH}5.5`;
   return "5.5+";
+}
+
+/** A Hydrogen label such as 4.5 or 4.5–5.5+ is shown as written. */
+export function shownAge(label: string | null | undefined, fallback: string | number | null | undefined): string {
+  const exact = label?.trim();
+  if (exact) return exact;
+  return formatAgeClass(fallback);
 }
 
 export function ageCallFromClass(value: string | number | null | undefined): "Young" | "Middle-aged" | "Mature" {

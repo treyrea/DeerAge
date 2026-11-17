@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
@@ -59,6 +60,7 @@ const CODES = new Set<AnalysisErrorCode>([
   "no_antlers",
   "poor_quality",
   "unreadable",
+  "retake",
   "timeout",
   "upstream",
   "network",
@@ -68,6 +70,13 @@ const CODES = new Set<AnalysisErrorCode>([
 
 export function apiBaseUrl(): string {
   return (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+}
+
+export function installedAppVersion(): string {
+  const fromConfig = Constants.expoConfig?.version;
+  if (typeof fromConfig === "string" && fromConfig.trim()) return fromConfig.trim();
+  if (typeof Constants.nativeAppVersion === "string" && Constants.nativeAppVersion.trim()) return Constants.nativeAppVersion.trim();
+  return "1.0.9";
 }
 
 export function sampleFrames<T>(frames: T[], max: number): T[] {
@@ -162,6 +171,7 @@ export async function analyzeImages(input: {
       body: JSON.stringify({
         mode: input.mode,
         appUserId,
+        appVersion: installedAppVersion(),
         images,
         minimumShooterAge: input.minimumShooterAge,
         context: {

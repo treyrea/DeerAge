@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx src/dev-server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/content.test.ts src/field-call.test.ts src/record.test.ts src/qr.test.ts src/regions.test.ts src/lease-text.test.ts src/scan.test.ts src/proof.test.ts src/scan-credits.test.ts",
+    "test": "tsx --test src/content.test.ts src/field-call.test.ts src/record.test.ts src/qr.test.ts src/regions.test.ts src/lease-text.test.ts src/scan.test.ts src/proof.test.ts src/scan-credits.test.ts src/hydrogen/pipeline.test.ts",
     "eval": "tsx eval/run.ts",
     "admin": "tsx src/admin-cli.ts"
   },

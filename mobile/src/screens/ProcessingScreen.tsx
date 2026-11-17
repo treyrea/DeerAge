@@ -37,6 +37,9 @@ const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "sco
   if (category === "poor_quality") {
     return base("PHOTO IS HARD TO READ", messageForCode("poor_quality"), ["Use daylight and hold still"], "image", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
+  if (category === "retake") {
+    return base("Try another photo", messageForCode("retake"), [], "camera", "#D4AF37", ["#2B3420", "#1a1f16", "#1a1a1a"]);
+  }
   if (category === "network" || category === "not_configured") {
     return base(analysisMode === "age" ? "AGE MODE IS OFFLINE" : "YOU'RE OFFLINE", messageForCode(category === "not_configured" ? "not_configured" : "network"), ["DeerAge needs a connection to estimate age", "The field guide on Home works without a signal"], "cloud-offline", "#f87171", ["#7f1d1d", "#450a0a", "#1a1a1a"]);
   }
@@ -191,7 +194,7 @@ export const ProcessingScreen = () => {
                 </View>
               )}
 
-              {/* Tips Section */}
+              {errorInfo.tips.length > 0 ? (
               <View className="bg-white/10 rounded-xl p-4 mb-6 w-full">
                 <View className="flex-row items-center mb-3">
                   <Ionicons name="bulb" size={18} color={errorInfo.iconColor} />
@@ -204,6 +207,7 @@ export const ProcessingScreen = () => {
                   </View>
                 ))}
               </View>
+              ) : null}
             </View>
           </ScrollView>
 
@@ -230,7 +234,9 @@ export const ProcessingScreen = () => {
             >
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Ionicons name="camera" size={20} color="#1a1a1a" />
-                <Text style={{ color: "#1a1a1a", fontWeight: "bold", marginLeft: 8 }}>Try Another Photo</Text>
+                <Text style={{ color: "#1a1a1a", fontWeight: "bold", marginLeft: 8 }}>
+                  {errorInfo.category === "retake" ? "Take another photo" : "Try Another Photo"}
+                </Text>
               </View>
             </Pressable>
 

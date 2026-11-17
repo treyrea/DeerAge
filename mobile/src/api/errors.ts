@@ -10,6 +10,7 @@ export type AnalysisErrorCode =
   | "no_antlers"
   | "poor_quality"
   | "unreadable"
+  | "retake"
   | "timeout"
   | "upstream"
   | "network"
@@ -28,6 +29,7 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
   no_antlers: "No antlers are visible in this photo.",
   poor_quality: "The photo is too dark or blurry to analyze. Try a clearer shot.",
   unreadable: "The photo is too dark or blurry to read.",
+  retake: "Try a clearer side-on photo of one deer standing with its head up, so the chest, belly, and back are easy to see.",
   timeout: "Analysis took too long. Try a clearer photo.",
   upstream: "Analysis failed. Try again in a moment.",
   network: "You're offline. DeerAge needs a connection to estimate age.",

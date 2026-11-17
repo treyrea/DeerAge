@@ -1,4 +1,5 @@
-import { costUsd, emptyUsage, inputUsdPerMillion, outputUsdPerMillion, type TokenUsage } from "./cost.js";
+import { agingEngineFor, HYDROGEN_MODEL, type AgingEngine } from "./aging-switch.js";
+import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, type TokenUsage } from "./cost.js";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config.js";
 import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement.js";
 import {
@@ -16,6 +17,9 @@ import {
 import { UpstreamError } from "./openai.js";
 import { issueRecord } from "./record.js";
 import { runAgeCall } from "./age-pipeline.js";
+import { geminiCaller } from "./hydrogen/gemini.js";
+import { walkHydrogen } from "./hydrogen/pipeline.js";
+import { hydrogenAgeBody } from "./hydrogen/result.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
@@ -41,6 +45,7 @@ export interface AnalyzeBody {
   context?: HuntContext;
   baseline?: boolean;
   minimumShooterAge?: number;
+  appVersion?: string;
 }
 
 interface Auth {
@@ -156,7 +161,13 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     throw error;
   }
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
+  const appVersion = typeof body.appVersion === "string" ? body.appVersion.trim().slice(0, 32) : "";
+  const engine: AgingEngine = mode === "age" && !body.baseline ? agingEngineFor(appVersion) : "current";
+  if (engine === "hydrogen") {
+    if (!process.env.GEMINI_API_KEY?.trim()) {
+      return fail(503, "not_configured", "The analysis service is not configured.");
+    }
+  } else if (!process.env.OPENAI_API_KEY?.trim()) {
     return fail(503, "not_configured", "The analysis service is not configured.");
   }
 
@@ -229,7 +240,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       fairUseHeld = true;
     }
 
-    spendReserved = mode === "score" ? 0.05 : 0.12;
+    spendReserved = engine === "hydrogen" ? hydrogenReserveUsd() : mode === "score" ? 0.05 : 0.12;
     const underCap = await reserveSpend(spendReserved);
     if (!underCap) {
       if (fairUseHeld) await releaseFairUse(appUserId);
@@ -253,6 +264,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       appUserId,
       reserved,
       usage,
+      engine,
       refund,
       releaseFairUse: async () => {
         if (fairUseHeld) await releaseFairUse(appUserId);
@@ -317,6 +329,7 @@ async function finishJob(input: {
   appUserId: string;
   reserved: number;
   usage: TokenUsage;
+  engine: AgingEngine;
   refund: () => Promise<void>;
   releaseFairUse: () => Promise<void>;
 }): Promise<void> {
@@ -335,6 +348,42 @@ async function finishJob(input: {
         ...input.job,
         status: "done",
         final: { ok: true, mode: input.mode, estimatedCostUsd: usd, record, result: score.result, backupEstimate: score.backup },
+      });
+      return;
+    }
+    if (input.mode === "age" && input.engine === "hydrogen") {
+      await saveJob({
+        ...input.job,
+        provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
+      });
+      const outcome = await walkHydrogen(geminiCaller(input.images[0], input.usage));
+      if (outcome.kind !== "age") {
+        await input.refund();
+        await input.releaseFairUse();
+        const retake = outcome.kind === "retake";
+        await saveJob({
+          ...input.job,
+          status: "error",
+          error: retake
+            ? { code: "retake", message: outcome.message }
+            : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." },
+        });
+        return;
+      }
+      const result = hydrogenAgeBody({ ...outcome, minimum: input.minimum });
+      const usd = await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId);
+      const record = await issueRecord({
+        appUserId: input.appUserId,
+        images: input.images,
+        mode: input.mode,
+        result,
+        minimum: input.minimum,
+      });
+      await saveJob({
+        ...input.job,
+        status: "done",
+        provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
+        final: { ok: true, mode: input.mode, model: HYDROGEN_MODEL, estimatedCostUsd: usd, record, result },
       });
       return;
     }
@@ -382,6 +431,24 @@ async function finishJob(input: {
       error: { code: "upstream", message: "Analysis failed. Try again in a moment." },
     });
   }
+}
+
+async function settleHydrogen(usage: TokenUsage, reserved: number, mode: string, appUserId: string): Promise<number> {
+  const estimated = costUsd(usage, {
+    inputPerMillion: geminiInputUsdPerMillion(),
+    outputPerMillion: geminiOutputUsdPerMillion(),
+  });
+  await reconcileSpend(reserved, estimated);
+  console.log(JSON.stringify({
+    event: "analysis_cost",
+    mode,
+    model: HYDROGEN_MODEL,
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
+    estimatedCostUsd: Number(estimated.toFixed(6)),
+    appUserIdPrefix: appUserId.slice(0, 16),
+  }));
+  return Number(estimated.toFixed(6));
 }
 
 async function settleCalls(calls: ModelCall[], reserved: number, mode: string, appUserId: string, usage: TokenUsage): Promise<number> {

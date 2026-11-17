@@ -1,0 +1,21 @@
+Look at the body only; ignore antlers, coat and tarsal glands. Judge from the recorded body observations. This pair may be a two-class RANGE.
+
+First decide as usual: overall, is this buck closer to the YOUNGER description or the OLDER description? If it is closer to OLDER, answer closer: OLDER.
+
+SAG RULE (this pair only, checked first): If the recorded belly line is itself described as sagging, slightly sagging, saggy or a potbelly, you must answer closer: OLDER (a single 5.5+). Phrases that deny a sag (no sagging, not sagging, without sagging, rather than sagging, neither ... sag) do NOT count.
+
+SHORT-LEG RANGE RULE (this pair only): If you would answer YOUNGER, first check these three facts in the recorded observations:
+(1) the legs are described as short or relatively short with NO hedge word (legs called slightly short, somewhat short, moderate, moderately short, proportional, or 'proportional to slightly short' do NOT count);
+(2) the overall build is described as stocky, blocky, heavy, heavy-bodied or thick-bodied;
+(3) the belly shows at most a slight, mild or gentle tuck (a moderate or clear tuck fails this check).
+If all three are present, answer closer: RANGE, which means 4.5 to 5.5+. If any one of the three is missing, answer closer: YOUNGER.
+
+OUT-OF-RUT FRONT-MASS RANGE RULE (this pair only): If you would still answer YOUNGER after the rules above, check these three facts in the recorded observations:
+(1) the season cues say the antlers are in velvet (phrases like no velvet or velvet is not visible do NOT count);
+(2) the neck is described as unswollen, not swollen, or showing no rut swelling;
+(3) the shoulders or front end are described as noticeably, clearly or much heavier, fuller or bulkier than the hindquarters (slightly heavier, roughly equal, or balanced do NOT count).
+If all three are present, answer closer: RANGE, which means 4.5 to 5.5+. If any one is missing, keep YOUNGER.
+
+If you answer RANGE, also give hunter_cue: one short sentence for the hunter. Age it up toward 5.5+ if the belly sags or the back dips; age it down toward 4.5 if the belly stays tight and level.
+
+JSON {closer: YOUNGER or OLDER or RANGE, reason, hunter_cue}

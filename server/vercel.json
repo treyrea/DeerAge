@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/analyze.ts": { "maxDuration": 60 },
+    "api/analyze.ts": { "maxDuration": 300, "includeFiles": "prompts/hydrogen/**" },
     "api/analyze-status.ts": { "maxDuration": 10 },
     "api/score.ts": { "maxDuration": 300 },
     "api/score-status.ts": { "maxDuration": 10 },

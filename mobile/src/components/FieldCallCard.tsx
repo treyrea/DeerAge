@@ -13,6 +13,8 @@ interface FieldCallCardProps {
   scoreLabel?: string;
   bodyOnlyAge?: number | null;
   betterAngle?: string;
+  ageLabel?: string;
+  hunterCue?: string;
 }
 
 const CALL_COLOR: Record<FieldCall, string> = {
@@ -32,9 +34,13 @@ export const FieldCallCard = ({
   scoreLabel,
   bodyOnlyAge,
   betterAngle,
+  ageLabel,
+  hunterCue,
 }: FieldCallCardProps) => {
   const read = fieldRead(ageYears, confidence, minimum);
   const call = fieldCall ?? read.fieldCall;
+  const shownAge = ageLabel?.trim() || read.ageClass;
+  const isRange = Boolean(ageLabel && /[–-]/.test(ageLabel));
   const lines: CueBullet[] = bulletsFrom(cueBullets, fallbackCues);
   return (
     <View style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: "#8B7355" }}>
@@ -43,12 +49,18 @@ export const FieldCallCard = ({
       </Text>
       <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 8 }}>
         <View>
-          <Text style={{ color: "#F5F5DC", fontSize: 40, fontWeight: "800" }}>{read.ageClass}</Text>
-          <Text style={{ color: "#E5D4B8", fontSize: 13 }}>Age class</Text>
+          <Text style={{ color: "#F5F5DC", fontSize: 40, fontWeight: "800" }}>{shownAge}</Text>
+          <Text style={{ color: "#E5D4B8", fontSize: 13 }}>{isRange ? "Age range" : "Age class"}</Text>
         </View>
         <Text style={{ color: CALL_COLOR[call], fontSize: 28, fontWeight: "800", marginBottom: 4 }}>{call}</Text>
       </View>
       <Text style={{ color: "#E5D4B8", marginTop: 12, lineHeight: 20 }}>{note || read.fieldCallNote}</Text>
+      {isRange ? (
+        <Text style={{ color: "#E5D4B8", marginTop: 8, lineHeight: 20 }}>The body fits both ages.</Text>
+      ) : null}
+      {hunterCue ? (
+        <Text style={{ color: "#F5F5DC", marginTop: 8, lineHeight: 20 }}>{hunterCue}</Text>
+      ) : null}
       {lines.length > 0 ? (
         <View style={{ marginTop: 14 }}>
           <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700", marginBottom: 6 }}>WHY THIS AGE CLASS</Text>

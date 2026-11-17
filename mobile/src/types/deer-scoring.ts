@@ -282,6 +282,10 @@ export interface ExplainableAgeEstimation {
   mainAge?: number | null;
   bodyOnlyAge?: number | null;
   betterAngle?: string;
+  ageLabel?: string;
+  isRange?: boolean;
+  hunterCue?: string;
+  pipeline?: "hydrogen" | "openai";
 }
 
 export interface PropertyRules {

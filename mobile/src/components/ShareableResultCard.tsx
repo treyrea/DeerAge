@@ -173,7 +173,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               {formatAgeClass(data.ageRange || data.ageEstimate)}
             </Text>
             <Text className="text-sm" style={{ color: "#8B7355" }}>
-              Age class
+              {/[–-]/.test(formatAgeClass(data.ageRange || data.ageEstimate)) ? "Age range" : "Age class"}
             </Text>
             {data.call ? (
               <Text className="text-base font-bold mt-1" style={{ color: "#D4AF37" }}>{data.call}</Text>
@@ -182,6 +182,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>Lease minimum {data.leaseMinimum}</Text>
             ) : null}
           </View>
+          {data.confidence > 0 ? (
           <View className="items-end">
             <Text className="text-xl font-bold" style={{ color: "#D4AF37" }}>
               {data.confidence}%
@@ -190,6 +191,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               Confidence
             </Text>
           </View>
+          ) : null}
         </View>
 
         {(data.topCues ?? []).slice(0, 3).map((cue) => (

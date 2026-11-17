@@ -11,7 +11,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
 import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
-import { formatAgeClass } from "../utils/age-class";
+import { shownAge } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
 import { WrongCallCard } from "../components/WrongCallCard";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
@@ -67,7 +67,7 @@ export const HistoryDetailScreen = () => {
   const handleExportPDF = async () => {
     try {
       await shareRead({
-        ageClass: formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge),
+        ageClass: shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge),
         call: linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || "",
         minimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
         region: linked?.huntLabel || "Hunt region not set",
@@ -120,7 +120,7 @@ export const HistoryDetailScreen = () => {
                 mode: result.analysisMode,
                 photoUris: result.capturedFrames.map((frame) => frame.imageUri),
                 receipt: result.shotReceipt ?? null,
-                ageClass: linked?.ageClass || result.shotReceipt?.summary.ageClass || formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge),
+                ageClass: linked?.ageClass || result.shotReceipt?.summary.ageClass || shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge),
                 ageRange: linked?.ageRange || result.shotReceipt?.summary.ageRange || String(explainableAge?.estimatedAge || age.estimatedAge || ""),
                 confidence: linked?.confidence ?? result.shotReceipt?.summary.confidence ?? explainableAge?.overallConfidence ?? 0,
                 leaseMinimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
@@ -133,7 +133,7 @@ export const HistoryDetailScreen = () => {
             />
           ) : null}
           <LeaseManagerButton
-            ageClass={formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
+            ageClass={shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}
             call={linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || ""}
             minimum={linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum}
             region={linked?.huntLabel || "Hunt region not set"}
@@ -193,7 +193,7 @@ export const HistoryDetailScreen = () => {
                   )}
                 </View>
                 <Text className="text-white text-5xl font-bold mb-3">
-                  {formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
+                  {shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}
                 </Text>
                 {(() => {
                   const minimum = explainableAge?.minimumAgeThreshold ?? savedMinimum;
@@ -362,7 +362,7 @@ export const HistoryDetailScreen = () => {
                 <Text className="text-white text-lg font-bold mb-4">Quick Age Estimate</Text>
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-400 text-sm">Estimated Age</Text>
-                  <Text className="text-white text-2xl font-bold">{formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}</Text>
+                  <Text className="text-white text-2xl font-bold">{shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}</Text>
                 </View>
                 <Text className="text-gray-500 text-xs mt-3">
                   Note: For precise age estimation, use &quot;Age My Deer&quot; mode

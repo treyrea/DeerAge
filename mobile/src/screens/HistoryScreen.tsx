@@ -15,7 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore } from "../utils/boone-crockett-calculator";
 import { DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
-import { formatAgeClass } from "../utils/age-class";
+import { formatAgeClass, shownAge } from "../utils/age-class";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { ErrorModal } from "../components/ErrorModal";
 import { DistanceChip } from "../components/DistanceDisplay";
@@ -314,7 +314,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                       <>
                         <View className="flex-row items-baseline mb-1">
                           <Text className="text-white text-lg font-bold">
-                            {formatAgeClass(result.explainableAge?.estimatedAge || result.age.estimatedAge)}
+                            {shownAge(result.explainableAge?.ageLabel, result.explainableAge?.estimatedAge || result.age.estimatedAge)}
                           </Text>
                           {result.explainableAge?.overallConfidence ? (
                             <Text className="text-gray-400 text-sm ml-2">

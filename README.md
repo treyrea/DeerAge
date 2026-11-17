@@ -27,7 +27,7 @@ npx expo start
 
 Store builds read the same names from EAS secrets. `eas.json` does not set them. An empty value in `eas.json` would override the secret.
 
-Do not run `eas submit` from this repo until the owner asks. Version 1.0.9, iOS build 15, is for review and TestFlight only when the owner ships it.
+Do not run `eas submit` from this repo until the owner asks. Version 1.0.9, iOS build 16, is for review and TestFlight only when the owner ships it. Build 16 is build 15 plus the Hydrogen age walk. Set `AGING_PIPELINE=openai` on the server to keep the gateway age pipeline instead.
 
 `ITSAppUsesNonExemptEncryption` is `false`. The app uses standard HTTPS only.
 
@@ -78,7 +78,7 @@ Free hunters get 3 lifetime analyses, shared by Quick Check, Age, and Score. The
 | Where | Names |
 | --- | --- |
 | EAS | `EXPO_PUBLIC_REVENUECAT_APPLE_KEY`, `EXPO_PUBLIC_API_BASE_URL` |
-| Vercel (`deerage-api`) | `OPENAI_API_KEY`, `REVENUECAT_SECRET_API_KEY`, `ADMIN_TOKEN`, `RECORD_SIGNING_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`), optional `EXPO_ACCESS_TOKEN`, `OPENAI_MODEL`, `DEERAGE_EVAL_TOKEN`, `MIN_APP_VERSION`, `LATEST_APP_VERSION`, `FAIR_USE_DAILY`, `FAIR_USE_MONTHLY`, `DAILY_SPEND_CAP_USD`, `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION`, `VERIFY_RATE_LIMIT_PER_MINUTE` |
+| Vercel (`deerage-api`) | `OPENAI_API_KEY`, `AI_GATEWAY_API_KEY`, `GEMINI_API_KEY` (required for the Hydrogen age walk), `REVENUECAT_SECRET_API_KEY`, `ADMIN_TOKEN`, `RECORD_SIGNING_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL` and `KV_REST_API_TOKEN`), optional `AGING_PIPELINE`, `GEMINI_INPUT_USD_PER_MILLION`, `GEMINI_OUTPUT_USD_PER_MILLION`, `EXPO_ACCESS_TOKEN`, `OPENAI_MODEL`, `DEERAGE_EVAL_TOKEN`, `MIN_APP_VERSION`, `LATEST_APP_VERSION`, `FAIR_USE_DAILY`, `FAIR_USE_MONTHLY`, `DAILY_SPEND_CAP_USD`, `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION`, `VERIFY_RATE_LIMIT_PER_MINUTE` |
 
 Set `ADMIN_TOKEN` before anyone posts an update. `server/README.md` has the curl examples and `npm run admin`.
 

@@ -1,0 +1,13 @@
+Look at the body only; ignore antlers, coat and tarsal glands. Judge from the recorded body observations. This pair may be a two-class RANGE.
+
+RANGE RULE (this pair only): If the recorded observations describe the legs as long-looking (long, long and lanky, or long relative to body depth) AND describe a tucked belly and/or a waist shallower than the chest, AND also describe the neck as thick or as blending into the shoulders, then you must answer closer: RANGE. That means 2.5-3.5. The neck cannot decide this pair by itself, and those younger-looking cues cannot be used to force 2.5 either. Do not answer OLDER just because the neck is thick or blending. Do not answer YOUNGER just because the legs look long and the waist is tucked, when the neck is thick or blending.
+
+MEDIUM-NECK RANGE RULE (this pair only): If the long-legs condition and the tucked-belly or shallower-waist condition are both present, and the neck is described as medium, moderately full, or moderately thick (for example "medium in thickness" or "moderately full near the base"), you must answer closer: RANGE even if the neck is not called thick or blending, and even if a clear, distinct, or visible junction is noted at the shoulders. Do not answer YOUNGER just because the neck is only medium or moderately full, or because it meets the shoulder at a clear junction. This medium-neck check does NOT apply if the neck is described as thin, moderately thin, slender, or slender to moderate.
+
+HIDDEN-LEGS RANGE RULE (this pair only): If the recorded observations say the legs, lower legs, or full leg length are hidden, obscured, or cropped, and they do not describe the legs as long, long and lanky, or long relative to body depth, you must answer closer: RANGE. That means 2.5-3.5. A note that the visible upper legs "appear proportional," "look moderate," or "look about equal to body depth" does not count as a long or short reading when the rest of the leg is hidden, and must not be used to answer OLDER. If the notes still describe the legs as long even though the lower legs are hidden, ignore this hidden-legs rule and use the other range rules as usual.
+
+If you answer RANGE, also give hunter_cue: one short sentence for the hunter naming what, if it were clearer on this deer, would age it up toward 3.5 or down toward 2.5.
+
+If none of the range rules apply, ignore the range rules and answer closer: YOUNGER or OLDER as usual, with a reason.
+
+JSON {closer: YOUNGER or OLDER or RANGE, reason, hunter_cue}
