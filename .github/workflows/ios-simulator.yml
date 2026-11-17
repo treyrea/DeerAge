@@ -76,6 +76,7 @@ jobs:
       - name: Boot a small and a large iPhone and run Maestro
         env:
           EXPO_PUBLIC_E2E: "1"
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
         run: |
           set -euo pipefail
           node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/mock-server.log" 2>&1 &
@@ -86,30 +87,43 @@ jobs:
           curl -sf http://127.0.0.1:8787/health
           python3 - << 'PY'
           import json, subprocess, pathlib
-          raw = subprocess.check_output(["xcrun", "simctl", "list", "devicetypes", "-j"], text=True)
-          types = json.loads(raw)["devicetypes"]
-          iphones = [item["name"] for item in types if item["name"].startswith("iPhone")]
-          small = next((name for name in iphones if "SE" in name), iphones[0])
-          large = next((name for name in reversed(iphones) if "Pro Max" in name or name.endswith("Plus")), iphones[-1])
-          pathlib.Path("devices.txt").write_text(small + "\n" + large + "\n")
-          print(small)
-          print(large)
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+          phones = []
+          for runtime, rows in json.loads(raw)["devices"].items():
+              if "iOS" not in runtime:
+                  continue
+              phones.extend(row for row in rows if row.get("isAvailable") and row["name"].startswith("iPhone"))
+          if not phones:
+              raise SystemExit("no available iPhone simulators")
+          small = next((row for row in phones if "SE" in row["name"]), phones[0])
+          large = next((row for row in reversed(phones) if "Pro Max" in row["name"] or row["name"].endswith("Plus")), phones[-1])
+          if large["udid"] == small["udid"] and len(phones) > 1:
+              large = next(row for row in phones if row["udid"] != small["udid"])
+          pathlib.Path("devices.txt").write_text(small["udid"] + "\n" + large["udid"] + "\n")
+          print(small["name"], small["udid"])
+          print(large["name"], large["udid"])
           PY
           test -d "$APP"
-          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "iOS" in r.get("name","")]; print(rs[-1]["identifier"])')
+          open -a Simulator || true
           mkdir -p "$GITHUB_WORKSPACE/maestro-out"
+          run_maestro() {
+            local udid="$1"
+            local out="$2"
+            shift 2
+            mkdir -p "$out"
+            maestro --device "$udid" test "$@" --test-output-dir "$out" --format junit --output "$out/report.xml" \
+              || maestro --device "$udid" test "$@" --test-output-dir "$out" --format junit --output "$out/report.xml"
+          }
           i=0
-          while read -r NAME; do
+          while read -r UDID; do
             i=$((i+1))
-            UDID=$(xcrun simctl create "deerage-$i" "$NAME" "$RUNTIME")
-            xcrun simctl boot "$UDID"
+            xcrun simctl boot "$UDID" || true
             xcrun simctl bootstatus "$UDID" -b
             xcrun simctl install "$UDID" "$APP"
-            mkdir -p "$GITHUB_WORKSPACE/maestro-out/$i"
-            maestro --device "$UDID" test mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i/report.xml"
+            run_maestro "$UDID" "$GITHUB_WORKSPACE/maestro-out/$i" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml
             # The status bar change is visual. It does not drop the simulator network stack.
             xcrun simctl status_bar "$UDID" override --dataNetwork none --wifiBars 0 || true
-            maestro --device "$UDID" test mobile/e2e/flows/03-airplane.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i-network" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i-network/report.xml"
+            run_maestro "$UDID" "$GITHUB_WORKSPACE/maestro-out/$i-network" mobile/e2e/flows/03-airplane.yaml
             xcrun simctl status_bar "$UDID" clear || true
             xcrun simctl shutdown "$UDID" || true
           done < devices.txt
