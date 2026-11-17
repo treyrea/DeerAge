@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { useNetworkStore } from "../state/networkStore";
 import { e2eEnabled, useE2eFlags } from "./flags";
 
 type Nav = NativeStackNavigationProp<Record<string, object | undefined>>;
@@ -51,6 +52,7 @@ export const E2ePanel = () => {
   const navigation = useNavigation<Nav>();
   const setShowUpdateCard = useE2eFlags((s) => s.setShowUpdateCard);
   const setForceUpdate = useE2eFlags((s) => s.setForceUpdate);
+  const setHoldOffline = useE2eFlags((s) => s.setHoldOffline);
   if (!e2eEnabled) return null;
   const openAge = (label: string, fieldCall: "SHOOTER" | "LET WALK" | "BORDERLINE", isRange: boolean) => {
     sampleAge(label, fieldCall, isRange);
@@ -97,6 +99,31 @@ export const E2ePanel = () => {
       </Pressable>
       <Pressable testID="e2e-force" onPress={() => setForceUpdate(true)} style={row}>
         <Text style={label}>Show forced update</Text>
+      </Pressable>
+      <Pressable
+        testID="e2e-offline"
+        onPress={() => {
+          setHoldOffline(true);
+          useNetworkStore.getState().setNetworkState(false, false, "none");
+        }}
+        style={row}
+      >
+        <Text style={label}>Show offline</Text>
+      </Pressable>
+      <Pressable
+        testID="e2e-fail"
+        onPress={() => {
+          useDeerScoringStore.setState({
+            isProcessing: false,
+            currentResult: null,
+            error: "Analysis failed. Try again in a moment.",
+            errorCode: "unknown",
+          });
+          navigation.navigate("Processing");
+        }}
+        style={row}
+      >
+        <Text style={label}>Sample failure</Text>
       </Pressable>
     </View>
   );

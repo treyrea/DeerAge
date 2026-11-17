@@ -20,6 +20,11 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn:
     id: onboarding-continue
 - extendedWaitUntil:
+    visible: "HUNT REGION"
+    timeout: 20000
+- takeScreenshot: hunt-region
+- tapOn: "Yes"
+- extendedWaitUntil:
     visible:
       id: camera-close
     timeout: 20000
@@ -36,6 +41,9 @@ appId: com.vibecode.deerage-qj3cfq
     timeout: 15000
 - takeScreenshot: photo-pick
 - tapOn: "Upload Photo"
+- extendedWaitUntil:
+    visible: "Select a Photo"
+    timeout: 15000
 - takeScreenshot: photo-library
 - tapOn:
     id: photo-back
@@ -49,21 +57,34 @@ appId: com.vibecode.deerage-qj3cfq
     visible: "4.5"
     timeout: 15000
 - takeScreenshot: age-result
-- back
+- scrollUntilVisible:
+    element: "Was this call wrong?"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Was this call wrong?"
+- extendedWaitUntil:
+    visible: "Actual age, if you know it"
+    timeout: 10000
+- takeScreenshot: wrong-call
+- tapOn:
+    id: age-close
 - tapOn:
     id: e2e-range
 - extendedWaitUntil:
     visible: "3.5–4.5"
     timeout: 15000
+- assertVisible: "Age range"
 - takeScreenshot: age-range
-- back
+- tapOn:
+    id: age-close
 - tapOn:
     id: e2e-borderline
 - extendedWaitUntil:
     visible: "BORDERLINE"
     timeout: 15000
 - takeScreenshot: borderline
-- back
+- tapOn:
+    id: age-close
 - tapOn:
     id: e2e-retake
 - extendedWaitUntil:
@@ -90,23 +111,34 @@ appId: com.vibecode.deerage-qj3cfq
     id: e2e-feed
 - extendedWaitUntil:
     visible: "What should DeerAge add next?"
-    timeout: 15000
+    timeout: 20000
 - takeScreenshot: polls
-- back
+- tapOn:
+    id: feed-back
 - tapOn:
     id: e2e-messages
 - extendedWaitUntil:
     visible: "Messages from DeerAge"
     timeout: 15000
-- takeScreenshot: messages
-- back
-- tapOn: "Settings"
 - extendedWaitUntil:
-    visible: "Updates and polls"
+    visible: "We got the report."
     timeout: 15000
-- assertVisible: "Rut-timing alerts"
-- takeScreenshot: settings
-- tapOn: "Home"
+- takeScreenshot: messages
+- tapOn:
+    id: messages-back
+- scrollUntilVisible:
+    element: "Updates and polls"
+    direction: DOWN
+    timeout: 20000
+- takeScreenshot: settings-push
+- scrollUntilVisible:
+    element: "Rut-timing alerts"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "Send me alerts"
+- takeScreenshot: settings-email
+- tapOn:
+    text: "^Home$"
 - tapOn:
     id: e2e-update
 - extendedWaitUntil:

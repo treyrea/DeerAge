@@ -84,6 +84,7 @@ export const ModeSelectScreen = () => {
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center">
         <Pressable
+          testID="mode-back"
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             navigation.goBack();

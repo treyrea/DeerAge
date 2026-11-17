@@ -91,6 +91,9 @@ const server = http.createServer((req, res) => {
   if (req.method === "POST" && (url.pathname === "/api/replies" || url.pathname === "/api/push-token" || url.pathname === "/api/email-optin" || url.pathname === "/api/call-report")) {
     return send(res, 200, { ok: true, photoStored: false });
   }
+  if (req.method === "GET" && url.pathname === "/health") {
+    return send(res, 200, { ok: true });
+  }
   if (req.method === "POST" && url.pathname === "/api/analyze") {
     const fail = url.searchParams.get("fail") === "1";
     if (fail) return send(res, 502, { ok: false, code: "upstream", message: "Analysis failed. Try again in a moment." });

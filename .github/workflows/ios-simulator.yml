@@ -22,46 +22,70 @@ jobs:
       - name: Install JS dependencies
         working-directory: mobile
         run: npm ci
-      - name: Start the mock API
-        run: node mobile/e2e/mock-server.mjs &
       - name: Prebuild and compile the simulator app
         working-directory: mobile
         env:
           EXPO_PUBLIC_E2E: "1"
           EXPO_PUBLIC_API_BASE_URL: http://127.0.0.1:8787
+          LANG: en_US.UTF-8
         run: |
+          set -euo pipefail
+          printf '%s\n' 'EXPO_PUBLIC_E2E=1' 'EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787' > .env
           npx expo prebuild --platform ios --no-install --non-interactive
           python3 e2e/attach-storekit.py
+          cat > ios/.xcode.env.local << 'EOF'
+          export FORCE_BUNDLING=1
+          export EXPO_PUBLIC_E2E=1
+          export EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787
+          EOF
           cd ios
           pod install
+          WORKSPACE=$(python3 -c 'import pathlib; print(next(pathlib.Path(".").glob("*.xcworkspace")))')
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["project"]["schemes"][0])')
+          echo "Building $SCHEME from $WORKSPACE"
           xcodebuild \
-            -workspace DeerAge.xcworkspace \
-            -scheme DeerAge \
-            -configuration Debug \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
             -sdk iphonesimulator \
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath "$GITHUB_WORKSPACE/mobile/ios-build" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
             COMPILER_INDEX_STORE_ENABLE=NO
+          APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("*.app")))' "$GITHUB_WORKSPACE/mobile/ios-build/Build/Products")
+          test -d "$APP"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          if ! strings "$APP/main.jsbundle" | grep -q '127.0.0.1:8787'; then
+            echo "The simulator bundle does not point at the mock API."
+            exit 1
+          fi
       - name: Boot a small and a large iPhone and run Maestro
         env:
           EXPO_PUBLIC_E2E: "1"
         run: |
           set -euo pipefail
+          node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/mock-server.log" 2>&1 &
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            curl -sf http://127.0.0.1:8787/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/health
           python3 - << 'PY'
           import json, subprocess, pathlib
           raw = subprocess.check_output(["xcrun", "simctl", "list", "devicetypes", "-j"], text=True)
           types = json.loads(raw)["devicetypes"]
           iphones = [item["name"] for item in types if item["name"].startswith("iPhone")]
           small = next((name for name in iphones if "SE" in name), iphones[0])
-          large = next((name for name in reversed(iphones) if "Pro Max" in name or "Plus" in name), iphones[-1])
+          large = next((name for name in reversed(iphones) if "Pro Max" in name or name.endswith("Plus")), iphones[-1])
           pathlib.Path("devices.txt").write_text(small + "\n" + large + "\n")
-          print(small, large)
+          print(small)
+          print(large)
           PY
-          APP="$GITHUB_WORKSPACE/mobile/ios-build/Build/Products/Debug-iphonesimulator/DeerAge.app"
           test -d "$APP"
-          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if "iOS" in r.get("name","") and r.get("isAvailable", True)]; print(rs[-1]["identifier"])')
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r.get("isAvailable") and "iOS" in r.get("name","")]; print(rs[-1]["identifier"])')
           mkdir -p "$GITHUB_WORKSPACE/maestro-out"
           i=0
           while read -r NAME; do
@@ -72,8 +96,9 @@ jobs:
             xcrun simctl install "$UDID" "$APP"
             mkdir -p "$GITHUB_WORKSPACE/maestro-out/$i"
             maestro --device "$UDID" test mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i/report.xml"
-            xcrun simctl status_bar "$UDID" override --dataNetwork none || true
-            maestro --device "$UDID" test mobile/e2e/flows/03-airplane.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i-network" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i-network/report.xml" || true
+            # The status bar change is visual. It does not drop the simulator network stack.
+            xcrun simctl status_bar "$UDID" override --dataNetwork none --wifiBars 0 || true
+            maestro --device "$UDID" test mobile/e2e/flows/03-airplane.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i-network" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i-network/report.xml"
             xcrun simctl status_bar "$UDID" clear || true
             xcrun simctl shutdown "$UDID" || true
           done < devices.txt
@@ -82,5 +107,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: maestro-ios
-          path: maestro-out
+          path: |
+            maestro-out
+            mock-server.log
           if-no-files-found: warn

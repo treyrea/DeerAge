@@ -6,6 +6,7 @@ import { submitEmail } from "../api/community";
 import { setRevenueCatEmail } from "../lib/revenuecatClient";
 import { enablePush } from "../lib/push";
 import { useCommunityStore } from "../state/communityStore";
+import { e2eEnabled } from "../e2e/flags";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 
 export const EMAIL_PRIVACY_NOTE = "DeerAge stores this email only to send rut-timing alerts and an end-of-season recap. It is tied to this install, not an account. Unsubscribe anytime in Settings.";
@@ -36,7 +37,7 @@ export const CommunityPrompts = () => {
   const [thanks, setThanks] = useState(false);
   const [pushNote, setPushNote] = useState("");
 
-  if (!activePrompt || routeName === "TierPaywall") return null;
+  if (e2eEnabled || !activePrompt || routeName === "TierPaywall") return null;
 
   const closeEmail = () => {
     setEmailText("");

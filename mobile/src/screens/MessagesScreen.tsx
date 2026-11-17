@@ -60,7 +60,7 @@ export const MessagesScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable testID="messages-back" onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Messages from DeerAge</Text>

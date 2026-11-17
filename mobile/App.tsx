@@ -7,6 +7,7 @@ import { SplashScreen } from "./src/screens/SplashScreen";
 import { useState, useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { useNetworkStore } from "./src/state/networkStore";
+import { e2eEnabled, useE2eFlags } from "./src/e2e/flags";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { refreshScanCredits } from "./src/api/scan-credits";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
@@ -33,6 +34,7 @@ function MainApp() {
   // Monitor network connectivity
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
+      if (e2eEnabled && useE2eFlags.getState().holdOffline) return;
       useNetworkStore.getState().setNetworkState(
         state.isConnected ?? false,
         state.isInternetReachable ?? null,

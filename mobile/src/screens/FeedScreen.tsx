@@ -82,7 +82,7 @@ export const FeedScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#3D4A2F", flexDirection: "row", alignItems: "center" }}>
-        <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable testID="feed-back" onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>

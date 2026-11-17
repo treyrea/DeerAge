@@ -157,6 +157,7 @@ export const AgeResultScreen = () => {
       <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
           <Pressable
+            testID="age-close"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate("HomeMain");

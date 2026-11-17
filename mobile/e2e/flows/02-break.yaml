@@ -6,34 +6,76 @@ appId: com.vibecode.deerage-qj3cfq
       photos: allow
 - extendedWaitUntil:
     visible: "Age My Deer"
-    timeout: 30000
+    timeout: 40000
+- tapOn: "Age My Deer"
+- extendedWaitUntil:
+    visible:
+      id: mode-back
+    timeout: 15000
 - repeat:
-    times: 6
+    times: 5
     commands:
+      - tapOn:
+          id: mode-back
       - tapOn: "Age My Deer"
-      - back
+      - extendedWaitUntil:
+          visible:
+            id: mode-back
+          timeout: 15000
 - takeScreenshot: rapid-scan
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 30000
+- takeScreenshot: relaunch
+- tapOn:
+    id: mode-back
+    optional: true
 - tapOn:
     id: e2e-paywall
+- extendedWaitUntil:
+    visible: "Continue with Season Pass"
+    timeout: 15000
 - repeat:
     times: 5
     commands:
       - tapOn: "Continue with Season Pass"
 - takeScreenshot: rapid-buy
-- back
-- pressKey: Home
-- launchApp
+- tapOn:
+    id: paywall-close
+- tapOn:
+    id: e2e-fail
 - extendedWaitUntil:
-    visible: "Age My Deer"
-    timeout: 30000
-- takeScreenshot: relaunch
+    visible: "ANALYSIS FAILED"
+    timeout: 15000
+- takeScreenshot: analysis-failed
+- tapOn: "Back to Home"
 - launchApp:
     permissions:
       camera: deny
       photos: deny
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 40000
 - tapOn: "Age My Deer"
+- extendedWaitUntil:
+    visible: "Take Photo"
+    timeout: 15000
 - tapOn: "Take Photo"
+- extendedWaitUntil:
+    visible: "Camera permission required"
+    timeout: 15000
 - takeScreenshot: camera-denied
 - back
 - tapOn: "Upload Photo"
+- extendedWaitUntil:
+    visible: "Open Gallery"
+    timeout: 15000
+- tapOn: "Open Gallery"
+- extendedWaitUntil:
+    visible: "Sorry, we need camera roll permissions to upload photos!"
+    timeout: 15000
 - takeScreenshot: photos-denied
+- tapOn: "OK"
