@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Haptics from "expo-haptics";
-import { isLegacyProduct } from "../lib/products";
+import { getOfferings } from "../lib/revenuecatClient";
+import { DEFAULT_OFFERING_ID, isLegacyProduct, SEASON_PASS_PRODUCT_ID } from "../lib/products";
 import { useCommunityStore } from "../state/communityStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -18,6 +19,23 @@ export const LegacyPlanCard = () => {
   const dismiss = useCommunityStore((s) => s.dismissLegacyCard);
   const legacyOn = useRemoteConfig((s) => s.flags.legacyCard);
   const onLegacyPlan = activeProductIds.some((id) => isLegacyProduct(id));
+  const [seasonPrice, setSeasonPrice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!legacyOn || !onLegacyPlan || dismissed) return;
+    let active = true;
+    void getOfferings().then((result) => {
+      if (!active || !result.ok) return;
+      const offering = result.data.all[DEFAULT_OFFERING_ID] ?? result.data.current;
+      const season = offering?.availablePackages.find((pkg) => pkg.product.identifier === SEASON_PASS_PRODUCT_ID);
+      const label = season?.product.priceString?.trim();
+      if (label) setSeasonPrice(label);
+    });
+    return () => {
+      active = false;
+    };
+  }, [dismissed, legacyOn, onLegacyPlan]);
+
   if (!legacyOn || !onLegacyPlan || dismissed) return null;
 
   return (
@@ -35,7 +53,7 @@ export const LegacyPlanCard = () => {
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={{ color: "#F5F5DC", fontWeight: "700", fontSize: 16 }}>Your plan still works.</Text>
           <Text style={{ color: "#E5D4B8", fontSize: 14, marginTop: 6, lineHeight: 20 }}>
-            You keep full access on the plan you already have. Season Pass is available too: $19.99 a year with a 7-day trial.
+            You keep full access on the plan you already have. Season Pass is available too{seasonPrice ? ` at ${seasonPrice}` : ""}. It does not renew and has no trial.
           </Text>
         </View>
         <Pressable

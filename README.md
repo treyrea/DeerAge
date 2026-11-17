@@ -61,12 +61,14 @@ A wrong-call report keeps the scan photo and the result. A confirmed harvest age
 
 ## Plans
 
-The paywall reads prices from the RevenueCat offering named in config (`default` unless `PAYWALL_OFFERING_ID` is set). It does not hardcode a price. Product ids are config, not hardcoded purchases.
+The paywall reads prices from the RevenueCat offering named in config (`default` unless `PAYWALL_OFFERING_ID` is set). It shows the store price string. It does not hardcode a price. Product ids are config, not hardcoded purchases.
 
-Intended products, created later in App Store Connect and attached in RevenueCat. None of these were created or changed by the app:
+Approved App Store prices to create and attach in RevenueCat. The app does not create these products:
 
-- `deerage_season` — Season Pass for one hunting season, entitlement `deerage_pro`. It does not renew, so there is no off-season charge.
-- `deerage_monthly` — Monthly, entitlement `deerage_pro`. Billed every month, including the off-season.
+- `deerage_season` — Season Pass, non-renewing, $39.99, no trial, entitlement `deerage_pro`.
+- `deerage_monthly` — Monthly, $12.99, entitlement `deerage_pro`.
+- `deerage_scans_10` — 10 scans, $2.99.
+- `deerage_scans_30` — 30 scans, $7.99.
 - A win-back or promotional offer on the Season Pass, identifier set later in `WIN_BACK_OFFER_ID`. The app will not show a discount until that offer exists on the product.
 
 Existing subscribers keep access through `scout`, `hunter`, `trophy`, `outfitter`, or `pro`. Those products (`scout_monthly`, `hunter_monthly`, `trophy_monthly`, `outfitter_monthly` in the `tiers` offering) show under More plans only when the offering still contains them.
