@@ -26,6 +26,7 @@ export default MainApp;
 
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
+  const [navReady, setNavReady] = useState(false);
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
   const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
@@ -121,9 +122,9 @@ function MainApp() {
             </Text>
           </View>
         )}
-        <NavigationContainer>
+        <NavigationContainer onReady={() => setNavReady(true)}>
           <RootNavigator />
-          <CommunityPrompts />
+          {navReady ? <CommunityPrompts /> : null}
           <UpdateGate />
           <StatusBar style="light" />
         </NavigationContainer>
