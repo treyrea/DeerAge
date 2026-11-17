@@ -1,6 +1,9 @@
 import React from "react";
-import TestRenderer from "react-test-renderer";
 import { NavigationContainer } from "@react-navigation/native";
+
+const TestRenderer = require("react-test-renderer") as {
+  create: (element: React.ReactElement) => { toJSON: () => unknown };
+};
 
 jest.mock("../state/deerScoringStore", () => {
   const { create } = require("zustand");
