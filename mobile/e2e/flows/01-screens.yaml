@@ -58,9 +58,11 @@ appId: com.vibecode.deerage-qj3cfq
     timeout: 15000
 - takeScreenshot: age-result
 - scrollUntilVisible:
-    element: "Was this call wrong?"
+    element:
+      text: "Was this call wrong\\?"
     direction: DOWN
-    timeout: 15000
+    timeout: 20000
+    visibilityPercentage: 40
 - tapOn: "Was this call wrong?"
 - extendedWaitUntil:
     visible: "Actual age, if you know it"
@@ -127,14 +129,18 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn:
     id: messages-back
 - scrollUntilVisible:
-    element: "Updates and polls"
+    element:
+      text: "Updates and polls"
     direction: DOWN
-    timeout: 20000
+    timeout: 25000
+    visibilityPercentage: 40
 - takeScreenshot: settings-push
 - scrollUntilVisible:
-    element: "Rut-timing alerts"
+    element:
+      text: "Rut-timing alerts"
     direction: DOWN
-    timeout: 20000
+    timeout: 25000
+    visibilityPercentage: 40
 - assertVisible: "Send me alerts"
 - takeScreenshot: settings-email
 - tapOn:
