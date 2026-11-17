@@ -19,7 +19,8 @@ import { issueRecord } from "./record.js";
 import { runAgeCall } from "./age-pipeline.js";
 import { geminiCaller } from "./hydrogen/gemini.js";
 import { walkHydrogen } from "./hydrogen/pipeline.js";
-import { hydrogenAgeBody } from "./hydrogen/result.js";
+import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
+import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
@@ -356,21 +357,37 @@ async function finishJob(input: {
         ...input.job,
         provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
       });
-      const outcome = await walkHydrogen(geminiCaller(input.images[0], input.usage));
-      if (outcome.kind !== "age") {
+      const started = Date.now();
+      const resolved = await resolveHydrogenAge({
+        minimum: input.minimum,
+        circuitOpen: () => circuitOpen("gemini"),
+        note: (ok) => circuitNote("gemini", ok),
+        primary: () => walkHydrogen(geminiCaller(input.images[0], input.usage)),
+        backup: async () => {
+          const age = await runAgeCall(input.images[0], input.minimum);
+          return age.result;
+        },
+      });
+      console.log(JSON.stringify({
+        event: "provider_latency",
+        provider: resolved.kind === "age" && resolved.backup ? "gateway" : "gemini",
+        ms: Date.now() - started,
+        backup: resolved.kind === "age" && resolved.backup,
+      }));
+      if (resolved.kind !== "age") {
         await input.refund();
         await input.releaseFairUse();
-        const retake = outcome.kind === "retake";
+        const retake = resolved.kind === "retake";
         await saveJob({
           ...input.job,
           status: "error",
           error: retake
-            ? { code: "retake", message: outcome.message }
+            ? { code: "retake", message: resolved.message }
             : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." },
         });
         return;
       }
-      const result = hydrogenAgeBody({ ...outcome, minimum: input.minimum });
+      const result = resolved.result;
       const usd = await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId);
       const record = await issueRecord({
         appUserId: input.appUserId,
@@ -383,7 +400,15 @@ async function finishJob(input: {
         ...input.job,
         status: "done",
         provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
-        final: { ok: true, mode: input.mode, model: HYDROGEN_MODEL, estimatedCostUsd: usd, record, result },
+        final: {
+          ok: true,
+          mode: input.mode,
+          model: resolved.backup ? "gateway-backup" : HYDROGEN_MODEL,
+          estimatedCostUsd: usd,
+          record,
+          result,
+          backup: resolved.backup,
+        },
       });
       return;
     }

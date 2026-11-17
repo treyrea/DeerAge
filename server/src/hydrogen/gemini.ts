@@ -6,12 +6,13 @@
 
 import { addUsage, type TokenUsage } from "../cost.js";
 import { UpstreamError } from "../openai.js";
+import { withBackoff } from "../retry.js";
 import { HYDROGEN_MODEL } from "../aging-switch.js";
 import type { ModelCaller } from "./pipeline.js";
 
 export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
-/** The whole walk shares the analyze function's 300s budget, so each call stays short. */
-const CALL_TIMEOUT_MS = 30_000;
+/** Three attempts, with backoff, still fit inside the 300s function budget. */
+const CALL_TIMEOUT_MS = 20_000;
 
 export function geminiEndpoint(): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${HYDROGEN_MODEL}:generateContent`;
@@ -51,17 +52,21 @@ export function geminiCaller(imageBase64: string, usage: TokenUsage): ModelCalle
 }
 
 async function withRetry(key: string, prompt: string, imageBase64: string, usage: TokenUsage): Promise<string> {
-  let last: unknown;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await once(key, prompt, imageBase64, usage);
-    } catch (error) {
-      last = error;
-      const retryable = error instanceof UpstreamError && error.retryable;
-      if (!retryable || attempt === 1) throw error;
-    }
-  }
-  throw last;
+  return withBackoff(() => once(key, prompt, imageBase64, usage), {
+    attempts: 3,
+    retryable: (error) => error instanceof UpstreamError && (error.retryable || error.status === 504),
+    onError: (error, attempt, waitedMs) => {
+      const status = error instanceof UpstreamError ? error.status : 0;
+      console.log(JSON.stringify({
+        event: "provider_error",
+        provider: "gemini",
+        model: HYDROGEN_MODEL,
+        status,
+        attempt,
+        waitedMs,
+      }));
+    },
+  });
 }
 
 async function once(key: string, prompt: string, imageBase64: string, usage: TokenUsage): Promise<string> {
@@ -92,7 +97,7 @@ async function once(key: string, prompt: string, imageBase64: string, usage: Tok
   } catch (error) {
     if (error instanceof UpstreamError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new UpstreamError("The analysis timed out.", 504, false);
+      throw new UpstreamError("The analysis timed out.", 504, true);
     }
     throw new UpstreamError("The analysis service could not be reached.", 502, true);
   } finally {
