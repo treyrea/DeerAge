@@ -41,7 +41,7 @@ jobs:
           cd ios
           pod install
           WORKSPACE=$(python3 -c 'import pathlib; print(next(pathlib.Path(".").glob("*.xcworkspace")))')
-          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["project"]["schemes"][0])')
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c 'import json,sys; data=json.load(sys.stdin); node=data.get("project") or data.get("workspace"); print(node["schemes"][0])')
           echo "Building $SCHEME from $WORKSPACE"
           xcodebuild \
             -workspace "$WORKSPACE" \
