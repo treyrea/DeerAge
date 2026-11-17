@@ -26,6 +26,7 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'workflow_dispatch' || inputs.maestro_only == false
+    # macos-15 is a free Apple Silicon image. macos-latest was not acquired during the arm64 shortage.
     runs-on: macos-15
     timeout-minutes: 90
     steps:
