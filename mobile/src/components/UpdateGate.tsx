@@ -3,23 +3,14 @@ import { Linking, Pressable, Text, View } from "react-native";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { compareVersions, installedAppVersion } from "../lib/version";
 
 const STORE_URL = "https://apps.apple.com/app/id6755117006";
-
-function compareVersions(installed: string, minimum: string): number {
-  const left = installed.split(".").map((part) => Number.parseInt(part, 10) || 0);
-  const right = minimum.split(".").map((part) => Number.parseInt(part, 10) || 0);
-  for (let i = 0; i < 3; i += 1) {
-    const delta = (left[i] ?? 0) - (right[i] ?? 0);
-    if (delta !== 0) return delta;
-  }
-  return 0;
-}
 
 export const UpdateGate = () => {
   const loaded = useRemoteConfig((s) => s.loaded);
   const minimum = useRemoteConfig((s) => s.minSupportedVersion);
-  const installed = Application.nativeApplicationVersion || Constants.expoConfig?.version || "0.0.0";
+  const installed = installedAppVersion(Application.nativeApplicationVersion, Constants.expoConfig?.version);
   if (!loaded || !minimum || compareVersions(installed, minimum) >= 0) return null;
   return (
     <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "#1a1f16", justifyContent: "center", padding: 28, zIndex: 50 }}>

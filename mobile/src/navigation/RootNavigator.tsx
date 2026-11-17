@@ -9,7 +9,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HomeScreen } from "../screens/HomeScreenV2";
+import { HomeScreen } from "../screens/HomeScreen";
 import { ModeSelectScreen } from "../screens/ModeSelectScreen";
 import { DeerCameraScreen } from "../screens/DeerCameraScreen";
 import { PhotoSelectScreen } from "../screens/PhotoSelectScreen";

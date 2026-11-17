@@ -5,6 +5,7 @@
  */
 
 import { allowBucket, ensureRedis, kv } from "./kv.js";
+import { revenueCatGrantSecret } from "./revenuecat-secret.js";
 import {
   ApiError,
   type Incoming,
@@ -47,7 +48,7 @@ function txnKey(transactionId: string): string {
 }
 
 function secret(): string {
-  return process.env.REVENUECAT_SECRET_KEY?.trim() || process.env.REVENUECAT_SECRET_API_KEY?.trim() || "";
+  return revenueCatGrantSecret();
 }
 
 function asId(value: unknown): string {

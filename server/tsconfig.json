@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src", "api", "eval"]
+  "include": ["src", "api", "eval", "../shared"]
 }

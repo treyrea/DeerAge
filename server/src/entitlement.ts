@@ -1,4 +1,5 @@
 import { ACCESS_ENTITLEMENTS, FREE_LIFETIME_ANALYSES } from "./config.js";
+import { revenueCatGrantSecret, revenueCatSecret } from "./revenuecat-secret.js";
 
 const RC_BASE = "https://api.revenuecat.com/v1/subscribers";
 const ATTRIBUTE = "deerage_free_uses";
@@ -20,7 +21,7 @@ interface RcSubscriber {
 }
 
 function secret(): string {
-  return process.env.REVENUECAT_SECRET_API_KEY?.trim() ?? "";
+  return revenueCatSecret();
 }
 
 export function revenueCatConfigured(): boolean {
@@ -28,7 +29,7 @@ export function revenueCatConfigured(): boolean {
 }
 
 function grantKey(): string {
-  return process.env.REVENUECAT_SECRET_KEY?.trim() || process.env.REVENUECAT_SECRET_API_KEY?.trim() || "";
+  return revenueCatGrantSecret();
 }
 
 let grantForTests: ((appUserId: string) => Promise<"granted" | "no_key" | "failed">) | null = null;

@@ -6,18 +6,9 @@ import * as Application from "expo-application";
 import { apiBaseUrl } from "../api/proxy";
 import { useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { compareVersions, installedAppVersion } from "../lib/version";
 
 const STORE_URL = "https://apps.apple.com/app/id6755117006";
-
-function compareVersions(installed: string, minimum: string): number {
-  const left = installed.split(".").map((part) => Number.parseInt(part, 10) || 0);
-  const right = minimum.split(".").map((part) => Number.parseInt(part, 10) || 0);
-  for (let i = 0; i < 3; i += 1) {
-    const delta = (left[i] ?? 0) - (right[i] ?? 0);
-    if (delta !== 0) return delta;
-  }
-  return 0;
-}
 
 export const UpdateAvailableBanner = () => {
   const dismissed = useHunterProfile((s) => s.dismissedUpdateVersion);
@@ -42,7 +33,7 @@ export const UpdateAvailableBanner = () => {
     return () => controller.abort();
   }, []);
 
-  const installed = Application.nativeApplicationVersion || Constants.expoConfig?.version || "0.0.0";
+  const installed = installedAppVersion(Application.nativeApplicationVersion, Constants.expoConfig?.version);
   const target = recommendedVersion || minVersion;
   if (!target || compareVersions(installed, target) >= 0 || dismissed === target) {
     return null;
