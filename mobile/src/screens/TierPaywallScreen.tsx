@@ -31,6 +31,9 @@ import {
   type PaywallResultSummary,
 } from "../lib/products";
 import { claimScanPack, restoreScanPacks } from "../api/scan-credits";
+import { purchaseNotice } from "../lib/access";
+import { APPROVED_PRICES } from "../lib/approved-prices";
+import { e2eEnabled } from "../e2e/flags";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { DEFAULT_PRODUCTS, useRemoteConfig } from "../state/remoteConfig";
@@ -115,6 +118,31 @@ export const TierPaywallScreen = () => {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      if (e2eEnabled) {
+        setSeason({
+          id: "season",
+          title: "Season Pass",
+          detail: "Non-renewing. No trial.",
+          priceLabel: APPROVED_PRICES.season,
+          trialLabel: null,
+          package: null,
+        });
+        setMonthly({
+          id: "monthly",
+          title: "Monthly",
+          detail: "Billed every month.",
+          priceLabel: APPROVED_PRICES.monthly,
+          trialLabel: null,
+          package: null,
+        });
+        setPacks([
+          { id: SCAN_PACK_10_ID, scans: 10, priceLabel: APPROVED_PRICES.scans10, product: undefined as never },
+          { id: SCAN_PACK_30_ID, scans: 30, priceLabel: APPROVED_PRICES.scans30, product: undefined as never },
+        ]);
+        setShowPacks(true);
+        setLoading(false);
+        return;
+      }
       if (!isRevenueCatEnabled()) {
         if (active) {
           setError("Subscriptions aren't available in this build.");
@@ -199,10 +227,8 @@ export const TierPaywallScreen = () => {
     const result = await purchasePackage(pkg);
     setPurchasing(false);
     if (!result.ok) {
-      const text = String(result.error ?? "");
-      if (!text.toLowerCase().includes("cancel")) {
-        setError("The purchase didn't go through. You have not been charged for a plan that didn't activate.");
-      }
+      const notice = purchaseNotice(String(result.error ?? ""));
+      if (notice) setError(notice);
       return;
     }
     const entitled = applyCustomerInfo(result.data);
@@ -262,7 +288,7 @@ export const TierPaywallScreen = () => {
     <View style={{ flex: 1, backgroundColor: "#1a1f16" }}>
       <LinearGradient colors={["#2B3420", "#1a1f16"]} style={{ flex: 1, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Pressable onPress={close} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Pressable testID="paywall-close" onPress={close} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={28} color="#F5F5DC" />
           </Pressable>
           <Pressable onPress={() => void onRestore()} disabled={restoring}>

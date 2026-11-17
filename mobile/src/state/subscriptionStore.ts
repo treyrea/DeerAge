@@ -10,6 +10,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { CustomerInfo } from "react-native-purchases";
 import { getCustomerInfo, restorePurchases } from "../lib/revenuecatClient";
+import { canStartScan } from "../lib/access";
 import { ACCESS_ENTITLEMENT_IDS, FREE_LIFETIME_ANALYSES, planLabelFor, type PlanLabel } from "../lib/products";
 
 interface SubscriptionState {
@@ -111,11 +112,12 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         return { ok: true, entitled: get().applyCustomerInfo(result.data) };
       },
 
-      canStartAnalysis: () => {
-        if (get().entitled) return true;
-        if (get().scanCredits > 0) return true;
-        return get().lifetimeAnalysesUsed < FREE_LIFETIME_ANALYSES;
-      },
+      canStartAnalysis: () => canStartScan({
+        entitled: get().entitled,
+        scanCredits: get().scanCredits,
+        lifetimeAnalysesUsed: get().lifetimeAnalysesUsed,
+        freeLifetime: FREE_LIFETIME_ANALYSES,
+      }),
 
       remainingFree: () => {
         return Math.max(0, FREE_LIFETIME_ANALYSES - get().lifetimeAnalysesUsed);
