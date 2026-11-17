@@ -87,3 +87,9 @@ Set `ADMIN_TOKEN` before anyone posts an update. `server/README.md` has the curl
 The home card **What's new / Vote on what's next** appears when an announcement is published or a poll is open. Hunters on `scout_monthly`, `hunter_monthly`, `trophy_monthly`, or `outfitter_monthly` also see a one-time card, **Your plan still works**, which introduces Season Pass (`deerage_season`, offering `default`). Their current plan is unchanged.
 
 Never commit a filled-in `.env`. The repo stays public.
+
+## Over-the-air updates
+
+`expo-updates` is configured with `runtimeVersion.policy` `appVersion`, so a 1.0.9 binary only takes updates published for 1.0.9. `eas.json` channels are `preview` and `production`. Nothing is published from this repo.
+
+To ship a JS update later: `eas update --channel production` (or `preview`). To roll back that channel to the previous published update: `eas update:rollback --channel production`. A native module change still needs a new store build. Do not run either command until the owner asks.
