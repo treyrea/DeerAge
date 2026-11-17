@@ -214,6 +214,7 @@ export const OnboardingScreen = () => {
 
       <View style={{ padding: 24 }}>
         <Pressable
+          testID="onboarding-continue"
           onPress={() => {
             if (step < 2) setStep(step + 1);
             else finish();

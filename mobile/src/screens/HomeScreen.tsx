@@ -23,6 +23,7 @@ import { useHunterProfile } from "../state/hunterProfile";
 import { DeerMark } from "../components/DeerMark";
 import { UpdateAvailableBanner } from "../components/UpdateAvailableBanner";
 import { FeedHomeCard } from "../components/FeedHomeCard";
+import { E2ePanel } from "../e2e/E2ePanel";
 import { LegacyPlanCard } from "../components/LegacyPlanCard";
 import { WinBackPrompt } from "../components/WinBackPrompt";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -89,6 +90,7 @@ export const HomeScreen = () => {
           ) : null}
           <LegacyPlanCard />
           <FeedHomeCard />
+          <E2ePanel />
           {/* Offline Alert Banner - Only show when offline */}
           {!isOnline && (
             <Pressable

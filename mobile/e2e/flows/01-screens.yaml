@@ -1,0 +1,122 @@
+appId: com.vibecode.deerage-qj3cfq
+---
+- launchApp:
+    clearState: true
+    permissions:
+      camera: allow
+      photos: allow
+      location: deny
+      notifications: deny
+- extendedWaitUntil:
+    visible: "Where's home?"
+    timeout: 45000
+- takeScreenshot: onboarding
+- tapOn:
+    id: onboarding-continue
+- takeScreenshot: onboarding-land
+- tapOn:
+    id: onboarding-continue
+- takeScreenshot: onboarding-sample
+- tapOn:
+    id: onboarding-continue
+- extendedWaitUntil:
+    visible:
+      id: camera-close
+    timeout: 20000
+- takeScreenshot: camera
+- tapOn:
+    id: camera-close
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 15000
+- takeScreenshot: home
+- tapOn: "Age My Deer"
+- extendedWaitUntil:
+    visible: "Upload Photo"
+    timeout: 15000
+- takeScreenshot: photo-pick
+- tapOn: "Upload Photo"
+- takeScreenshot: photo-library
+- tapOn:
+    id: photo-back
+- extendedWaitUntil:
+    visible:
+      id: e2e-age
+    timeout: 15000
+- tapOn:
+    id: e2e-age
+- extendedWaitUntil:
+    visible: "4.5"
+    timeout: 15000
+- takeScreenshot: age-result
+- back
+- tapOn:
+    id: e2e-range
+- extendedWaitUntil:
+    visible: "3.5–4.5"
+    timeout: 15000
+- takeScreenshot: age-range
+- back
+- tapOn:
+    id: e2e-borderline
+- extendedWaitUntil:
+    visible: "BORDERLINE"
+    timeout: 15000
+- takeScreenshot: borderline
+- back
+- tapOn:
+    id: e2e-retake
+- extendedWaitUntil:
+    visible: "Try another photo"
+    timeout: 15000
+- takeScreenshot: retake
+- tapOn: "Back to Home"
+- tapOn:
+    id: e2e-paywall
+- extendedWaitUntil:
+    visible: "Season Pass"
+    timeout: 15000
+- assertVisible: "Monthly"
+- assertVisible: "$39.99"
+- assertVisible: "$12.99"
+- assertVisible: "10 scans"
+- assertVisible: "$2.99"
+- assertVisible: "30 scans"
+- assertVisible: "$7.99"
+- takeScreenshot: paywall
+- tapOn:
+    id: paywall-close
+- tapOn:
+    id: e2e-feed
+- extendedWaitUntil:
+    visible: "What should DeerAge add next?"
+    timeout: 15000
+- takeScreenshot: polls
+- back
+- tapOn:
+    id: e2e-messages
+- extendedWaitUntil:
+    visible: "Messages from DeerAge"
+    timeout: 15000
+- takeScreenshot: messages
+- back
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Updates and polls"
+    timeout: 15000
+- assertVisible: "Rut-timing alerts"
+- takeScreenshot: settings
+- tapOn: "Home"
+- tapOn:
+    id: e2e-update
+- extendedWaitUntil:
+    visible: "Update available"
+    timeout: 10000
+- takeScreenshot: update-card
+- tapOn:
+    id: e2e-force
+- extendedWaitUntil:
+    visible:
+      id: forced-update
+    timeout: 10000
+- takeScreenshot: forced-update

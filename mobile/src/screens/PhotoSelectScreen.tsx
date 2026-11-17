@@ -153,7 +153,7 @@ export const PhotoSelectScreen = () => {
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+          <Pressable testID="photo-back" onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
           <Text className="text-white text-lg font-bold">Upload Photo</Text>

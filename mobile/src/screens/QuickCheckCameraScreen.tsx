@@ -161,6 +161,7 @@ export const QuickCheckCameraScreen = () => {
         {/* Top Bar */}
         <View className="flex-row items-center justify-between px-6 py-4">
           <Pressable
+            testID="camera-close"
             onPress={() => navigation.goBack()}
             className="w-10 h-10 items-center justify-center bg-black/50 rounded-full"
           >

@@ -1,0 +1,90 @@
+{
+  "identifier" : "DeerAgeProducts",
+  "nonRenewingSubscriptions" : [
+    {
+      "displayPrice" : "39.99",
+      "familyShareable" : false,
+      "internalID" : "season",
+      "localizations" : [
+        {
+          "description" : "One hunting season. Does not renew. No trial.",
+          "displayName" : "Season Pass",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "deerage_season",
+      "referenceName" : "Season Pass",
+      "type" : "NonRenewingSubscription"
+    }
+  ],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "scans10",
+      "localizations" : [
+        {
+          "description" : "10 scans",
+          "displayName" : "10 scans",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "deerage_scans_10",
+      "referenceName" : "10 scans",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "7.99",
+      "familyShareable" : false,
+      "internalID" : "scans30",
+      "localizations" : [
+        {
+          "description" : "30 scans",
+          "displayName" : "30 scans",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "deerage_scans_30",
+      "referenceName" : "30 scans",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "monthly-group",
+      "localizations" : [],
+      "name" : "Monthly",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "12.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Billed every month.",
+              "displayName" : "Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "deerage_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly",
+          "subscriptionGroupID" : "monthly-group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

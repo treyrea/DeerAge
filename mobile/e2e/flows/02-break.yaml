@@ -1,0 +1,39 @@
+appId: com.vibecode.deerage-qj3cfq
+---
+- launchApp:
+    permissions:
+      camera: allow
+      photos: allow
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 30000
+- repeat:
+    times: 6
+    commands:
+      - tapOn: "Age My Deer"
+      - back
+- takeScreenshot: rapid-scan
+- tapOn:
+    id: e2e-paywall
+- repeat:
+    times: 5
+    commands:
+      - tapOn: "Continue with Season Pass"
+- takeScreenshot: rapid-buy
+- back
+- pressKey: Home
+- launchApp
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 30000
+- takeScreenshot: relaunch
+- launchApp:
+    permissions:
+      camera: deny
+      photos: deny
+- tapOn: "Age My Deer"
+- tapOn: "Take Photo"
+- takeScreenshot: camera-denied
+- back
+- tapOn: "Upload Photo"
+- takeScreenshot: photos-denied

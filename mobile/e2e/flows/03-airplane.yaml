@@ -1,0 +1,10 @@
+appId: com.vibecode.deerage-qj3cfq
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Age My Deer"
+    timeout: 30000
+- takeScreenshot: airplane-attempt
+- assertVisible:
+    text: "No Signal"
+    optional: true

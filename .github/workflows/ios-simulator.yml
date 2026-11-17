@@ -1,0 +1,86 @@
+name: ios-simulator
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  maestro:
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Install JS dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Start the mock API
+        run: node mobile/e2e/mock-server.mjs &
+      - name: Prebuild and compile the simulator app
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_E2E: "1"
+          EXPO_PUBLIC_API_BASE_URL: http://127.0.0.1:8787
+        run: |
+          npx expo prebuild --platform ios --no-install --non-interactive
+          python3 e2e/attach-storekit.py
+          cd ios
+          pod install
+          xcodebuild \
+            -workspace DeerAge.xcworkspace \
+            -scheme DeerAge \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$GITHUB_WORKSPACE/mobile/ios-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+      - name: Boot a small and a large iPhone and run Maestro
+        env:
+          EXPO_PUBLIC_E2E: "1"
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json, subprocess, pathlib
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devicetypes", "-j"], text=True)
+          types = json.loads(raw)["devicetypes"]
+          iphones = [item["name"] for item in types if item["name"].startswith("iPhone")]
+          small = next((name for name in iphones if "SE" in name), iphones[0])
+          large = next((name for name in reversed(iphones) if "Pro Max" in name or "Plus" in name), iphones[-1])
+          pathlib.Path("devices.txt").write_text(small + "\n" + large + "\n")
+          print(small, large)
+          PY
+          APP="$GITHUB_WORKSPACE/mobile/ios-build/Build/Products/Debug-iphonesimulator/DeerAge.app"
+          test -d "$APP"
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if "iOS" in r.get("name","") and r.get("isAvailable", True)]; print(rs[-1]["identifier"])')
+          mkdir -p "$GITHUB_WORKSPACE/maestro-out"
+          i=0
+          while read -r NAME; do
+            i=$((i+1))
+            UDID=$(xcrun simctl create "deerage-$i" "$NAME" "$RUNTIME")
+            xcrun simctl boot "$UDID"
+            xcrun simctl bootstatus "$UDID" -b
+            xcrun simctl install "$UDID" "$APP"
+            mkdir -p "$GITHUB_WORKSPACE/maestro-out/$i"
+            maestro --device "$UDID" test mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i/report.xml"
+            xcrun simctl status_bar "$UDID" override --dataNetwork none || true
+            maestro --device "$UDID" test mobile/e2e/flows/03-airplane.yaml --test-output-dir "$GITHUB_WORKSPACE/maestro-out/$i-network" --format junit --output "$GITHUB_WORKSPACE/maestro-out/$i-network/report.xml" || true
+            xcrun simctl status_bar "$UDID" clear || true
+            xcrun simctl shutdown "$UDID" || true
+          done < devices.txt
+      - name: Upload screenshots and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios
+          path: maestro-out
+          if-no-files-found: warn
