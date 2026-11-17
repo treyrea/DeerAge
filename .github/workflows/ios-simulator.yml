@@ -152,6 +152,18 @@ jobs:
           } > "$GITHUB_WORKSPACE/maestro-out/environment.txt" 2>&1
           APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("DeerAge.app")))' "$GITHUB_WORKSPACE/mobile/sim-dist")
           test -d "$APP"
+          python3 - "$APP/Expo.plist" << 'PY'
+          import plistlib, sys
+          path = sys.argv[1]
+          with open(path, "rb") as handle:
+              data = plistlib.load(handle)
+          data["EXUpdatesEnabled"] = False
+          data["EXUpdatesCheckOnLaunch"] = "NEVER"
+          with open(path, "wb") as handle:
+              plistlib.dump(data, handle)
+          print("Disabled expo-updates in the simulator app")
+          PY
+          codesign --force --sign - --deep "$APP" || true
           node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/maestro-out/mock-server.log" 2>&1 &
           echo $! > "$GITHUB_WORKSPACE/maestro-out/mock-server.pid"
           for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -286,6 +298,18 @@ jobs:
           } > "$GITHUB_WORKSPACE/maestro-out/environment.txt" 2>&1
           APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("DeerAge.app")))' "$GITHUB_WORKSPACE/mobile/sim-dist")
           test -d "$APP"
+          python3 - "$APP/Expo.plist" << 'PY'
+          import plistlib, sys
+          path = sys.argv[1]
+          with open(path, "rb") as handle:
+              data = plistlib.load(handle)
+          data["EXUpdatesEnabled"] = False
+          data["EXUpdatesCheckOnLaunch"] = "NEVER"
+          with open(path, "wb") as handle:
+              plistlib.dump(data, handle)
+          print("Disabled expo-updates in the simulator app")
+          PY
+          codesign --force --sign - --deep "$APP" || true
           node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/maestro-out/mock-server.log" 2>&1 &
           echo $! > "$GITHUB_WORKSPACE/maestro-out/mock-server.pid"
           for _ in 1 2 3 4 5 6 7 8 9 10; do
