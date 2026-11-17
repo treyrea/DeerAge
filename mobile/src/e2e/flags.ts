@@ -1,6 +1,7 @@
 import { create } from "zustand";
+import { ciApiBaseUrl } from "./ci-endpoint";
 
-export const e2eEnabled = process.env.EXPO_PUBLIC_E2E === "1";
+export const e2eEnabled = process.env.EXPO_PUBLIC_E2E === "1" || ciApiBaseUrl.length > 0;
 
 interface E2eFlags {
   showUpdateCard: boolean;

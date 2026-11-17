@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
+import { ciApiBaseUrl } from "../e2e/ci-endpoint";
 import { activeHunt, homePlace, useHunterProfile } from "../state/hunterProfile";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { getRevenueCatAppUserId } from "../lib/revenuecatClient";
@@ -69,7 +70,9 @@ const CODES = new Set<AnalysisErrorCode>([
 ]);
 
 export function apiBaseUrl(): string {
-  return (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+  const fromEnv = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  return ciApiBaseUrl.replace(/\/$/, "");
 }
 
 export function installedAppVersion(): string {

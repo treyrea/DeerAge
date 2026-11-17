@@ -31,6 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' 'EXPO_PUBLIC_E2E=1' 'EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787' > .env
+          printf '%s\n' '/** Written by the simulator workflow. Empty in git. */' 'export const ciApiBaseUrl = "http://127.0.0.1:8787";' > src/e2e/ci-endpoint.ts
           npx expo prebuild --platform ios --no-install --non-interactive
           python3 e2e/attach-storekit.py
           cat > ios/.xcode.env.local << 'EOF'
@@ -58,10 +59,20 @@ jobs:
           APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("*.app")))' "$GITHUB_WORKSPACE/mobile/ios-build/Build/Products")
           test -d "$APP"
           echo "APP=$APP" >> "$GITHUB_ENV"
-          if ! strings "$APP/main.jsbundle" | grep -q '127.0.0.1:8787'; then
-            echo "The simulator bundle does not point at the mock API."
-            exit 1
-          fi
+          python3 - "$APP/main.jsbundle" << 'PY'
+          import pathlib, sys
+          data = pathlib.Path(sys.argv[1]).read_bytes()
+          probes = {
+              "url-utf8": b"127.0.0.1:8787",
+              "url-utf16": "127.0.0.1:8787".encode("utf-16le"),
+              "env-name": b"EXPO_PUBLIC_API_BASE_URL",
+              "e2e-flag": b"EXPO_PUBLIC_E2E",
+          }
+          found = {name: data.find(raw) for name, raw in probes.items()}
+          print("bundle probes", found, "bytes", len(data))
+          if found["url-utf8"] < 0 and found["url-utf16"] < 0:
+              sys.exit("The simulator bundle does not point at the mock API.")
+          PY
       - name: Boot a small and a large iPhone and run Maestro
         env:
           EXPO_PUBLIC_E2E: "1"
