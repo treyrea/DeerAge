@@ -223,13 +223,7 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            if ! xcrun simctl launch "$UDID" com.vibecode.deerage-qj3cfq > "$OUT/launch.log" 2>&1; then
-              capture "$UDID" "$OUT/launch-failure"
-              echo "The simulator did not launch com.vibecode.deerage-qj3cfq" | tee "$OUT/launch-failure/why.txt"
-              exit 1
-            fi
-            sleep 4
-            xcrun simctl terminate "$UDID" com.vibecode.deerage-qj3cfq || true
+            # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
@@ -363,13 +357,7 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            if ! xcrun simctl launch "$UDID" com.vibecode.deerage-qj3cfq > "$OUT/launch.log" 2>&1; then
-              capture "$UDID" "$OUT/launch-failure"
-              echo "The simulator did not launch com.vibecode.deerage-qj3cfq" | tee "$OUT/launch-failure/why.txt"
-              exit 1
-            fi
-            sleep 4
-            xcrun simctl terminate "$UDID" com.vibecode.deerage-qj3cfq || true
+            # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"

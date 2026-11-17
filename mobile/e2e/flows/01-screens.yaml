@@ -5,7 +5,6 @@ appId: com.vibecode.deerage-qj3cfq
     permissions:
       camera: allow
       photos: allow
-      location: deny
       notifications: deny
 - extendedWaitUntil:
     visible: "Where's home?"
