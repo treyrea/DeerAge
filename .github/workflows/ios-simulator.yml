@@ -23,9 +23,6 @@ concurrency:
   group: ios-simulator-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  SIM_APP_CACHE_KEY: sim-app-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
-
 jobs:
   build:
     if: github.event_name != 'workflow_dispatch' || inputs.maestro_only == false
@@ -54,7 +51,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: mobile/sim-dist
-          key: ${{ env.SIM_APP_CACHE_KEY }}
+          key: sim-app-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
       - name: Install JS dependencies
         if: steps.sim-app.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -126,7 +123,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: mobile/sim-dist
-          key: ${{ env.SIM_APP_CACHE_KEY }}
+          key: sim-app-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
       - name: Upload the simulator app
         if: success()
         uses: actions/upload-artifact@v4
