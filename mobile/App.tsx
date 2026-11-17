@@ -11,7 +11,7 @@ import { e2eEnabled, useE2eFlags } from "./src/e2e/flags";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { refreshScanCredits } from "./src/api/scan-credits";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
-import { CommunityPrompts } from "./src/components/CommunityPrompts";
+import { CommunityPrompts, leafRouteName } from "./src/components/CommunityPrompts";
 import { UpdateGate } from "./src/components/UpdateGate";
 import { refreshRemoteConfig } from "./src/state/remoteConfig";
 import { useHunterProfile } from "./src/state/hunterProfile";
@@ -26,7 +26,7 @@ export default MainApp;
 
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
-  const [navReady, setNavReady] = useState(false);
+  const [routeName, setRouteName] = useState("");
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
   const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
@@ -122,9 +122,9 @@ function MainApp() {
             </Text>
           </View>
         )}
-        <NavigationContainer onReady={() => setNavReady(true)}>
+        <NavigationContainer onStateChange={(state) => setRouteName(leafRouteName(state))}>
           <RootNavigator />
-          {navReady ? <CommunityPrompts /> : null}
+          <CommunityPrompts routeName={routeName} />
           <UpdateGate />
           <StatusBar style="light" />
         </NavigationContainer>

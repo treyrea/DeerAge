@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigationState } from "@react-navigation/native";
 import { submitEmail } from "../api/community";
 import { setRevenueCatEmail } from "../lib/revenuecatClient";
 import { enablePush } from "../lib/push";
@@ -13,24 +12,23 @@ export const EMAIL_PRIVACY_NOTE = "DeerAge stores this email only to send rut-ti
 
 const EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
-function leafName(state: { index?: number; routes?: { name: string; state?: unknown }[] } | undefined): string {
+export function leafRouteName(state: { index?: number; routes?: { name: string; state?: unknown }[] } | undefined): string {
   if (!state?.routes || typeof state.index !== "number") return "";
   const route = state.routes[state.index];
   if (!route) return "";
   if (route.state && typeof route.state === "object") {
-    const nested = leafName(route.state as { index?: number; routes?: { name: string; state?: unknown }[] });
+    const nested = leafRouteName(route.state as { index?: number; routes?: { name: string; state?: unknown }[] });
     if (nested) return nested;
   }
   return route.name;
 }
 
-export const CommunityPrompts = () => {
+export const CommunityPrompts = ({ routeName = "" }: { routeName?: string }) => {
   const activePrompt = useCommunityStore((s) => s.activePrompt);
   const setPushPromptHandled = useCommunityStore((s) => s.setPushPromptHandled);
   const setEmail = useCommunityStore((s) => s.setEmail);
   const dismissEmailPrompt = useCommunityStore((s) => s.dismissEmailPrompt);
   const setUserEmail = useDeerScoringStore((s) => s.setUserEmail);
-  const routeName = useNavigationState((state) => leafName(state));
   const [email, setEmailText] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
