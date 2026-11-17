@@ -30,7 +30,15 @@ async function detectGrantedRegion(): Promise<Place | null> {
 export const HuntRegionSheet = () => {
   const insets = useSafeAreaInsets();
   const confirmHunt = useHunterProfile((s) => s.confirmHunt);
-  const fallback = useHunterProfile((s) => rememberedHunt(s) ?? homePlace(s));
+  const stateCode = useHunterProfile((s) => s.stateCode);
+  const stateName = useHunterProfile((s) => s.stateName);
+  const ecoregion = useHunterProfile((s) => s.ecoregion);
+  const huntStateCode = useHunterProfile((s) => s.huntStateCode);
+  const huntStateName = useHunterProfile((s) => s.huntStateName);
+  const huntEcoregion = useHunterProfile((s) => s.huntEcoregion);
+  const huntLabel = useHunterProfile((s) => s.huntLabel);
+  const fallback = rememberedHunt({ huntStateCode, huntStateName, huntEcoregion, huntLabel })
+    ?? homePlace({ stateCode, stateName, ecoregion });
   const [guess, setGuess] = useState<Place | null>(null);
   const [changing, setChanging] = useState(false);
   const [asked, setAsked] = useState(false);
@@ -104,8 +112,25 @@ export const HuntRegionSheet = () => {
 };
 
 export const RegionHeadsUp = () => {
-  const home = useHunterProfile((s) => homePlace(s));
-  const hunt = useHunterProfile((s) => activeHunt(s));
+  const stateCode = useHunterProfile((s) => s.stateCode);
+  const stateName = useHunterProfile((s) => s.stateName);
+  const ecoregion = useHunterProfile((s) => s.ecoregion);
+  const huntStateCode = useHunterProfile((s) => s.huntStateCode);
+  const huntStateName = useHunterProfile((s) => s.huntStateName);
+  const huntEcoregion = useHunterProfile((s) => s.huntEcoregion);
+  const huntLabel = useHunterProfile((s) => s.huntLabel);
+  const huntDay = useHunterProfile((s) => s.huntDay);
+  const home = homePlace({ stateCode, stateName, ecoregion });
+  const hunt = activeHunt({
+    huntDay,
+    huntStateCode,
+    huntStateName,
+    huntEcoregion,
+    huntLabel,
+    stateCode,
+    stateName,
+    ecoregion,
+  } as Parameters<typeof activeHunt>[0]);
   const remote = useRemoteConfig((s) => s.copy.regionHeadsUp);
   const text = regionHeadsUp(home, hunt, remote);
   if (!text) return null;
