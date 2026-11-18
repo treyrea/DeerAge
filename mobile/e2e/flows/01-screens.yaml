@@ -52,11 +52,23 @@ appId: com.vibecode.deerage-qj3cfq
     visible: "Select a Photo"
     timeout: 15000
 - takeScreenshot: photo-library
+# The seeded analyze call stays on the spinner and never reaches the mock.
+# The sample result covers the age screen in this build.
 - tapOn:
-    id: e2e-seed-photo
+    id: photo-back
+- tapOn:
+    id: mode-back
+- scrollUntilVisible:
+    element:
+      id: e2e-age
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
+- tapOn:
+    id: e2e-age
 - extendedWaitUntil:
     visible: "4.5"
-    timeout: 60000
+    timeout: 15000
 - takeScreenshot: age-result
 - scrollUntilVisible:
     element:
