@@ -1,0 +1,100 @@
+/**
+ * Hydrogen is the primary age walk. A provider error, timeout, or open circuit
+ * uses the gateway age pipeline and shows a range, because that backup is less certain.
+ * A retake is a finished photo check, not a provider failure.
+ */
+
+import { hydrogenAgeBody } from "./result.js";
+import type { WalkResult } from "./pipeline.js";
+import { classStep } from "../field-call.js";
+
+const STEPS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
+
+export function backupRange(years: number): { low: number; high: number; label: string } {
+  const step = classStep(years);
+  const index = STEPS.findIndex((item) => Math.abs(item - step) < 0.01);
+  if (index <= 0) return { low: 1.5, high: 2.5, label: "1.5–2.5" };
+  const low = STEPS[index - 1];
+  const high = STEPS[index];
+  const highLabel = high >= 6.5 ? "6.5+" : high >= 5.5 ? "5.5+" : String(high);
+  return { low, high, label: `${String(low)}–${highLabel}` };
+}
+
+export function backupAgeBody(result: Record<string, unknown>, minimum: number): Record<string, unknown> {
+  const years = Number(result.estimatedAgeYears ?? result.ageYears);
+  if (!Number.isFinite(years) || years <= 0) {
+    return { ...result, pipeline: "backup", backup: true };
+  }
+  const range = backupRange(years);
+  const body = hydrogenAgeBody({
+    low: range.low,
+    high: range.high,
+    label: range.label,
+    isRange: true,
+    hunterCue: "",
+    reason: "The first model did not finish, so this is a range.",
+    minimum,
+  });
+  return { ...body, pipeline: "backup", backup: true };
+}
+
+export type AgeResolution =
+  | { kind: "retake"; message: string }
+  | { kind: "stop" }
+  | { kind: "age"; result: Record<string, unknown>; backup: boolean }
+  | { kind: "fail" };
+
+export async function resolveHydrogenAge(input: {
+  minimum: number;
+  primary: () => Promise<WalkResult>;
+  backup: () => Promise<Record<string, unknown> | null>;
+  circuitOpen: () => Promise<boolean>;
+  note: (ok: boolean) => Promise<void>;
+  log?: (event: Record<string, unknown>) => void;
+}): Promise<AgeResolution> {
+  const log = input.log ?? ((event) => {
+    console.log(JSON.stringify(event));
+  });
+  if (await input.circuitOpen()) {
+    log({ event: "provider_fallback", provider: "gemini", reason: "circuit_open" });
+    return fromBackup(input.backup, input.minimum, log);
+  }
+  try {
+    const outcome = await input.primary();
+    await input.note(true);
+    if (outcome.kind === "retake") return { kind: "retake", message: outcome.message };
+    if (outcome.kind !== "age") return { kind: "stop" };
+    return { kind: "age", backup: false, result: hydrogenAgeBody({ ...outcome, minimum: input.minimum }) };
+  } catch (error) {
+    await input.note(false);
+    const status = error && typeof error === "object" && "status" in error ? Number((error as { status: number }).status) : 0;
+    log({
+      event: "provider_error",
+      provider: "gemini",
+      status: Number.isFinite(status) ? status : 0,
+      reason: error instanceof Error ? error.name : "error",
+    });
+    log({ event: "provider_fallback", provider: "gemini", to: "gateway" });
+    return fromBackup(input.backup, input.minimum, log);
+  }
+}
+
+async function fromBackup(
+  backup: () => Promise<Record<string, unknown> | null>,
+  minimum: number,
+  log: (event: Record<string, unknown>) => void,
+): Promise<AgeResolution> {
+  try {
+    const result = await backup();
+    if (!result) return { kind: "fail" };
+    log({ event: "provider_latency", provider: "gateway", backup: true });
+    return { kind: "age", backup: true, result: backupAgeBody(result, minimum) };
+  } catch (error) {
+    log({
+      event: "provider_error",
+      provider: "gateway",
+      reason: error instanceof Error ? error.name : "error",
+    });
+    return { kind: "fail" };
+  }
+}

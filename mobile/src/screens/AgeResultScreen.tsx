@@ -9,7 +9,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Share,
   Modal,
   TextInput,
 } from "react-native";
@@ -19,12 +18,19 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
-import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
+import { FieldCallCard } from "../components/FieldCallCard";
+import { PreShotBar } from "../components/PreShotBar";
+import { WrongCallCard } from "../components/WrongCallCard";
+import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { LeaseManagerButton, shareRead, type LeaseNote } from "../components/LeaseManagerButton";
+import { activeHunt, useHunterProfile } from "../state/hunterProfile";
+import { optionalStandLocation } from "../state/shotRecordStore";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { normalizeFieldCall } from "../utils/field-call";
+import { shownAge } from "../utils/age-class";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
-import { EmailPrompt } from "../components/EmailPrompt";
 import { ErrorModal } from "../components/ErrorModal";
-import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -41,74 +47,48 @@ export const AgeResultScreen = () => {
   const startCapture = useDeerScoringStore((s) => s.startCapture);
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
-  const analysisCount = useDeerScoringStore((s) => s.analysisCount);
-  const userEmail = useDeerScoringStore((s) => s.userEmail);
-  const markEmailPromptSeen = useDeerScoringStore((s) => s.markEmailPromptSeen);
-  const dismissEmailPrompt = useDeerScoringStore((s) => s.dismissEmailPrompt);
-
   const [hasSaved, setHasSaved] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
   const [showWhyThisAge, setShowWhyThisAge] = useState(true);
   const [showModelCard, setShowModelCard] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [manualNotes, setManualNotes] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const explainable = currentResult?.explainableAge;
-  const ageClassLabel = formatAgeClass(explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
-  const ageCall = ageCallFromClass(ageClassLabel);
-  useResultFollowUp(Boolean(explainable), explainable ? {
+  const ageClassLabel = shownAge(explainable?.ageLabel, explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
+  const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
     headline: ageClassLabel,
-    call: ageCall,
-    confidence: explainable.overallConfidence,
+    call: explainable?.fieldCall ?? (explainable?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
+    confidence: explainable.overallConfidence > 0 ? explainable.overallConfidence : undefined,
   } : null);
 
   // Auto-save to history when result is available
   useEffect(() => {
     if (currentResult && !hasSaved) {
       const timer = setTimeout(async () => {
-        // Try to get GPS location
         try {
-          const { status } = await Location.requestForegroundPermissionsAsync();
-          if (status === "granted") {
-            const location = await Location.getCurrentPositionAsync({});
-            setGpsLocation({
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            });
-
-            // Save with GPS
+          const location = await optionalStandLocation();
+          if (location) {
+            setGpsLocation(location);
             await saveToHistory({
               ...currentResult,
-              gpsLocation: {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                accuracy: location.coords.accuracy || undefined,
-              },
+              gpsLocation: location,
             });
           } else {
             await saveToHistory(currentResult);
           }
-        } catch (error) {
-          // GPS not available, save without location
+        } catch {
           await saveToHistory(currentResult);
         }
         setHasSaved(true);
-
-        // Show email prompt after 1st or 5th analysis (if email not collected)
-        if (!userEmail && (analysisCount === 1 || analysisCount === 5)) {
-          setTimeout(() => {
-            setShowEmailPrompt(true);
-            markEmailPromptSeen();
-          }, 1500); // Delay to let user see results first
-        }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
+  }, [currentResult, hasSaved, saveToHistory]);
 
   // Handle missing result
   useEffect(() => {
@@ -131,41 +111,23 @@ export const AgeResultScreen = () => {
     navigation.navigate("HomeMain");
   };
 
+  const readNote: LeaseNote = {
+    ageClass: ageClassLabel,
+    call: explainableAge.fieldCall || explainableAge.shooterPassLabel,
+    minimum: explainableAge.minimumAgeThreshold,
+    region: activeHunt(useHunterProfile.getState()).label,
+    time: new Date(currentResult.timestamp).toLocaleString(),
+    receiptId: currentResult.shotReceipt?.id,
+    photoUri: imageUri,
+  };
+
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowShareSheet(false);
-
-    const message = `DeerAge – Age My Deer Analysis
-
-Estimated age: ${formatAgeClass(explainableAge.estimatedAge)} (${ageCall})
-Confidence: ${explainableAge.overallConfidence}%
-${explainableAge.shooterPassLabel}: ${explainableAge.shooterPassReason}
-
-Detected Cues:
-${explainableAge.detectedCues.map((cue) => `• ${cue.displayName}: ${cue.detectedPattern} (${cue.confidence}%)`).join("\n")}
-
-Know before you pull the trigger.
-Powered by RackScore™ AI`;
-
-    // Small delay to let modal close before showing share sheet
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Share with both message and image
     try {
-      await Share.share(
-        {
-          message,
-          url: imageUri, // iOS only - include the photo
-        },
-        {
-          subject: "My Deer Age Analysis Results",
-        }
-      );
-    } catch (error: any) {
-      // User cancelled share - this is normal, don't log as error
-      if (error?.message !== "User did not share") {
-        console.log("Share cancelled or failed:", error?.message);
-      }
+      await shareRead(readNote, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
@@ -195,6 +157,7 @@ Powered by RackScore™ AI`;
       <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
           <Pressable
+            testID="age-close"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate("HomeMain");
@@ -225,6 +188,55 @@ Powered by RackScore™ AI`;
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="px-6 py-6">
+          {shootOrPass && explainable ? (
+            <FieldCallCard
+              ageYears={explainable.estimatedAgeYears}
+              confidence={explainable.overallConfidence}
+              minimum={explainable.minimumAgeThreshold}
+              cueBullets={explainable.cueBullets ?? explainable.detectedCues}
+              fieldCall={normalizeFieldCall(explainable.fieldCall)}
+              note={explainable.fieldCallNote}
+              bodyOnlyAge={explainable.bodyOnlyAge}
+              betterAngle={explainable.betterAngle}
+              ageLabel={explainable.ageLabel}
+              hunterCue={explainable.hunterCue}
+            />
+          ) : null}
+          <WrongCallCard
+            scanId={currentResult.analysisId}
+            fieldCall={explainableAge.fieldCall || ""}
+            photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: explainableAge.fieldCall,
+              ageYears: explainableAge.estimatedAgeYears,
+              fastAge: explainableAge.fastAge,
+              mainAge: explainableAge.mainAge,
+              bodyOnlyAge: explainableAge.bodyOnlyAge,
+              leaseMinimum: explainableAge.minimumAgeThreshold,
+            }}
+          />
+          <PreShotBar
+            draft={{
+              localId: currentResult.analysisId,
+              mode: "age",
+              photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+              receipt: currentResult.shotReceipt ?? null,
+              ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
+              ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
+              confidence: explainableAge.overallConfidence,
+              leaseMinimum: explainableAge.minimumAgeThreshold,
+              fieldCall: explainableAge.fieldCall || "",
+              fieldCallNote: explainableAge.fieldCallNote || "",
+              cues: (explainableAge.cueBullets ?? []).map((cue) => `${cue.area}: ${cue.text}`),
+              huntLabel: activeHunt(useHunterProfile.getState()).label,
+              fastAge: explainableAge.fastAge,
+              mainAge: explainableAge.mainAge,
+              bodyOnlyAge: explainableAge.bodyOnlyAge,
+            }}
+            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          />
+          <RegionHeadsUp />
+          <LeaseManagerButton {...readNote} />
           {/* Primary Result Card */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             {/* TPWD Disclaimer Banner */}
@@ -265,14 +277,18 @@ Powered by RackScore™ AI`;
 
             <View className="mb-4">
               <Text className="text-4xl font-bold text-white mb-2">
-                {formatAgeClass(explainableAge.estimatedAge)}
+                {ageClassLabel}
               </Text>
               <Text className="text-lg" style={{ color: "#E5D4B8" }}>
-                {ageCall}
+                {explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")}
+              </Text>
+              <Text style={{ color: "#8B7355", marginTop: 4 }}>
+                Your lease minimum: {explainableAge.minimumAgeThreshold}
               </Text>
             </View>
 
-            {/* Confidence */}
+            {/* Hydrogen does not return a confidence. A hardcoded 0 is not a read. */}
+            {explainableAge.overallConfidence > 0 ? (
             <View className="mb-4">
               <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>
                 Overall Confidence
@@ -292,8 +308,9 @@ Powered by RackScore™ AI`;
                 </Text>
               </View>
             </View>
+            ) : null}
 
-            {/* Shooter/Let Walk/Nice Harvest/Nice Mount Badge */}
+            {shootOrPass ? null : (
             <View
               className="rounded-lg p-4 mt-2"
               style={{
@@ -335,6 +352,7 @@ Powered by RackScore™ AI`;
                 {explainableAge.shooterPassReason}
               </Text>
             </View>
+            )}
           </View>
 
           {/* Image with Overlays */}
@@ -569,8 +587,7 @@ Powered by RackScore™ AI`;
           <Pressable
             onPress={async () => {
               if (!currentResult) return;
-
-              console.log("[AgeResult] Starting rack analysis from age result");
+              followUp.markRescan();
 
               // Switch to rack scoring mode FIRST
               setAnalysisMode("score");
@@ -770,15 +787,6 @@ Powered by RackScore™ AI`;
         </View>
       </Modal>
 
-      {/* Email Prompt Modal */}
-      <EmailPrompt
-        visible={showEmailPrompt}
-        onDismiss={() => {
-          setShowEmailPrompt(false);
-          dismissEmailPrompt();
-        }}
-      />
-
       {/* Success Modal */}
       <ErrorModal
         visible={showSuccessModal}
@@ -810,11 +818,12 @@ Powered by RackScore™ AI`;
                 data={{
                   type: "age",
                   imageUri,
-                  ageEstimate: formatAgeClass(explainableAge.estimatedAge),
-                  ageRange: formatAgeClass(explainableAge.estimatedAge),
+                  ageEstimate: ageClassLabel,
+                  ageRange: ageClassLabel,
                   confidence: explainableAge.overallConfidence,
                   decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
-                  call: ageCall,
+                  call: explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
+                  leaseMinimum: explainableAge.minimumAgeThreshold,
                   topCues: explainableAge.detectedCues.slice(0, 3).map((cue) => `${cue.displayName}: ${cue.detectedPattern}`),
                 }}
               />
@@ -829,8 +838,8 @@ Powered by RackScore™ AI`;
                 <Ionicons name="share-social" size={24} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-bold text-base">Share Analysis</Text>
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Share age estimate and photo</Text>
+                <Text className="text-white font-bold text-base">Share...</Text>
+                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Any recipient, same read</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
             </Pressable>
@@ -859,9 +868,9 @@ Powered by RackScore™ AI`;
           <Pressable
             onPress={handleNewAnalysis}
             className="flex-1 rounded-xl py-3 items-center justify-center"
-            style={{ backgroundColor: "#22c55e" }}
+            style={{ backgroundColor: "#D4AF37" }}
           >
-            <Text className="text-white font-bold text-base">New Analysis</Text>
+            <Text style={{ color: "#1a1f16", fontWeight: "700" }}>New Analysis</Text>
           </Pressable>
         </View>
       </View>

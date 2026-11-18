@@ -16,26 +16,40 @@ import type { PurchasesPackage } from "react-native-purchases";
 import {
   addCustomerInfoUpdateListener,
   getOfferings,
+  getStoreProducts,
   isRevenueCatEnabled,
   purchasePackage,
+  purchaseStoreProduct,
   trackPaywallImpression,
 } from "../lib/revenuecatClient";
 import {
-  DEFAULT_OFFERING_ID,
   LEGACY_OFFERING_ID,
   LEGACY_PRODUCT_IDS,
-  MONTHLY_PRODUCT_ID,
-  SEASON_PRODUCT_ID,
+  SCAN_PACK_10_ID,
+  SCAN_PACK_30_ID,
+  SCAN_PACK_IDS,
   type PaywallResultSummary,
 } from "../lib/products";
+import { claimScanPack, restoreScanPacks } from "../api/scan-credits";
+import { purchaseNotice } from "../lib/access";
+import { APPROVED_PRICES } from "../lib/approved-prices";
+import { e2eEnabled } from "../e2e/flags";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
+import { DEFAULT_PRODUCTS, useRemoteConfig } from "../state/remoteConfig";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
 type PaywallRoute = RouteProp<{
   TierPaywall: { reason?: string; resultSummary?: PaywallResultSummary };
 }, "TierPaywall">;
+
+type PackOffer = {
+  id: string;
+  scans: number;
+  priceLabel: string;
+  product: Parameters<typeof purchaseStoreProduct>[0];
+};
 
 interface PlanCard {
   id: "season" | "monthly";
@@ -75,6 +89,10 @@ export const TierPaywallScreen = () => {
   const applyCustomerInfo = useSubscriptionStore((s) => s.applyCustomerInfo);
   const restore = useSubscriptionStore((s) => s.restore);
   const fairUsePerDay = useFairUseAllowance();
+  const paywallHeadline = useRemoteConfig((s) => s.copy.paywallHeadline);
+  const paywallSubhead = useRemoteConfig((s) => s.copy.paywallSubhead);
+  const recordsOn = useRemoteConfig((s) => s.flags.preShotRecord);
+  const products = useRemoteConfig((s) => s.products) ?? DEFAULT_PRODUCTS;
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
@@ -85,6 +103,9 @@ export const TierPaywallScreen = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPacks, setShowPacks] = useState(false);
+  const [packs, setPacks] = useState<PackOffer[]>([]);
+  const [buyingPack, setBuyingPack] = useState(false);
 
   const close = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -97,6 +118,31 @@ export const TierPaywallScreen = () => {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      if (e2eEnabled) {
+        setSeason({
+          id: "season",
+          title: "Season Pass",
+          detail: "Non-renewing. No trial.",
+          priceLabel: APPROVED_PRICES.season,
+          trialLabel: null,
+          package: null,
+        });
+        setMonthly({
+          id: "monthly",
+          title: "Monthly",
+          detail: "Billed every month.",
+          priceLabel: APPROVED_PRICES.monthly,
+          trialLabel: null,
+          package: null,
+        });
+        setPacks([
+          { id: SCAN_PACK_10_ID, scans: 10, priceLabel: APPROVED_PRICES.scans10, product: undefined as never },
+          { id: SCAN_PACK_30_ID, scans: 30, priceLabel: APPROVED_PRICES.scans30, product: undefined as never },
+        ]);
+        setShowPacks(true);
+        setLoading(false);
+        return;
+      }
       if (!isRevenueCatEnabled()) {
         if (active) {
           setError("Subscriptions aren't available in this build.");
@@ -112,21 +158,17 @@ export const TierPaywallScreen = () => {
         return;
       }
       const current = offerings.data.current;
-      const planOffering = offerings.data.all[DEFAULT_OFFERING_ID] ?? current;
+      const planOffering = offerings.data.all[products.offeringId] ?? current;
       await trackPaywallImpression(planOffering);
       const packages = planOffering.availablePackages;
-      const seasonPackage = packages.find((pkg) => pkg.product.identifier === SEASON_PRODUCT_ID)
-        ?? packages.find((pkg) => pkg.packageType === "ANNUAL" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
-        ?? null;
-      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === MONTHLY_PRODUCT_ID)
-        ?? packages.find((pkg) => pkg.packageType === "MONTHLY" && !(LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier))
-        ?? null;
+      const seasonPackage = packages.find((pkg) => pkg.product.identifier === products.seasonPassId) ?? null;
+      const monthlyPackage = packages.find((pkg) => pkg.product.identifier === products.monthlyId) ?? null;
       const seasonPrice = seasonPackage?.product.priceString ?? "";
       const monthlyPrice = monthlyPackage?.product.priceString ?? "";
       setSeason({
         id: "season",
         title: "Season Pass",
-        detail: "A year of Quick Check, Age, and Score.",
+        detail: "Covers this hunting season. It does not renew, so you are not billed in the off-season.",
         priceLabel: seasonPrice,
         trialLabel: seasonPackage && seasonPrice ? trialCopy(seasonPackage, seasonPrice) : null,
         package: seasonPackage,
@@ -134,7 +176,7 @@ export const TierPaywallScreen = () => {
       setMonthly({
         id: "monthly",
         title: "Monthly",
-        detail: "Same access, billed every month.",
+        detail: "Billed every month, including the off-season. Cancel anytime if you only hunt in the fall.",
         priceLabel: monthlyPrice,
         trialLabel: monthlyPackage && monthlyPrice ? trialCopy(monthlyPackage, monthlyPrice) : null,
         package: monthlyPackage,
@@ -145,6 +187,21 @@ export const TierPaywallScreen = () => {
         ...(offerings.data.all[LEGACY_OFFERING_ID]?.availablePackages ?? []),
       ]).filter((pkg) => (LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier));
       setLegacy(legacyPool);
+      const storeProducts = await getStoreProducts([...SCAN_PACK_IDS]);
+      if (!active) return;
+      if (storeProducts.ok) {
+        const offers = [SCAN_PACK_10_ID, SCAN_PACK_30_ID].flatMap((id) => {
+          const product = storeProducts.data.find((item) => item.identifier === id);
+          if (!product) return [];
+          return [{
+            id,
+            scans: id === SCAN_PACK_10_ID ? 10 : 30,
+            priceLabel: product.priceString,
+            product,
+          }];
+        });
+        setPacks(offers);
+      }
       setLoading(false);
     };
     void load();
@@ -156,7 +213,7 @@ export const TierPaywallScreen = () => {
       active = false;
       unsubscribe();
     };
-  }, [applyCustomerInfo, close]);
+  }, [applyCustomerInfo, close, products.offeringId, products.seasonPassId, products.monthlyId]);
 
   const selectedPlan = selected === "season" ? season : monthly;
 
@@ -170,10 +227,8 @@ export const TierPaywallScreen = () => {
     const result = await purchasePackage(pkg);
     setPurchasing(false);
     if (!result.ok) {
-      const text = String(result.error ?? "");
-      if (!text.toLowerCase().includes("cancel")) {
-        setError("The purchase didn't go through. You have not been charged for a plan that didn't activate.");
-      }
+      const notice = purchaseNotice(String(result.error ?? ""));
+      if (notice) setError(notice);
       return;
     }
     const entitled = applyCustomerInfo(result.data);
@@ -185,28 +240,55 @@ export const TierPaywallScreen = () => {
     close();
   };
 
-  const onRestore = async () => {
-    setRestoring(true);
+  const buyPack = async (offer: PackOffer) => {
+    setBuyingPack(true);
     setError(null);
-    const result = await restore();
-    setRestoring(false);
+    const result = await purchaseStoreProduct(offer.product);
     if (!result.ok) {
-      setError("Couldn't reach the App Store to restore. Try again when you have a signal.");
+      setBuyingPack(false);
+      setError("No scans were added.");
       return;
     }
-    if (!result.entitled) {
-      setError("No active subscription was found for this Apple ID.");
+    const transactionId = result.data.transaction?.transactionIdentifier ?? "";
+    const claimed = await claimScanPack(result.data.productIdentifier || offer.id, transactionId);
+    setBuyingPack(false);
+    if (!claimed.ok) {
+      setError("The App Store finished, but the scans haven't been added yet. Tap Restore when you have a signal.");
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     close();
   };
 
+  const onRestore = async () => {
+    setRestoring(true);
+    setError(null);
+    const result = await restore();
+    const packsRestored = await restoreScanPacks();
+    setRestoring(false);
+    if (!result.ok && !packsRestored.ok) {
+      setError("Couldn't reach the App Store to restore. Try again when you have a signal.");
+      return;
+    }
+    if (result.entitled) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      close();
+      return;
+    }
+    if (packsRestored.ok && (packsRestored.credits ?? 0) > 0) {
+      setError(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      close();
+      return;
+    }
+    setError("No active subscription was found for this Apple ID.");
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "#1a1f16" }}>
       <LinearGradient colors={["#2B3420", "#1a1f16"]} style={{ flex: 1, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Pressable onPress={close} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Pressable testID="paywall-close" onPress={close} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={28} color="#F5F5DC" />
           </Pressable>
           <Pressable onPress={() => void onRestore()} disabled={restoring}>
@@ -224,16 +306,24 @@ export const TierPaywallScreen = () => {
                 <Text style={{ color: "#F5F5DC", fontSize: 20, fontWeight: "800", marginTop: 2 }}>{summary.headline}</Text>
                 <Text style={{ color: "#E5D4B8", marginTop: 2 }}>
                   {summary.call}
-                  {typeof summary.confidence === "number" ? ` · ${summary.confidence}%` : ""}
+                  {typeof summary.confidence === "number" && summary.confidence > 0 ? ` · ${summary.confidence}%` : ""}
                 </Text>
               </View>
             </View>
           ) : null}
 
-          <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>Keep aging deer</Text>
-          <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: 18 }}>
-            Three free analyses are included. A plan is everyday use: {fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.
+          <Text style={{ color: "#F5F5DC", fontSize: 28, fontWeight: "800" }}>{paywallHeadline || "Keep aging deer"}</Text>
+          <Text style={{ color: "#D4AF37", marginTop: 8, lineHeight: 20 }}>
+            Season Pass is for the hunting season. You do not have to pay every month of the year.
           </Text>
+          <Text style={{ color: "#E5D4B8", marginTop: 6, marginBottom: recordsOn ? 8 : 18 }}>
+            {paywallSubhead || `Three free analyses are included. A plan is everyday use: ${fairUsePerDay} analyses a day, and the fair-use cap resets tomorrow.`}
+          </Text>
+          {recordsOn ? (
+            <Text style={{ color: "#E5D4B8", marginBottom: 18, lineHeight: 20 }}>
+              A plan includes every pre-shot record. The most recent record stays free.
+            </Text>
+          ) : null}
 
           {loading ? <ActivityIndicator color="#D4AF37" /> : null}
 
@@ -276,6 +366,30 @@ export const TierPaywallScreen = () => {
               </Text>
             )}
           </Pressable>
+
+          <Pressable onPress={() => setShowPacks((open) => !open)} style={{ marginTop: 16, alignItems: "center" }}>
+            <Text style={{ color: "#E5D4B8", textDecorationLine: "underline" }}>Just need a few scans?</Text>
+          </Pressable>
+          {showPacks ? (
+            <View style={{ marginTop: 12 }}>
+              {packs.length === 0 ? (
+                <Text style={{ color: "#E5D4B8", textAlign: "center" }}>Scan packs could not be loaded. Check your connection and try again.</Text>
+              ) : packs.map((offer) => (
+                <Pressable
+                  key={offer.id}
+                  onPress={() => void buyPack(offer)}
+                  disabled={buyingPack || purchasing}
+                  style={{ marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: "#24301c" }}
+                >
+                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>{offer.scans} scans</Text>
+                    <Text style={{ color: "#D4AF37", fontWeight: "700" }}>{offer.priceLabel || "Unavailable"}</Text>
+                  </View>
+                </Pressable>
+              ))}
+              {buyingPack ? <ActivityIndicator color="#D4AF37" style={{ marginTop: 8 }} /> : null}
+            </View>
+          ) : null}
 
           {legacy.length > 0 ? (
             <Pressable onPress={() => setShowLegacy((open) => !open)} style={{ marginTop: 18, alignItems: "center" }}>

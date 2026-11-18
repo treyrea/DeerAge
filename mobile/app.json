@@ -3,19 +3,27 @@
     "name": "DeerAge",
     "slug": "deerage",
     "scheme": "vibecode",
-    "version": "1.0.8",
+    "version": "1.0.9",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/7cc67b2e-b3c4-408f-bb74-850c9de5ac8e"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecode.deerage-qj3cfq",
-      "buildNumber": "14",
+      "buildNumber": "16",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "DeerAge uses the camera to photograph deer so it can estimate age and score the rack.",
         "NSPhotoLibraryUsageDescription": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score.",
         "NSPhotoLibraryAddUsageDescription": "DeerAge saves the result card you share into your photo library.",
-        "NSLocationWhenInUseUsageDescription": "DeerAge can save the spot of a result you keep. The state used for the age estimate is the one you pick, and this location stays on your phone."
+        "NSLocationWhenInUseUsageDescription": "DeerAge can use your location while you are using the app to suggest where you are hunting and to attach the stand to a pre-shot record on this phone. Location is optional, stays with your own records, and is not used to track you."
       }
     },
     "android": {
@@ -35,7 +43,8 @@
       "expo-secure-store",
       "expo-sqlite",
       "expo-video",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications"
     ],
     "owner": "treyrea"
   }

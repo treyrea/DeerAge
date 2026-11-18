@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions, Image } from "react-native";
+import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,9 +19,10 @@ import Slider from "@react-native-community/slider";
 import * as Haptics from "expo-haptics";
 import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
-
-// Antler silhouette image for score mode viewfinder
-const antlerSilhouette = require("../../assets/deer-head-antlers.png");
+import { AntlerSilhouette } from "../components/AntlerSilhouette";
+import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -54,6 +55,7 @@ export const DeerCameraScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Distance store
   const distanceSettings = useDistanceStore((s) => s.settings);
@@ -74,10 +76,9 @@ export const DeerCameraScreen = () => {
 
   // Request camera permissions
   useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
+    if (!huntReady || hasPermission) return;
+    requestPermission();
+  }, [huntReady, hasPermission, requestPermission]);
 
   useEffect(() => {
     return () => {
@@ -268,23 +269,43 @@ export const DeerCameraScreen = () => {
   // Get suggested distance
   const suggested = getSuggestedDistance();
 
+  if (!huntReady) return <HuntRegionSheet />;
+
   if (!hasPermission) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">Camera permission required</Text>
-        <Text className="text-gray-400 text-sm mt-2 text-center px-8">
-          Please enable camera access to use the Deer Age scoring feature.
-        </Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">Camera permission required</Text>
+          <Text className="text-gray-400 text-sm mt-2 text-center px-8">
+            Please enable camera access to use the Deer Age scoring feature.
+          </Text>
+        </View>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">No camera available</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">No camera available</Text>
+        </View>
       </View>
     );
   }
@@ -346,13 +367,9 @@ export const DeerCameraScreen = () => {
                 style={{ width: width * 0.85, height: analysisMode === "age" ? height * 0.35 : height * 0.30 }}
               >
                 {analysisMode === "age" ? (
-                  <Text className="text-8xl opacity-20">🦌</Text>
+                  <DeerMark size={120} opacity={0.7} />
                 ) : (
-                  <Image
-                    source={antlerSilhouette}
-                    style={{ width: 120, height: 120, opacity: 0.25 }}
-                    resizeMode="contain"
-                  />
+                  <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
                 )}
               </View>
               <View className="mt-4 bg-green-600/90 px-6 py-3 rounded-full">
@@ -372,15 +389,9 @@ export const DeerCameraScreen = () => {
                 }}
               >
                 {analysisMode === "age" ? (
-                  // Full deer body silhouette for age estimation
-                  <Text className="text-8xl opacity-25">🦌</Text>
+                  <DeerMark size={132} opacity={0.55} />
                 ) : (
-                  // Antler silhouette for rack scoring
-                  <Image
-                    source={antlerSilhouette}
-                    style={{ width: 140, height: 140, opacity: 0.3 }}
-                    resizeMode="contain"
-                  />
+                  <AntlerSilhouette size={150} color="#F5F5DC" opacity={0.85} />
                 )}
               </View>
 

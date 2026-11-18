@@ -890,7 +890,7 @@ The app is governed by `/src/lib/CONSTITUTION.ts` which enforces:
 
 **Core Files:**
 - `src/lib/CONSTITUTION.ts` - Single source of truth for all rules
-- `src/state/subscriptionStoreV2.ts` - Tier-aware usage tracking
+- `src/state/subscriptionStore.ts` - Subscription and free-scan state
 - `src/hooks/useUsageGuard.ts` - Constitution-compliant limit checking
 - `src/screens/TierPaywallScreen.tsx` - Identity-based paywall UI
 - `src/components/ShareableResultCard.tsx` - Zero-AI-cost sharing

@@ -3,7 +3,7 @@
  */
 
 import React from "react";
-import { View, Text, ScrollView, Pressable, Share, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -11,7 +11,14 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
 import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
-import { formatAgeClass } from "../utils/age-class";
+import { shownAge } from "../utils/age-class";
+import { HarvestPanel } from "../components/HarvestPanel";
+import { WrongCallCard } from "../components/WrongCallCard";
+import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
+import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
+import { useShotRecordStore } from "../state/shotRecordStore";
+import { fieldRead, normalizeFieldCall } from "../utils/field-call";
+import { useDeerScoringStore } from "../state/deerScoringStore";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -20,11 +27,24 @@ export const HistoryDetailScreen = () => {
   const route = useRoute();
   const insets = useSafeAreaInsets();
 
-  const result = (route.params as { result: DeerScoringResult }).result;
+  const params = route.params as { result?: DeerScoringResult; shotId?: string };
+  const result = params.result;
+  const savedMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
+  const linkedId = result?.analysisId ?? params.shotId ?? "";
+  const linked = useShotRecordStore((s) => (linkedId ? s.records[linkedId] : undefined));
 
   if (!result) {
-    navigation.goBack();
-    return null;
+    if (!params.shotId) {
+      navigation.goBack();
+      return null;
+    }
+    return (
+      <ShotRecordPage
+        localId={params.shotId}
+        onBack={() => navigation.goBack()}
+        onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
+      />
+    );
   }
 
   const { score, age, scale, fusedFrameCount, processingTime, cloudRefinementUsed, timestamp, capturedFrames, manualPointCount, manualOverride, analysisMode, explainableAge, explainableRackScore } = result;
@@ -32,7 +52,6 @@ export const HistoryDetailScreen = () => {
 
   // Determine if this is age mode or rack mode
   const isAgeMode = analysisMode === "age";
-  const isRackMode = analysisMode === "score";
 
   // Use manual count if override is active, otherwise use AI count
   const displayedPointCount = manualOverride && manualPointCount
@@ -46,36 +65,23 @@ export const HistoryDetailScreen = () => {
   };
 
   const handleExportPDF = async () => {
-    // Get the image URI from captured frames
-    const imageUri = capturedFrames[0]?.imageUri;
-
-    if (isAgeMode) {
-      const message = `Deer Age Analysis:\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${explainableAge?.overallConfidence ? explainableAge.overallConfidence + "%" : age.confidence}\nRecommendation: ${explainableAge?.shooterPassLabel || "N/A"}\nQuick Rack Estimate: ~${displayedPointCount}pt`;
-
-      try {
-        await Share.share({
-          message,
-          url: imageUri, // Include the photo
-        });
-      } catch (error) {
-        console.error("Share failed:", error);
-      }
-    } else {
-      const message = `Deer Score Summary:\nNet Typical: ${formatScore(score.netTypical)}\nNet Non-Typical: ${formatScore(score.netNonTypical)}\nTotal Points: ${displayedPointCount}\nAge class: ${formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}\nConfidence: ${score.overallConfidence}`;
-
-      try {
-        await Share.share({
-          message,
-          url: imageUri, // Include the photo
-        });
-      } catch (error) {
-        console.error("Share failed:", error);
-      }
+    try {
+      await shareRead({
+        ageClass: shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge),
+        call: linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || "",
+        minimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
+        region: linked?.huntLabel || "Hunt region not set",
+        time: new Date(timestamp).toLocaleString(),
+        receiptId: linked?.receiptId || result.shotReceipt?.id,
+        photoUri: capturedFrames[0]?.imageUri,
+      }, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
   return (
-    <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
@@ -91,6 +97,50 @@ export const HistoryDetailScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
+          <HarvestPanel
+            scanId={result.analysisId}
+            leaseMinimum={explainableAge?.minimumAgeThreshold ?? savedMinimum}
+            fieldCall={explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall || ""}
+            showReport={false}
+          />
+          <WrongCallCard
+            scanId={result.analysisId}
+            fieldCall={explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall || ""}
+            photos={result.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: explainableAge?.fieldCall || result.shotReceipt?.summary.fieldCall,
+              ageYears: explainableAge?.estimatedAgeYears,
+              leaseMinimum: explainableAge?.minimumAgeThreshold ?? savedMinimum,
+            }}
+          />
+          {result.shotReceipt || linked ? (
+            <PreShotBar
+              draft={{
+                localId: result.analysisId,
+                mode: result.analysisMode,
+                photoUris: result.capturedFrames.map((frame) => frame.imageUri),
+                receipt: result.shotReceipt ?? null,
+                ageClass: linked?.ageClass || result.shotReceipt?.summary.ageClass || shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge),
+                ageRange: linked?.ageRange || result.shotReceipt?.summary.ageRange || String(explainableAge?.estimatedAge || age.estimatedAge || ""),
+                confidence: linked?.confidence ?? result.shotReceipt?.summary.confidence ?? explainableAge?.overallConfidence ?? 0,
+                leaseMinimum: linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum,
+                fieldCall: linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || "",
+                fieldCallNote: linked?.fieldCallNote || result.shotReceipt?.summary.fieldCallNote || "",
+                cues: linked?.cues ?? result.shotReceipt?.summary.cues ?? [],
+                scoreLabel: linked?.scoreLabel ?? null,
+              }}
+              onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
+            />
+          ) : null}
+          <LeaseManagerButton
+            ageClass={shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}
+            call={linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || ""}
+            minimum={linked?.leaseMinimum ?? explainableAge?.minimumAgeThreshold ?? savedMinimum}
+            region={linked?.huntLabel || "Hunt region not set"}
+            time={new Date(timestamp).toLocaleString()}
+            receiptId={linked?.receiptId || result.shotReceipt?.id}
+            photoUri={capturedFrames[0]?.imageUri}
+          />
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">
@@ -143,25 +193,23 @@ export const HistoryDetailScreen = () => {
                   )}
                 </View>
                 <Text className="text-white text-5xl font-bold mb-3">
-                  {formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}
+                  {shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}
                 </Text>
-                {explainableAge?.shooterPassLabel && (
-                  <View className="flex-row items-center mt-2">
-                    <View
-                      className="px-3 py-1.5 rounded-lg"
-                      style={{
-                        backgroundColor:
-                          explainableAge.shooterPassLabel === "SHOOTER"
-                            ? "#22c55e"
-                            : explainableAge.shooterPassLabel === "NICE HARVEST" || explainableAge.shooterPassLabel === "NICE MOUNT"
-                            ? "#3b82f6"
-                            : "#f59e0b",
-                      }}
-                    >
-                      <Text className="text-white text-sm font-bold">{explainableAge.shooterPassLabel}</Text>
+                {(() => {
+                  const minimum = explainableAge?.minimumAgeThreshold ?? savedMinimum;
+                  const years = explainableAge?.estimatedAgeYears ?? 0;
+                  const read = years
+                    ? fieldRead(years, explainableAge?.overallConfidence ?? 60, minimum)
+                    : null;
+                  const call = normalizeFieldCall(explainableAge?.fieldCall) ?? read?.fieldCall ?? explainableAge?.shooterPassLabel;
+                  if (!call) return null;
+                  return (
+                    <View style={{ marginTop: 8 }}>
+                      <Text className="text-white text-xl font-bold">{call}</Text>
+                      <Text className="text-white/80 text-sm mt-1">Your lease minimum: {minimum}</Text>
                     </View>
-                  </View>
-                )}
+                  );
+                })()}
                 <Text className="text-white/70 text-sm mt-3">{age.regionalPrior || "Based on body and antler characteristics"}</Text>
               </View>
 
@@ -314,7 +362,7 @@ export const HistoryDetailScreen = () => {
                 <Text className="text-white text-lg font-bold mb-4">Quick Age Estimate</Text>
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-400 text-sm">Estimated Age</Text>
-                  <Text className="text-white text-2xl font-bold">{formatAgeClass(explainableAge?.estimatedAge || age.estimatedAge)}</Text>
+                  <Text className="text-white text-2xl font-bold">{shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}</Text>
                 </View>
                 <Text className="text-gray-500 text-xs mt-3">
                   Note: For precise age estimation, use &quot;Age My Deer&quot; mode

@@ -1,0 +1,1 @@
+Look at the body only; ignore antlers, coat and tarsal glands. Overall, is this buck closer to the YOUNGER description or the OLDER description? JSON {closer: YOUNGER or OLDER, reason}

@@ -16,10 +16,14 @@
 
 import { Platform } from "react-native";
 import Purchases, {
+  PURCHASE_TYPE,
   type PurchasesOfferings,
   type CustomerInfo,
   type PurchasesPackage,
+  type MakePurchaseResult,
 } from "react-native-purchases";
+
+type StoreProduct = Awaited<ReturnType<typeof Purchases.getProducts>>[number];
 
 // Check if running on web
 const isWeb = Platform.OS === "web";
@@ -209,6 +213,19 @@ export const purchasePackage = (
   });
 };
 
+/** Scan packs are consumables, so they are loaded by product id rather than from an offering. */
+export const getStoreProducts = (
+  productIds: string[],
+): Promise<RevenueCatResult<StoreProduct[]>> => {
+  return guardRevenueCatUsage("getProducts", () => Purchases.getProducts(productIds, PURCHASE_TYPE.INAPP));
+};
+
+export const purchaseStoreProduct = (
+  product: StoreProduct,
+): Promise<RevenueCatResult<MakePurchaseResult>> => {
+  return guardRevenueCatUsage("purchaseStoreProduct", () => Purchases.purchaseStoreProduct(product));
+};
+
 /**
  * Get current customer info including active entitlements
  *
@@ -264,6 +281,16 @@ export const setUserId = (userId: string): Promise<RevenueCatResult<void>> => {
   return guardRevenueCatUsage("setUserId", async () => {
     await Purchases.logIn(userId);
   });
+};
+
+/** Sets the RevenueCat reserved subscriber attribute $email. Passing null clears it. */
+export const setRevenueCatEmail = async (email: string | null): Promise<void> => {
+  if (!isEnabled) return;
+  try {
+    await Purchases.setEmail(email);
+  } catch (error) {
+    console.log(`${LOG_PREFIX} setEmail failed:`, error);
+  }
 };
 
 /**
@@ -375,3 +402,38 @@ export const getPackage = async (
 
   return { ok: true, data: pkg };
 };
+
+/** Opens Apple's subscription page. DeerAge does not cancel the plan itself. */
+export async function openAppleSubscriptions(): Promise<void> {
+  const shown = await guardRevenueCatUsage("showManageSubscriptions", () => Purchases.showManageSubscriptions());
+  if (shown.ok) return;
+  const { Linking } = await import("react-native");
+  await Linking.openURL("https://apps.apple.com/account/subscriptions");
+}
+
+/**
+ * Presents a StoreKit promotional offer only when that offer id is already on the product.
+ * An empty id, or a missing offer, does not invent a price.
+ */
+export async function presentPromotionalOffer(input: {
+  offerId: string;
+  productIds: string[];
+  offeringId: string;
+}): Promise<"purchased" | "missing" | "cancelled" | "failed"> {
+  if (!input.offerId) return "missing";
+  const offerings = await getOfferings();
+  if (!offerings.ok) return "failed";
+  const offering = offerings.data.all[input.offeringId] ?? offerings.data.current;
+  const packages = offering?.availablePackages ?? [];
+  const pkg = packages.find((item) => input.productIds.includes(item.product.identifier));
+  const discount = pkg?.product.discounts?.find((item) => item.identifier === input.offerId);
+  if (!pkg || !discount) return "missing";
+  const offer = await guardRevenueCatUsage("getPromotionalOffer", () => Purchases.getPromotionalOffer(pkg.product, discount));
+  if (!offer.ok || !offer.data) return "missing";
+  const purchase = await guardRevenueCatUsage("purchaseDiscountedPackage", () => Purchases.purchaseDiscountedPackage(pkg, offer.data!));
+  if (!purchase.ok) {
+    const text = String(purchase.error ?? "").toLowerCase();
+    return text.includes("cancel") ? "cancelled" : "failed";
+  }
+  return "purchased";
+}

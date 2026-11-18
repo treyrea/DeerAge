@@ -2,18 +2,23 @@
  * Mode Select Screen - Choose photo source for analysis
  */
 
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
-import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { useDeerScoringStore } from "../state/deerScoringStore";
+import { allowanceLine } from "../lib/products";
+import { refreshScanCredits } from "../api/scan-credits";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
+import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet, RegionHeadsUp } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 // Custom rack ruler icon for Score My Rack
 const RackRulerIcon = require("../../assets/image-1765760310.png");
@@ -33,10 +38,17 @@ export const ModeSelectScreen = () => {
     ? "Estimate deer maturity from body characteristics"
     : "Measure rack and calculate Boone & Crockett score";
 
+  const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
   const entitled = useSubscriptionStore((s) => s.entitled);
   const canProceed = useSubscriptionStore((s) => s.canStartAnalysis());
   const remaining = useSubscriptionStore((s) => s.remainingFree());
+  const scanCredits = useSubscriptionStore((s) => s.scanCredits);
   const fairUsePerDay = useFairUseAllowance();
+
+  useFocusEffect(useCallback(() => {
+    void refreshScanCredits();
+  }, []));
 
   const handleProceed = (destination: "Camera" | "PhotoSelect") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -54,9 +66,9 @@ export const ModeSelectScreen = () => {
         subtext: "Everyday use. The fair-use cap resets tomorrow.",
       };
     }
-    if (remaining > 0) {
+    if (remaining > 0 || scanCredits > 0) {
       return {
-        text: `${remaining} of ${FREE_LIFETIME_ANALYSES} free analyses left`,
+        text: allowanceLine(remaining, scanCredits),
         subtext: "Quick Check and Age share this count",
       };
     }
@@ -65,11 +77,14 @@ export const ModeSelectScreen = () => {
 
   const statusDisplay = getStatusDisplay();
 
+  if (!huntReady) return <HuntRegionSheet />;
+
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="px-6 py-4 flex-row items-center">
         <Pressable
+          testID="mode-back"
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             navigation.goBack();
@@ -85,6 +100,10 @@ export const ModeSelectScreen = () => {
           <Text className="text-sm mt-1" style={{ color: "#E5D4B8" }}>
             {modeDescription}
           </Text>
+          <Text className="text-sm mt-1" style={{ color: "#D4AF37" }}>
+            Your lease minimum: {leaseMinimum}
+          </Text>
+          <RegionHeadsUp />
         </View>
       </View>
 
@@ -92,7 +111,7 @@ export const ModeSelectScreen = () => {
         {/* Mode Icon */}
         <View className="items-center mb-8" style={{ height: 100, justifyContent: "center" }}>
           {isAgeMode ? (
-            <Text style={{ fontSize: 80 }}>🦌</Text>
+            <DeerMark size={96} />
           ) : (
             <View
               style={{

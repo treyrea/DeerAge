@@ -275,6 +275,17 @@ export interface ExplainableAgeEstimation {
   imageQuality: "good" | "fair" | "poor";
   occlusionLevel: "none" | "minimal" | "moderate" | "high";
   photoTips?: string[]; // If quality is low, suggest improvements
+  fieldCall?: "SHOOTER" | "LET WALK" | "BORDERLINE";
+  fieldCallNote?: string;
+  cueBullets?: { area: string; text: string }[];
+  fastAge?: number | null;
+  mainAge?: number | null;
+  bodyOnlyAge?: number | null;
+  betterAngle?: string;
+  ageLabel?: string;
+  isRange?: boolean;
+  hunterCue?: string;
+  pipeline?: "hydrogen" | "openai";
 }
 
 export interface PropertyRules {
@@ -493,6 +504,9 @@ export interface DeerScoringResult {
 
   // NEW: Whether distance adjustment was applied
   distanceAdjusted?: boolean;
+
+  /** Signed pre-shot receipt from the analysis that produced this result. */
+  shotReceipt?: import("./shot-record").ShotReceipt | null;
 
   // NEW: Distance history for audit trail (last 5 edits)
   distanceHistory?: Array<{

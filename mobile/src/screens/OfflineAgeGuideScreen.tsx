@@ -354,6 +354,9 @@ export const OfflineAgeGuideScreen = () => {
               <Ionicons name="bulb" size={24} color="#D4AF37" />
               <Text className="text-white font-bold text-lg ml-2">Pro Tips</Text>
             </View>
+            <Text className="text-sm leading-5 mb-3" style={{ color: "#E5D4B8" }}>
+              These cues explain an age class. The harvest call still uses the lease minimum in Settings. A 3.5 is LET WALK when that minimum is 4.5.
+            </Text>
             <View className="space-y-2">
               <Text className="text-gray-300 text-sm leading-5 mb-2">
                 • <Text className="font-bold">Neck thickness</Text> is the most reliable single indicator (especially during rut)

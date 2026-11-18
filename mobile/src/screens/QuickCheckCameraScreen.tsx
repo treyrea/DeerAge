@@ -17,6 +17,9 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import * as Haptics from "expo-haptics";
+import { DeerMark } from "../components/DeerMark";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -36,6 +39,8 @@ export const QuickCheckCameraScreen = () => {
   const [zoom, setZoom] = useState(1);
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
+  const provisional = useDeerScoringStore((s) => s.provisional);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -43,10 +48,9 @@ export const QuickCheckCameraScreen = () => {
 
   // Request camera permissions
   useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
+    if (!huntReady || hasPermission) return;
+    requestPermission();
+  }, [huntReady, hasPermission, requestPermission]);
 
   useEffect(() => {
     return () => {
@@ -107,26 +111,46 @@ export const QuickCheckCameraScreen = () => {
     }
   };
 
+  if (!huntReady) return <HuntRegionSheet />;
+
   if (!hasPermission) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">Camera permission required</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
-          onPress={requestPermission}
-          className="mt-4 bg-green-600 px-6 py-3 rounded-lg"
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
         >
-          <Text className="text-white font-semibold">Grant Permission</Text>
+          <Ionicons name="close" size={24} color="white" />
         </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">Camera permission required</Text>
+          <Pressable
+            onPress={requestPermission}
+            className="mt-4 bg-green-600 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-semibold">Grant Permission</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">No camera available</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">No camera available</Text>
+        </View>
       </View>
     );
   }
@@ -155,6 +179,7 @@ export const QuickCheckCameraScreen = () => {
         {/* Top Bar */}
         <View className="flex-row items-center justify-between px-6 py-4">
           <Pressable
+            testID="camera-close"
             onPress={() => navigation.goBack()}
             className="w-10 h-10 items-center justify-center bg-black/50 rounded-full"
           >
@@ -177,8 +202,10 @@ export const QuickCheckCameraScreen = () => {
               <View className="w-24 h-24 bg-amber-500/30 rounded-full items-center justify-center mb-4">
                 <ActivityIndicator size="large" color="#f59e0b" />
               </View>
-              <Text className="text-white text-xl font-bold">Analyzing...</Text>
-              <Text className="text-white/70 text-sm mt-2">3-5 seconds</Text>
+              <Text className="text-white text-xl font-bold text-center">
+                {provisional?.fieldCall === "LET WALK" ? "LET WALK" : "Hold, checking his body."}
+              </Text>
+              <Text className="text-white/70 text-sm mt-2 text-center">{provisional?.note || "The first look never calls a shooter."}</Text>
             </View>
           ) : (
             // Ready to capture - LARGER viewer window
@@ -187,8 +214,7 @@ export const QuickCheckCameraScreen = () => {
                 className="border-2 border-amber-500/50 rounded-xl items-center justify-center"
                 style={{ width: width * 0.85, height: height * 0.30 }}
               >
-                {/* Body silhouette hint */}
-                <Text className="text-7xl opacity-30">🦌</Text>
+                <DeerMark size={120} opacity={0.45} />
               </View>
 
               <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">

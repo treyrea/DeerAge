@@ -8,7 +8,7 @@
  * See the pull request description for the full setup.
  */
 
-export const SEASON_PRODUCT_ID = "season_annual";
+export const SEASON_PASS_PRODUCT_ID = "deerage_season";
 export const MONTHLY_PRODUCT_ID = "deerage_monthly";
 
 export const LEGACY_PRODUCT_IDS = [
@@ -20,7 +20,7 @@ export const LEGACY_PRODUCT_IDS = [
 
 export const LEGACY_OFFERING_ID = "tiers";
 
-/** Non-current offering that holds season_annual and deerage_monthly. */
+/** Offering that holds deerage_season and deerage_monthly. */
 export const DEFAULT_OFFERING_ID = "default";
 
 /** Entitlement both new products should grant. Legacy entitlements still unlock the app. */
@@ -37,7 +37,24 @@ export const ACCESS_ENTITLEMENT_IDS = [
 
 export type AccessEntitlementId = (typeof ACCESS_ENTITLEMENT_IDS)[number];
 
+export function isLegacyProduct(productId: string | null | undefined): boolean {
+  if (!productId) return false;
+  return (LEGACY_PRODUCT_IDS as readonly string[]).includes(productId);
+}
+
 export const FREE_LIFETIME_ANALYSES = 3;
+
+/** Consumables. Fetched by product id, not from an offering. */
+export const SCAN_PACK_10_ID = "deerage_scans_10";
+export const SCAN_PACK_30_ID = "deerage_scans_30";
+export const SCAN_PACK_IDS = [SCAN_PACK_10_ID, SCAN_PACK_30_ID] as const;
+
+export function allowanceLine(remainingFree: number, scanCredits: number): string {
+  const free = `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`;
+  if (scanCredits <= 0) return free;
+  const noun = scanCredits === 1 ? "scan" : "scans";
+  return `${free} · ${scanCredits} ${noun} left`;
+}
 
 export type PlanLabel = "Free" | "Season Pass" | "Monthly" | "Scout" | "Hunter" | "Trophy" | "Outfitter" | "Member";
 
@@ -55,7 +72,8 @@ export function planLabelFor(entitlementIds: string[], productId?: string | null
   if (entitlementIds.includes("scout")) return "Scout";
   if (entitlementIds.includes(SEASON_ENTITLEMENT_ID)) {
     if (productId === MONTHLY_PRODUCT_ID) return "Monthly";
-    if (productId === SEASON_PRODUCT_ID) return "Season Pass";
+    // season_annual is no longer sold. A purchase that already used it still reads as Season Pass.
+    if (productId === SEASON_PASS_PRODUCT_ID || productId === "season_annual") return "Season Pass";
     return "Member";
   }
   if (entitlementIds.length > 0) return "Member";

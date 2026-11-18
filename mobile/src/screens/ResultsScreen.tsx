@@ -4,11 +4,19 @@
  */
 
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ScrollView, Pressable, Share, Image as RNImage, Modal } from "react-native";
+import { View, Text, ScrollView, Pressable, Image as RNImage, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import { FieldCallCard } from "../components/FieldCallCard";
+import { PreShotBar } from "../components/PreShotBar";
+import { WrongCallCard } from "../components/WrongCallCard";
+import { RegionHeadsUp } from "../components/HuntRegionSheet";
+import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
+import { activeHunt, useHunterProfile } from "../state/hunterProfile";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { normalizeFieldCall } from "../utils/field-call";
 import { ShareableResultCard } from "../components/ShareableResultCard";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { useNavigation } from "@react-navigation/native";
@@ -19,7 +27,6 @@ import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
 import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
-import { EmailPrompt } from "../components/EmailPrompt";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
 import * as Haptics from "expo-haptics";
 
@@ -39,18 +46,12 @@ export const ResultsScreen = () => {
   const startCapture = useDeerScoringStore((s) => s.startCapture);
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
-  const analysisCount = useDeerScoringStore((s) => s.analysisCount);
-  const userEmail = useDeerScoringStore((s) => s.userEmail);
-  const markEmailPromptSeen = useDeerScoringStore((s) => s.markEmailPromptSeen);
-  const dismissEmailPrompt = useDeerScoringStore((s) => s.dismissEmailPrompt);
-
   const [hasSaved, setHasSaved] = useState(false);
   const [showManualCounter, setShowManualCounter] = useState(false);
   const [manualCount, setManualCount] = useState(currentResult?.manualPointCount || 0);
   const [manualLeftCount, setManualLeftCount] = useState(currentResult?.manualLeftCount || 0);
   const [manualRightCount, setManualRightCount] = useState(currentResult?.manualRightCount || 0);
   const [manualOverride, setManualOverride] = useState(currentResult?.manualOverride || false);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [showScoreAdjustment, setShowScoreAdjustment] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [adjustedScore, setAdjustedScore] = useState<number | null>(null);
@@ -136,24 +137,18 @@ export const ResultsScreen = () => {
       const timer = setTimeout(() => {
         saveToHistory(currentResult);
         setHasSaved(true);
-
-        // Show email prompt after 1st or 5th analysis (if email not collected)
-        if (!userEmail && (analysisCount === 1 || analysisCount === 5)) {
-          setTimeout(() => {
-            setShowEmailPrompt(true);
-            markEmailPromptSeen();
-          }, 1500); // Delay to let user see results first
-        }
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [currentResult, hasSaved, saveToHistory, userEmail, analysisCount, markEmailPromptSeen]);
+  }, [currentResult, hasSaved, saveToHistory]);
 
   const ageLabel = formatAgeClass(currentResult?.explainableAge?.estimatedAge ?? currentResult?.age?.estimatedAge);
-  useResultFollowUp(Boolean(currentResult), currentResult ? {
+  const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const followUp = useResultFollowUp(Boolean(currentResult), currentResult ? {
     imageUri: currentResult.capturedFrames?.[0]?.imageUri,
     headline: ageLabel,
-    call: ageCallFromClass(ageLabel),
+    call: currentResult?.explainableAge?.fieldCall
+      ?? (currentResult?.explainableAge?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
     confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : undefined,
   } : null);
 
@@ -216,74 +211,24 @@ export const ResultsScreen = () => {
   const handleExportPDF = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setShowShareSheet(false);
-
-    // Get the image URI from captured frames
-    const imageUri = currentResult.capturedFrames?.[0]?.imageUri;
-
-    // Build comprehensive message with all details
-    const scoreToShow = adjustedScore !== null ? adjustedScore.toFixed(1) : formatScore(score.netNonTypical);
-    const pointCountToShow = manualOverride ? displayedPointCount : (score.measurements.totalPoints + score.measurements.totalAbnormalPoints);
-
-    let message = `DeerAge Analysis Summary\n`;
-    message += `━━━━━━━━━━━━━━━━━━━━\n`;
-    message += `Mode: ${analysisMode === "age" ? "Age My Deer" : "Score My Rack"}\n\n`;
-
-    message += `📊 RESULTS\n`;
-    message += `• Age class: ${formatAgeClass(age.estimatedAge)}\n`;
-    message += `• Rack Score (B&C): ${scoreToShow}″`;
-    if (adjustedScore !== null) {
-      message += ` (Adjusted)\n`;
-      message += `  Original AI Score: ${formatScore(score.netNonTypical)}″\n`;
-    } else {
-      message += `\n`;
-    }
-    message += `• Point Count: ${pointCountToShow}`;
-    if (manualOverride) {
-      message += ` (Manual)\n`;
-      message += `  AI Count: ${score.measurements.totalPoints + score.measurements.totalAbnormalPoints}\n`;
-      message += `  Left: ${manualLeftCount} | Right: ${manualRightCount}\n`;
-    } else {
-      message += `\n`;
-      message += `  Left: ${score.measurements.leftSidePoints} | Right: ${score.measurements.rightSidePoints}\n`;
-    }
-    message += `• Confidence: ${score.overallConfidence}\n\n`;
-
-    // B&C Qualification
-    const scoreForQualification = adjustedScore !== null ? adjustedScore : getValue(score.netNonTypical);
-    const qualifiesTypical = scoreForQualification >= 160;
-    const qualifiesNonTypical = scoreForQualification >= 185;
-
-    message += `🏆 B&C QUALIFICATION\n`;
-    message += `• Typical (160″): ${qualifiesTypical ? "✓ Qualified" : "Not Met"}\n`;
-    message += `• Non-Typical (185″): ${qualifiesNonTypical ? "✓ Qualified" : "Not Met"}\n\n`;
-
-    message += `Analyzed with DeerAge - AI Deer Scoring`;
-
-    // Small delay to let modal close before showing share sheet
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Share with both message and image
     try {
-      await Share.share(
-        {
-          message,
-          url: imageUri, // iOS only - include the photo
-        },
-        {
-          subject: "My Deer Analysis Results", // Email subject if shared via email
-        }
-      );
-    } catch (error: any) {
-      // User cancelled share - this is normal, don't log as error
-      if (error?.message !== "User did not share") {
-        console.log("Share cancelled or failed:", error?.message);
-      }
+      await shareRead({
+        ageClass: formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge),
+        call: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
+        minimum: currentResult.explainableAge?.minimumAgeThreshold ?? useDeerScoringStore.getState().propertyRules.minimumShooterAge,
+        region: activeHunt(useHunterProfile.getState()).label,
+        time: new Date(currentResult.timestamp).toLocaleString(),
+        receiptId: currentResult.shotReceipt?.id,
+        photoUri: currentResult.capturedFrames?.[0]?.imageUri,
+      }, "anyone");
+    } catch {
+      // He closed the sheet.
     }
   };
 
   const displayedAge = formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge);
-  const isYoung = ageCallFromClass(displayedAge) === "Young";
-  const shooterSuggestion = isYoung ? "Pass - Let him grow" : "Shooter - Mature buck";
+  const leaseMinimum = currentResult.explainableAge?.minimumAgeThreshold
+    ?? useDeerScoringStore.getState().propertyRules.minimumShooterAge;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
@@ -379,6 +324,57 @@ export const ResultsScreen = () => {
             </Pressable>
           )}
 
+          {shootOrPass && currentResult ? (
+            <FieldCallCard
+              ageYears={Number(currentResult.explainableAge?.estimatedAgeYears) || Number(currentResult.shotReceipt?.summary.ageClass) || Number(String(age.estimatedAge).match(/[\d.]+/)?.[0]) || leaseMinimum}
+              confidence={currentResult.explainableAge?.overallConfidence ?? currentResult.shotReceipt?.summary.confidence ?? 60}
+              minimum={currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum}
+              cueBullets={currentResult.explainableAge?.cueBullets ?? currentResult.explainableAge?.detectedCues}
+              fallbackCues={currentResult.shotReceipt?.summary.cues}
+              fieldCall={normalizeFieldCall(currentResult.explainableAge?.fieldCall ?? currentResult.shotReceipt?.summary.fieldCall)}
+              note={currentResult.explainableAge?.fieldCallNote ?? currentResult.shotReceipt?.summary.fieldCallNote}
+              scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : undefined}
+            />
+          ) : null}
+          <WrongCallCard
+            scanId={currentResult.analysisId}
+            fieldCall={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
+            photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+            snapshot={{
+              fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall,
+              ageYears: currentResult.explainableAge?.estimatedAgeYears,
+              grossScore: typeof score.netTypical === "number" ? score.netTypical : undefined,
+              leaseMinimum,
+            }}
+          />
+          <PreShotBar
+            draft={{
+              localId: currentResult.analysisId,
+              mode: currentResult.analysisMode === "age" ? "age" : "score",
+              photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+              receipt: currentResult.shotReceipt ?? null,
+              ageClass: currentResult.shotReceipt?.summary.ageClass || formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge),
+              ageRange: currentResult.shotReceipt?.summary.ageRange || String(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge ?? ""),
+              confidence: currentResult.explainableAge?.overallConfidence ?? currentResult.shotReceipt?.summary.confidence ?? 60,
+              leaseMinimum: currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum,
+              fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
+              fieldCallNote: currentResult.explainableAge?.fieldCallNote || currentResult.shotReceipt?.summary.fieldCallNote || "",
+              cues: currentResult.shotReceipt?.summary.cues ?? [],
+              scoreLabel: typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : null,
+              huntLabel: activeHunt(useHunterProfile.getState()).label,
+            }}
+            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          />
+          <RegionHeadsUp />
+          <LeaseManagerButton
+            ageClass={displayedAge}
+            call={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
+            minimum={currentResult.shotReceipt?.summary.leaseMinimum ?? leaseMinimum}
+            region={activeHunt(useHunterProfile.getState()).label}
+            time={new Date(currentResult.timestamp).toLocaleString()}
+            receiptId={currentResult.shotReceipt?.id}
+            photoUri={currentResult.capturedFrames?.[0]?.imageUri}
+          />
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>
@@ -444,26 +440,6 @@ export const ResultsScreen = () => {
               </View>
             </View>
 
-            {/* Shooter/Pass Suggestion */}
-            {isYoung && (
-              <View className="rounded-lg p-4 mt-2" style={{ backgroundColor: "#5A6447" }}>
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name={isYoung ? "pause-circle" : "checkmark-circle"}
-                    size={24}
-                    color={isYoung ? "#FFA500" : "#22c55e"}
-                  />
-                  <View className="flex-1 ml-3">
-                    <Text className="text-white font-bold mb-1">{shooterSuggestion}</Text>
-                    <Text className="text-xs" style={{ color: "#E5D4B8" }}>
-                      {isYoung
-                        ? "This buck is under 3.5 years old. Consider letting him mature for better genetics and larger rack development."
-                        : "This is a mature buck suitable for harvest."}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
           </View>
 
           {/* Overall Score Card */}
@@ -1174,8 +1150,7 @@ export const ResultsScreen = () => {
           <Pressable
             onPress={async () => {
               if (!currentResult) return;
-
-              console.log("[Results] Starting age analysis from rack result");
+              followUp.markRescan();
 
               // Switch to age estimation mode FIRST
               setAnalysisMode("age");
@@ -1224,15 +1199,6 @@ export const ResultsScreen = () => {
         </View>
       </ScrollView>
 
-      {/* Email Prompt Modal */}
-      <EmailPrompt
-        visible={showEmailPrompt}
-        onDismiss={() => {
-          setShowEmailPrompt(false);
-          dismissEmailPrompt();
-        }}
-      />
-
       {/* Score Adjustment Modal */}
       <ScoreAdjustmentModal
         visible={showScoreAdjustment}
@@ -1270,8 +1236,8 @@ export const ResultsScreen = () => {
                 <Ionicons name="share-social" size={24} color="white" />
               </View>
               <View className="flex-1">
-                <Text className="text-white font-bold text-base">Share Analysis</Text>
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Share score, age, and photo</Text>
+                <Text className="text-white font-bold text-base">Share...</Text>
+                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Any recipient, same read</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
             </Pressable>

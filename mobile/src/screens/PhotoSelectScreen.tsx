@@ -17,6 +17,10 @@ import { DeerAnalysisFrame } from "../types/deer-scoring";
 import type { DistanceMeasurement } from "../types/distance";
 import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
+import { HuntRegionSheet } from "../components/HuntRegionSheet";
+import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { e2eEnabled } from "../e2e/flags";
+import { seededPhotoUri } from "../e2e/seed-photo";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -33,6 +37,7 @@ export const PhotoSelectScreen = () => {
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const stopCapture = useDeerScoringStore((s) => s.stopCapture);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
+  const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Distance store
   const distanceSettings = useDistanceStore((s) => s.settings);
@@ -92,11 +97,11 @@ export const PhotoSelectScreen = () => {
   };
 
   // Run the actual analysis
-  const runAnalysis = async () => {
-    if (!selectedImage) return;
+  const runAnalysis = async (imageUri = selectedImage) => {
+    if (!imageUri) return;
 
     try {
-      console.log("[PhotoSelect] Starting analysis for image:", selectedImage);
+      console.log("[PhotoSelect] Starting analysis for image:", imageUri);
 
       // Store pending distance if captured
       if (capturedDistance) {
@@ -110,7 +115,7 @@ export const PhotoSelectScreen = () => {
       // Create a single frame from the uploaded photo
       const frame: DeerAnalysisFrame = {
         frameIndex: 0,
-        imageUri: selectedImage,
+        imageUri,
         detectedAntlers: false, // Will be determined during analysis
         confidence: "Low",
         partialOcclusion: false,
@@ -143,12 +148,14 @@ export const PhotoSelectScreen = () => {
   // Get suggested distance for picker
   const suggested = getSuggestedDistance();
 
+  if (!huntReady) return <HuntRegionSheet />;
+
   return (
     <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+          <Pressable testID="photo-back" onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
           <Text className="text-white text-lg font-bold">Upload Photo</Text>
@@ -247,6 +254,20 @@ export const PhotoSelectScreen = () => {
                 <Text className="text-white text-lg font-bold ml-2">Open Gallery</Text>
               </View>
             </Pressable>
+            {e2eEnabled ? (
+              <Pressable
+                testID="e2e-seed-photo"
+                onPress={() => {
+                  void seededPhotoUri().then((uri) => {
+                    setSelectedImage(uri);
+                    void runAnalysis(uri);
+                  });
+                }}
+                className="bg-neutral-800 rounded-xl py-4 px-8 items-center mt-4"
+              >
+                <Text className="text-white text-base font-semibold">Use seeded photo</Text>
+              </Pressable>
+            ) : null}
 
             {/* Info */}
             <View className="mt-12 mx-6">

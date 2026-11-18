@@ -9,7 +9,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HomeScreen } from "../screens/HomeScreenV2";
+import { HomeScreen } from "../screens/HomeScreen";
 import { ModeSelectScreen } from "../screens/ModeSelectScreen";
 import { DeerCameraScreen } from "../screens/DeerCameraScreen";
 import { PhotoSelectScreen } from "../screens/PhotoSelectScreen";
@@ -27,6 +27,9 @@ import { DeerScoringResult } from "../types/deer-scoring";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { TierPaywallScreen } from "../screens/TierPaywallScreen";
+import { ManageSubscriptionScreen } from "../screens/ManageSubscriptionScreen";
+import { MessagesScreen } from "../screens/MessagesScreen";
+import { FeedScreen } from "../screens/FeedScreen";
 import type { PaywallResultSummary } from "../lib/products";
 
 // Stack param lists
@@ -43,15 +46,18 @@ export type HomeStackParamList = {
   QuickCheckCamera: undefined;
   QuickCheckResult: { result: QuickAgeResult; imageUri: string };
   TierPaywall: { reason?: string; resultSummary?: PaywallResultSummary };
+  Feed: undefined;
 };
 
 export type HistoryStackParamList = {
   HistoryMain: undefined;
-  HistoryDetail: { result: DeerScoringResult };
+  HistoryDetail: { result?: DeerScoringResult; shotId?: string };
 };
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
+  ManageSubscription: undefined;
+  Messages: undefined;
 };
 
 // Combined type for backward compatibility
@@ -87,6 +93,7 @@ const HomeStackNavigator = () => {
       <HomeStack.Screen name="OfflineAgeGuide" component={OfflineAgeGuideScreen} />
       <HomeStack.Screen name="QuickCheckCamera" component={QuickCheckCameraScreen} />
       <HomeStack.Screen name="QuickCheckResult" component={QuickCheckResultScreen} />
+      <HomeStack.Screen name="Feed" component={FeedScreen} />
       <HomeStack.Screen
         name="TierPaywall"
         component={TierPaywallScreen}
@@ -123,6 +130,8 @@ const SettingsStackNavigator = () => {
       }}
     >
       <SettingsStack.Screen name="SettingsMain" component={SettingsScreen} />
+      <SettingsStack.Screen name="ManageSubscription" component={ManageSubscriptionScreen} />
+      <SettingsStack.Screen name="Messages" component={MessagesScreen} />
     </SettingsStack.Navigator>
   );
 };

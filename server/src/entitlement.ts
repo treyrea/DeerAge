@@ -1,4 +1,5 @@
 import { ACCESS_ENTITLEMENTS, FREE_LIFETIME_ANALYSES } from "./config.js";
+import { revenueCatGrantSecret, revenueCatSecret } from "./revenuecat-secret.js";
 
 const RC_BASE = "https://api.revenuecat.com/v1/subscribers";
 const ATTRIBUTE = "deerage_free_uses";
@@ -20,11 +21,57 @@ interface RcSubscriber {
 }
 
 function secret(): string {
-  return process.env.REVENUECAT_SECRET_API_KEY?.trim() ?? "";
+  return revenueCatSecret();
 }
 
 export function revenueCatConfigured(): boolean {
   return secret().length > 0;
+}
+
+function grantKey(): string {
+  return revenueCatGrantSecret();
+}
+
+let grantForTests: ((appUserId: string) => Promise<"granted" | "no_key" | "failed">) | null = null;
+
+export function setGrantForTests(next: typeof grantForTests): void {
+  grantForTests = next;
+}
+
+/** One attempt. "no_key" and "failed" must not be retried by the caller. */
+export async function attemptFreeMonthGrant(appUserId: string): Promise<"granted" | "no_key" | "failed"> {
+  if (grantForTests) return grantForTests(appUserId);
+  const key = grantKey();
+  if (!key) return "no_key";
+  const entitlement = process.env.REVENUECAT_ENTITLEMENT_ID?.trim() || "deerage_pro";
+  try {
+    const response = await fetch(`${RC_BASE}/${encodeUser(appUserId)}/entitlements/${encodeURIComponent(entitlement)}/promotional`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ duration: "monthly" }),
+    });
+    return response.ok ? "granted" : "failed";
+  } catch {
+    return "failed";
+  }
+}
+
+/** Active paying subscribers, or null when RevenueCat cannot answer. */
+export async function activePayingCount(): Promise<number | null> {
+  const key = grantKey();
+  const project = process.env.REVENUECAT_PROJECT_ID?.trim();
+  if (!key || !project) return null;
+  try {
+    const response = await fetch(`https://api.revenuecat.com/v2/projects/${encodeURIComponent(project)}/metrics/overview`, {
+      headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { metrics?: Array<{ id?: string; value?: number }> };
+    const row = body.metrics?.find((metric) => metric.id === "active_subscriptions" || metric.id === "active_subscribers");
+    return typeof row?.value === "number" && row.value >= 0 ? row.value : null;
+  } catch {
+    return null;
+  }
 }
 
 function isActive(entitlement: RcEntitlement | undefined): boolean {

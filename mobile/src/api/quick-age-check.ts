@@ -6,6 +6,7 @@ import { AgeClass } from "../types/deer-scoring";
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
 import { useHunterProfile } from "../state/hunterProfile";
+import { normalizeFieldCall } from "../utils/field-call";
 
 export interface QuickAgeResult {
   decision: "SHOOT" | "LET WALK";
@@ -26,6 +27,14 @@ export interface QuickAgeResult {
   disclaimer: string;
   ageYears?: number;
   topCues?: string[];
+  fieldCall?: "SHOOTER" | "LET WALK" | "BORDERLINE";
+  fieldCallNote?: string;
+  cueBullets?: { area: string; text: string }[];
+  shotReceipt?: import("../types/shot-record").ShotReceipt | null;
+  fastAge?: number | null;
+  mainAge?: number | null;
+  bodyOnlyAge?: number | null;
+  betterAngle?: string;
 }
 
 interface FeatureRead {
@@ -46,6 +55,11 @@ function feature(raw: unknown): FeatureRead {
     indicator: safe,
     confidence: Math.max(0, Math.min(100, Math.round(Number(source.confidence) || 50))),
   };
+}
+
+function numberOrNull(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function ageClass(value: unknown, years: number): AgeClass {
@@ -116,5 +130,13 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     disclaimer: DISCLAIMER,
     ageYears: years,
     topCues,
+    fieldCall: normalizeFieldCall(result.fieldCall),
+    fieldCallNote: typeof result.fieldCallNote === "string" ? result.fieldCallNote : undefined,
+    cueBullets: Array.isArray(result.cueBullets) ? result.cueBullets as { area: string; text: string }[] : undefined,
+    shotReceipt: response.receipt,
+    fastAge: numberOrNull(result.fastAge),
+    mainAge: numberOrNull(result.mainAge),
+    bodyOnlyAge: numberOrNull(result.bodyOnlyAge),
+    betterAngle: typeof result.betterAngle === "string" ? result.betterAngle : "",
   };
 }

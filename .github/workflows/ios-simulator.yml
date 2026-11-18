@@ -1,0 +1,425 @@
+name: ios-simulator
+
+# Run 44121129042 compiled the app, then Maestro died with
+# "iOS driver not ready in time" on a simulator that was still migrating.
+# The uploaded artifact was only the empty mock log. This workflow keeps the
+# built app, and a failed Maestro attempt always saves a screenshot, the
+# Maestro debug directory, and the simulator log.
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      maestro_only:
+        description: Reuse the last built simulator app and run Maestro only
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ios-simulator-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_dispatch' || inputs.maestro_only == false
+    # macos-15 is a free Apple Silicon image. Retry after a hosted runner was not acquired.
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Restore CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json') }}
+      - name: Restore DerivedData
+        id: derived
+        uses: actions/cache/restore@v4
+        with:
+          path: mobile/ios-build
+          key: derived-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json') }}
+      - name: Fingerprint the simulator app
+        id: simkey
+        run: echo "hash=${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}" >> "$GITHUB_OUTPUT"
+      - name: Restore a previously built simulator app
+        id: sim-app
+        uses: actions/cache/restore@v4
+        with:
+          path: mobile/sim-dist
+          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
+      - name: Install JS dependencies
+        if: steps.sim-app.outputs.cache-hit != 'true'
+        working-directory: mobile
+        run: npm ci
+      - name: Prebuild and compile the simulator app
+        if: steps.sim-app.outputs.cache-hit != 'true'
+        working-directory: mobile
+        env:
+          EXPO_PUBLIC_E2E: "1"
+          EXPO_PUBLIC_API_BASE_URL: http://127.0.0.1:8787
+          LANG: en_US.UTF-8
+        run: |
+          set -euo pipefail
+          printf '%s\n' 'EXPO_PUBLIC_E2E=1' 'EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787' > .env
+          printf '%s\n' '/** Written by the simulator workflow. Empty in git. */' 'export const ciApiBaseUrl = "http://127.0.0.1:8787";' > src/e2e/ci-endpoint.ts
+          python3 - << 'PY'
+          import json
+          path = "app.json"
+          data = json.load(open(path))
+          data["expo"].setdefault("updates", {})["enabled"] = False
+          json.dump(data, open(path, "w"), indent=2)
+          print("Disabled expo-updates for the simulator build")
+          PY
+          npx expo prebuild --platform ios --no-install --non-interactive
+          python3 e2e/attach-storekit.py
+          cat > ios/.xcode.env.local << 'EOF'
+          export FORCE_BUNDLING=1
+          export EXPO_PUBLIC_E2E=1
+          export EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787
+          EOF
+          cd ios
+          pod install
+          WORKSPACE=$(python3 -c 'import pathlib; print(next(pathlib.Path(".").glob("*.xcworkspace")))')
+          SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list -json | python3 -c 'import json,sys,pathlib; data=json.load(sys.stdin); node=data.get("project") or data.get("workspace"); wanted=pathlib.Path(node.get("name","DeerAge")).stem; schemes=node["schemes"]; print(wanted if wanted in schemes else next(s for s in schemes if s.lower()=="deerage"))')
+          echo "Building $SCHEME from $WORKSPACE"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath "$GITHUB_WORKSPACE/mobile/ios-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+          APP="$GITHUB_WORKSPACE/mobile/ios-build/Build/Products/Release-iphonesimulator/DeerAge.app"
+          test -d "$APP"
+          python3 - "$APP/main.jsbundle" << 'PY'
+          import pathlib, sys
+          data = pathlib.Path(sys.argv[1]).read_bytes()
+          probes = {
+              "url-utf8": b"127.0.0.1:8787",
+              "url-utf16": "127.0.0.1:8787".encode("utf-16le"),
+              "env-name": b"EXPO_PUBLIC_API_BASE_URL",
+              "e2e-flag": b"EXPO_PUBLIC_E2E",
+          }
+          found = {name: data.find(raw) for name, raw in probes.items()}
+          print("bundle probes", found, "bytes", len(data))
+          if found["url-utf8"] < 0 and found["url-utf16"] < 0:
+              sys.exit("The simulator bundle does not point at the mock API.")
+          PY
+          rm -rf "$GITHUB_WORKSPACE/mobile/sim-dist"
+          mkdir -p "$GITHUB_WORKSPACE/mobile/sim-dist"
+          cp -R "$APP" "$GITHUB_WORKSPACE/mobile/sim-dist/DeerAge.app"
+      - name: Save DerivedData
+        if: steps.derived.outputs.cache-hit != 'true' && steps.sim-app.outputs.cache-hit != 'true' && success()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: mobile/ios-build
+          key: derived-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json') }}
+      - name: Save the simulator app
+        if: steps.sim-app.outputs.cache-hit != 'true' && success()
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: mobile/sim-dist
+          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
+      - name: Upload the simulator app
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deerage-sim-app
+          path: mobile/sim-dist
+          retention-days: 7
+          if-no-files-found: error
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Boot a small and a large iPhone and run Maestro
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
+          mkdir -p "$GITHUB_WORKSPACE/maestro-out"
+          {
+            echo "uname=$(uname -m)"
+            xcodebuild -version || true
+            maestro --version || true
+            java -version || true
+          } > "$GITHUB_WORKSPACE/maestro-out/environment.txt" 2>&1
+          APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("DeerAge.app")))' "$GITHUB_WORKSPACE/mobile/sim-dist")
+          test -d "$APP"
+          python3 - "$APP/Expo.plist" << 'PY'
+          import plistlib, sys
+          path = sys.argv[1]
+          with open(path, "rb") as handle:
+              data = plistlib.load(handle)
+          data["EXUpdatesEnabled"] = False
+          data["EXUpdatesCheckOnLaunch"] = "NEVER"
+          with open(path, "wb") as handle:
+              plistlib.dump(data, handle)
+          print("Disabled expo-updates in the simulator app")
+          PY
+          codesign --force --sign - --deep "$APP" || true
+          node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/maestro-out/mock-server.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/maestro-out/mock-server.pid"
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            curl -sf http://127.0.0.1:8787/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/health
+          python3 - << 'PY'
+          import json, subprocess, pathlib
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+          data = json.loads(raw)["devices"]
+          def version(key):
+              tail = key.split("iOS-")[-1]
+              nums = []
+              for part in tail.replace(".", "-").split("-"):
+                  if part.isdigit():
+                      nums.append(int(part))
+              return tuple(nums)
+          latest = max((key for key in data if "iOS" in key), key=version)
+          phones = [row for row in data[latest] if row.get("isAvailable") and row["name"].startswith("iPhone")]
+          if not phones:
+              raise SystemExit("no available iPhone simulators on " + latest)
+          small = next((row for row in phones if "SE" in row["name"]), phones[0])
+          large = next((row for row in reversed(phones) if "Pro Max" in row["name"] or row["name"].endswith("Plus")), phones[-1])
+          if large["udid"] == small["udid"] and len(phones) > 1:
+              large = next(row for row in phones if row["udid"] != small["udid"])
+          pathlib.Path("devices.txt").write_text(
+              small["name"] + "\t" + small["udid"] + "\n" + large["name"] + "\t" + large["udid"] + "\n"
+          )
+          print(latest)
+          print(small["name"], small["udid"])
+          print(large["name"], large["udid"])
+          PY
+          cp devices.txt "$GITHUB_WORKSPACE/maestro-out/devices.txt"
+          open -a Simulator || true
+
+          capture() {
+            local udid="$1"
+            local dest="$2"
+            mkdir -p "$dest"
+            xcrun simctl io "$udid" screenshot "$dest/failure-screen.png" \
+              || xcrun simctl io booted screenshot "$dest/failure-screen.png" \
+              || true
+            xcrun simctl spawn "$udid" log show --last 2m --style compact > "$dest/simulator.log" 2>&1 || true
+          }
+          boot_one() {
+            local udid="$1"
+            xcrun simctl shutdown "$udid" || true
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+          }
+          run_flows() {
+            local udid="$1"
+            local out="$2"
+            shift 2
+            mkdir -p "$out/debug"
+            maestro --device "$udid" test "$@" \
+              --debug-output "$out/debug" \
+              --test-output-dir "$out" \
+              --format junit \
+              --output "$out/report.xml"
+          }
+
+          i=0
+          while IFS=$'\t' read -r NAME UDID; do
+            i=$((i+1))
+            OUT="$GITHUB_WORKSPACE/maestro-out/$i-$NAME"
+            mkdir -p "$OUT"
+            echo "Device $NAME $UDID"
+            boot_one "$UDID"
+            xcrun simctl install "$UDID" "$APP"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+            # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
+            if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+              capture "$UDID" "$OUT/failure"
+              echo "Retrying $NAME after a simulator reboot"
+              boot_one "$UDID"
+              xcrun simctl install "$UDID" "$APP"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+              if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+                capture "$UDID" "$OUT-retry/failure"
+                exit 1
+              fi
+            fi
+            xcrun simctl status_bar "$UDID" override --dataNetwork none --wifiBars 0 || true
+            if ! run_flows "$UDID" "$OUT-network" mobile/e2e/flows/03-airplane.yaml; then
+              capture "$UDID" "$OUT-network/failure"
+              exit 1
+            fi
+            xcrun simctl status_bar "$UDID" clear || true
+            xcrun simctl shutdown "$UDID" || true
+          done < devices.txt
+      - name: Upload screenshots, Maestro debug output, and simulator logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios
+          path: maestro-out
+          if-no-files-found: warn
+
+  maestro:
+    if: github.event_name == 'workflow_dispatch' && inputs.maestro_only
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Download the last built simulator app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ID=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=deerage-sim-app&per_page=20" --jq '[.artifacts[] | select(.expired==false and .name=="deerage-sim-app")][0].id')
+          test -n "$ID" && test "$ID" != "null"
+          echo "Using artifact $ID"
+          mkdir -p mobile/sim-dist
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ID}/zip" > /tmp/deerage-sim-app.zip
+          unzip -q /tmp/deerage-sim-app.zip -d mobile/sim-dist
+      - name: Boot a small and a large iPhone and run Maestro
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: "1"
+        run: |
+          set -euo pipefail
+          export MAESTRO_DRIVER_STARTUP_TIMEOUT=600000
+          mkdir -p "$GITHUB_WORKSPACE/maestro-out"
+          {
+            echo "uname=$(uname -m)"
+            xcodebuild -version || true
+            maestro --version || true
+            java -version || true
+          } > "$GITHUB_WORKSPACE/maestro-out/environment.txt" 2>&1
+          APP=$(python3 -c 'import pathlib,sys; print(next(pathlib.Path(sys.argv[1]).rglob("DeerAge.app")))' "$GITHUB_WORKSPACE/mobile/sim-dist")
+          test -d "$APP"
+          python3 - "$APP/Expo.plist" << 'PY'
+          import plistlib, sys
+          path = sys.argv[1]
+          with open(path, "rb") as handle:
+              data = plistlib.load(handle)
+          data["EXUpdatesEnabled"] = False
+          data["EXUpdatesCheckOnLaunch"] = "NEVER"
+          with open(path, "wb") as handle:
+              plistlib.dump(data, handle)
+          print("Disabled expo-updates in the simulator app")
+          PY
+          codesign --force --sign - --deep "$APP" || true
+          node mobile/e2e/mock-server.mjs > "$GITHUB_WORKSPACE/maestro-out/mock-server.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/maestro-out/mock-server.pid"
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            curl -sf http://127.0.0.1:8787/health && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8787/health
+          python3 - << 'PY'
+          import json, subprocess, pathlib
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+          data = json.loads(raw)["devices"]
+          def version(key):
+              tail = key.split("iOS-")[-1]
+              nums = []
+              for part in tail.replace(".", "-").split("-"):
+                  if part.isdigit():
+                      nums.append(int(part))
+              return tuple(nums)
+          latest = max((key for key in data if "iOS" in key), key=version)
+          phones = [row for row in data[latest] if row.get("isAvailable") and row["name"].startswith("iPhone")]
+          if not phones:
+              raise SystemExit("no available iPhone simulators on " + latest)
+          small = next((row for row in phones if "SE" in row["name"]), phones[0])
+          large = next((row for row in reversed(phones) if "Pro Max" in row["name"] or row["name"].endswith("Plus")), phones[-1])
+          if large["udid"] == small["udid"] and len(phones) > 1:
+              large = next(row for row in phones if row["udid"] != small["udid"])
+          pathlib.Path("devices.txt").write_text(
+              small["name"] + "\t" + small["udid"] + "\n" + large["name"] + "\t" + large["udid"] + "\n"
+          )
+          print(latest)
+          print(small["name"], small["udid"])
+          print(large["name"], large["udid"])
+          PY
+          cp devices.txt "$GITHUB_WORKSPACE/maestro-out/devices.txt"
+          open -a Simulator || true
+
+          capture() {
+            local udid="$1"
+            local dest="$2"
+            mkdir -p "$dest"
+            xcrun simctl io "$udid" screenshot "$dest/failure-screen.png" \
+              || xcrun simctl io booted screenshot "$dest/failure-screen.png" \
+              || true
+            xcrun simctl spawn "$udid" log show --last 2m --style compact > "$dest/simulator.log" 2>&1 || true
+          }
+          boot_one() {
+            local udid="$1"
+            xcrun simctl shutdown "$udid" || true
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+          }
+          run_flows() {
+            local udid="$1"
+            local out="$2"
+            shift 2
+            mkdir -p "$out/debug"
+            maestro --device "$udid" test "$@" \
+              --debug-output "$out/debug" \
+              --test-output-dir "$out" \
+              --format junit \
+              --output "$out/report.xml"
+          }
+
+          i=0
+          while IFS=$'\t' read -r NAME UDID; do
+            i=$((i+1))
+            OUT="$GITHUB_WORKSPACE/maestro-out/$i-$NAME"
+            mkdir -p "$OUT"
+            echo "Device $NAME $UDID"
+            boot_one "$UDID"
+            xcrun simctl install "$UDID" "$APP"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+            # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
+            if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+              capture "$UDID" "$OUT/failure"
+              echo "Retrying $NAME after a simulator reboot"
+              boot_one "$UDID"
+              xcrun simctl install "$UDID" "$APP"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+              if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
+                capture "$UDID" "$OUT-retry/failure"
+                exit 1
+              fi
+            fi
+            # The status bar change is visual. It does not drop the simulator network stack.
+            xcrun simctl status_bar "$UDID" override --dataNetwork none --wifiBars 0 || true
+            if ! run_flows "$UDID" "$OUT-network" mobile/e2e/flows/03-airplane.yaml; then
+              capture "$UDID" "$OUT-network/failure"
+              exit 1
+            fi
+            xcrun simctl status_bar "$UDID" clear || true
+            xcrun simctl shutdown "$UDID" || true
+          done < devices.txt
+      - name: Upload screenshots, Maestro debug output, and simulator logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios
+          path: maestro-out
+          if-no-files-found: warn

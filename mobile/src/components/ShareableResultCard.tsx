@@ -15,15 +15,14 @@
  */
 
 import React, { useRef, useCallback } from "react";
-import { View, Text, Pressable, Share, Platform } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { DeerMark } from "./DeerMark";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import ViewShot from "react-native-view-shot";
-import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
-import { recordShare } from "../lib/review";
 import { formatAgeClass } from "../utils/age-class";
 
 // ============================================================================
@@ -39,6 +38,7 @@ export interface AgeResultData {
   decision: "SHOOT" | "LET WALK";
   keyFeature?: string;
   call?: string;
+  leaseMinimum?: number;
   topCues?: string[];
 }
 
@@ -61,42 +61,14 @@ export type ShareableResultData = AgeResultData | ScoreResultData;
 
 interface ShareableResultCardProps {
   data: ShareableResultData;
-  onShare?: () => void;
   compact?: boolean;
 }
 
 export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
   data,
-  onShare,
   compact = false,
 }) => {
   const viewShotRef = useRef<ViewShot>(null);
-
-  const handleShare = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      if (viewShotRef.current?.capture) {
-        const uri = await viewShotRef.current.capture();
-
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            mimeType: "image/png",
-            dialogTitle: "Share your DeerAge result",
-          });
-          onShare?.();
-          void recordShare();
-        } else {
-          const text = getShareText(data);
-          await Share.share({ message: text });
-          onShare?.();
-          void recordShare();
-        }
-      }
-    } catch (error) {
-      console.log("[Share] Error sharing result:", error);
-    }
-  }, [data, onShare]);
 
   const handleSaveToGallery = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -131,19 +103,7 @@ export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
         )}
       </ViewShot>
 
-      {/* Share Actions */}
-      <View className="flex-row justify-center mt-4 space-x-4">
-        <Pressable
-          onPress={handleShare}
-          className="flex-row items-center px-6 py-3 rounded-xl"
-          style={{ backgroundColor: "#D4AF37" }}
-        >
-          <Ionicons name="share-outline" size={20} color="#1a1f16" />
-          <Text className="font-bold ml-2" style={{ color: "#1a1f16" }}>
-            Share
-          </Text>
-        </Pressable>
-
+      <View className="flex-row justify-center mt-4">
         <Pressable
           onPress={handleSaveToGallery}
           className="flex-row items-center px-6 py-3 rounded-xl"
@@ -201,7 +161,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
             backgroundColor: isShoot ? "#166534" : "#dc2626",
           }}
         >
-          <Text className="text-white font-black text-lg">{data.decision}</Text>
+          <Text className="text-white font-black text-lg">{data.call || data.decision}</Text>
         </View>
       </View>
 
@@ -213,12 +173,16 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               {formatAgeClass(data.ageRange || data.ageEstimate)}
             </Text>
             <Text className="text-sm" style={{ color: "#8B7355" }}>
-              Age class
+              {/[–-]/.test(formatAgeClass(data.ageRange || data.ageEstimate)) ? "Age range" : "Age class"}
             </Text>
             {data.call ? (
-              <Text className="text-base font-bold mt-1" style={{ color: "#bbf7d0" }}>{data.call}</Text>
+              <Text className="text-base font-bold mt-1" style={{ color: "#D4AF37" }}>{data.call}</Text>
+            ) : null}
+            {typeof data.leaseMinimum === "number" ? (
+              <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>Lease minimum {data.leaseMinimum}</Text>
             ) : null}
           </View>
+          {data.confidence > 0 ? (
           <View className="items-end">
             <Text className="text-xl font-bold" style={{ color: "#D4AF37" }}>
               {data.confidence}%
@@ -227,6 +191,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
               Confidence
             </Text>
           </View>
+          ) : null}
         </View>
 
         {(data.topCues ?? []).slice(0, 3).map((cue) => (
@@ -337,7 +302,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
 const BrandingWatermark: React.FC = () => {
   return (
     <View className="flex-row items-center justify-center pt-2 border-t border-white/10">
-      <Text style={{ fontSize: 14 }}>🦌</Text>
+      <DeerMark size={22} />
       <Text className="text-xs ml-1" style={{ color: "#8B7355" }}>
         Aged with DeerAge
       </Text>
@@ -348,14 +313,6 @@ const BrandingWatermark: React.FC = () => {
 // ============================================================================
 // HELPERS
 // ============================================================================
-
-const getShareText = (data: ShareableResultData): string => {
-  if (data.type === "age") {
-    return `DeerAge\n\nAge class: ${formatAgeClass(data.ageRange || data.ageEstimate)}\n${data.call ? data.call + "\n" : ""}Confidence: ${data.confidence}%\n\nAged with DeerAge`;
-  }
-
-  return `🦌 DeerAge B&C Score\n\n${data.pointCount} Points\nNet Score: ${data.netScore.toFixed(1)}"\nGross Score: ${data.grossScore.toFixed(1)}"\nCategory: ${data.category}\n${data.meetsMinimum ? "✓ Meets B&C Minimum!" : ""}\n\nKnow before you pull the trigger.\nPowered by RackScore™ AI`;
-};
 
 // ============================================================================
 // MINI SHARE BADGE (for inline sharing)

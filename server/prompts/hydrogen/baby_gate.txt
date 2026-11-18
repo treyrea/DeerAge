@@ -1,0 +1,11 @@
+Look only at this deer. Answer two age-free factual yes/no checks. Do not name an age, do not guess an age, and do not use a chart.
+
+For each check, answer YES only if it is clearly true. If you are unsure, the feature is only partly visible, or the sign is mixed, answer NO. Give one short reason for each check.
+
+(1) THIN BODY: is the body clearly slender/thin for a buck (lean chest, thin neck clearly distinct from the shoulders, legs look long for the body)?
+(2) BABY FACE: does the head look young (short, narrow, doe-like snout, ears look large relative to the head)?
+
+Then set GATE to BABY only if BOTH checks are clearly YES. Otherwise set GATE to NOT_BABY.
+
+Output JSON only, in this exact shape:
+{"thin_body":"YES or NO","thin_body_reason":"...","baby_face":"YES or NO","baby_face_reason":"...","gate":"BABY or NOT_BABY"}

@@ -3,18 +3,22 @@
  * Includes distance capture settings and rangefinder integration scaffold
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, Platform, Linking, Switch } from "react-native";
+import Constants from "expo-constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useDistanceStore } from "../state/distanceStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
-import { FREE_LIFETIME_ANALYSES } from "../lib/products";
+import { allowanceLine } from "../lib/products";
+import { refreshScanCredits, restoreScanPacks } from "../api/scan-credits";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
+import { CommunitySettings } from "../components/CommunitySettings";
+import { loadMessages } from "../api/call-report";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
 
@@ -62,7 +66,9 @@ export const SettingsScreen = () => {
 
   const planLabel = useSubscriptionStore((s) => s.planLabel);
   const entitled = useSubscriptionStore((s) => s.entitled);
+  const lapsed = useSubscriptionStore((s) => s.lapsed);
   const remainingFree = useSubscriptionStore((s) => s.remainingFree());
+  const scanCredits = useSubscriptionStore((s) => s.scanCredits);
   const restore = useSubscriptionStore((s) => s.restore);
   const profile = useHunterProfile();
   const isPro = entitled;
@@ -70,6 +76,18 @@ export const SettingsScreen = () => {
 
   const [minimumAge, setMinimumAge] = useState(propertyRules.minimumShooterAge.toString());
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const [managerName, setManagerName] = useState(profile.leaseManagerName);
+  const [managerPhone, setManagerPhone] = useState(profile.leaseManagerPhone);
+  const [unreadReplies, setUnreadReplies] = useState(0);
+  const [replyCount, setReplyCount] = useState(0);
+
+  useFocusEffect(useCallback(() => {
+    void refreshScanCredits();
+    void loadMessages().then((loaded) => {
+      setUnreadReplies(loaded.unread);
+      setReplyCount(loaded.messages.length);
+    });
+  }, []));
 
   const handleSave = () => {
     const ageValue = parseFloat(minimumAge);
@@ -81,11 +99,11 @@ export const SettingsScreen = () => {
   };
 
   const presetAges = [
-    { label: "1.5 years (Young)", value: 1.5 },
-    { label: "2.5 years (Immature)", value: 2.5 },
-    { label: "3.5 years (Mature)", value: 3.5 },
-    { label: "4.5 years (Prime)", value: 4.5 },
-    { label: "5.5+ years (Trophy)", value: 5.5 },
+    { label: "1.5 years", value: 1.5 },
+    { label: "2.5 years", value: 2.5 },
+    { label: "3.5 years", value: 3.5 },
+    { label: "4.5 years", value: 4.5 },
+    { label: "5.5 years", value: 5.5 },
   ];
 
   return (
@@ -93,9 +111,11 @@ export const SettingsScreen = () => {
       {/* Header */}
       <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
-            <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
-          </Pressable>
+          {navigation.canGoBack() ? (
+            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+              <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
+            </Pressable>
+          ) : <View className="w-10" />}
           <View className="flex-1 items-center">
             <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
               Settings
@@ -110,6 +130,22 @@ export const SettingsScreen = () => {
 
       <ScrollView className="flex-1">
         <View className="px-6 py-6">
+          {replyCount > 0 ? (
+            <Pressable
+              onPress={() => navigation.navigate("Messages")}
+              className="rounded-2xl p-4 mb-6 flex-row items-center justify-between"
+              style={{ backgroundColor: "#3D4A2F" }}
+            >
+              <Text className="text-base font-bold" style={{ color: "#F5F5DC" }}>Messages from DeerAge</Text>
+              {unreadReplies > 0 ? (
+                <View style={{ minWidth: 24, height: 24, borderRadius: 12, backgroundColor: "#D4AF37", alignItems: "center", justifyContent: "center", paddingHorizontal: 6 }}>
+                  <Text style={{ color: "#1a1f16", fontWeight: "800" }}>{unreadReplies}</Text>
+                </View>
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color="#D4AF37" />
+              )}
+            </Pressable>
+          ) : null}
           {/* Subscription Status Section */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: isPro ? "#166534" : "#3D4A2F", borderWidth: isPro ? 2 : 0, borderColor: "#D4AF37" }}>
             <View className="flex-row items-center mb-4">
@@ -137,13 +173,16 @@ export const SettingsScreen = () => {
                 <Text className="text-sm mt-1" style={{ color: isPro ? "#bbf7d0" : "#E5D4B8" }}>
                   {isPro
                     ? `${fairUsePerDay} analyses a day. The fair-use cap resets tomorrow.`
-                    : `${remainingFree} of ${FREE_LIFETIME_ANALYSES} free analyses left`}
+                    : allowanceLine(remainingFree, scanCredits)}
                 </Text>
               </View>
             </View>
 
+            <Text className="text-sm mb-1" style={{ color: "#E5D4B8" }}>
+              {profile.completed ? `Home: ${profile.stateName}${profile.ecoregion ? ` · ${profile.ecoregion}` : ""}` : "Home region not set"}
+            </Text>
             <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-              {profile.completed ? `${profile.stateName} · ${profile.ecoregion}` : "Hunting profile not set"}
+              {profile.huntDay ? `Last hunt region: ${profile.huntLabel || profile.huntStateName}` : "Hunt region is confirmed on the first scan of the day."}
             </Text>
 
             <Pressable
@@ -151,12 +190,42 @@ export const SettingsScreen = () => {
               className="rounded-xl py-3 items-center mb-3"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
             >
-              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit hunting profile</Text>
+              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit home region</Text>
+            </Pressable>
+
+            <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>LEASE MANAGER</Text>
+            <Text className="text-sm mb-3" style={{ color: "#E5D4B8" }}>
+              Optional. Saved on this phone only. DeerAge does not read your contacts and does not send the text.
+            </Text>
+            <TextInput
+              value={managerName}
+              onChangeText={setManagerName}
+              placeholder="Name"
+              placeholderTextColor="#8B7355"
+              className="rounded-lg p-4 mb-2"
+              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+            />
+            <TextInput
+              value={managerPhone}
+              onChangeText={setManagerPhone}
+              placeholder="Phone number"
+              placeholderTextColor="#8B7355"
+              keyboardType="phone-pad"
+              className="rounded-lg p-4 mb-3"
+              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+            />
+            <Pressable
+              onPress={() => useHunterProfile.getState().setLeaseManager(managerName, managerPhone)}
+              className="rounded-xl py-3 items-center mb-3"
+              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+            >
+              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Save lease manager</Text>
             </Pressable>
 
             <Pressable
               onPress={() => {
                 void restore();
+                void restoreScanPacks();
               }}
               className="rounded-xl py-3 items-center mb-3"
               style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
@@ -181,22 +250,24 @@ export const SettingsScreen = () => {
                   </Text>
                 </View>
               </Pressable>
-            ) : (
+            ) : null}
+            {isPro || lapsed ? (
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  // Navigate to Home tab, then to TierPaywall
-                  navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "manage" } });
+                  navigation.navigate("ManageSubscription");
                 }}
                 className="rounded-xl py-3 items-center"
-                style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                style={{ backgroundColor: "rgba(255,255,255,0.15)", marginTop: isPro ? 0 : 12 }}
               >
                 <Text className="text-sm font-semibold" style={{ color: "#bbf7d0" }}>
-                  Manage Subscription
+                  Manage subscription
                 </Text>
               </Pressable>
-            )}
+            ) : null}
           </View>
+
+          <CommunitySettings />
 
           {/* Property Rules Section */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
@@ -208,8 +279,7 @@ export const SettingsScreen = () => {
                 MINIMUM SHOOTER AGE
               </Text>
               <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-                Set the minimum age threshold for harvest decisions. Bucks below this age will be
-                marked as &quot;LET WALK&quot; to encourage population management.
+                This is your lease minimum. A buck read under it is LET WALK. Shooting under the lease age can mean a fine or a lost membership. A pre-shot record keeps the minimum that was set when you scanned.
               </Text>
 
               {/* Quick Presets */}
@@ -293,7 +363,7 @@ export const SettingsScreen = () => {
                 Minimum Shooter Age: {propertyRules.minimumShooterAge} years
               </Text>
               <Text className="text-sm mt-2" style={{ color: "#E5D4B8" }}>
-                Deer estimated below this age will be marked as &quot;LET WALK&quot; in the Age My Deer analysis.
+                Under this age the call is LET WALK. Quick Check, Age, and History all use this number.
               </Text>
             </View>
           </View>
@@ -461,7 +531,7 @@ export const SettingsScreen = () => {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               const subject = encodeURIComponent("DeerAge Feedback");
-              const body = encodeURIComponent("\n\n---\nApp Version: 1.0\nPlatform: " + Platform.OS);
+              const body = encodeURIComponent(`\n\n---\nApp Version: ${Constants.expoConfig?.version ?? "1.0.9"}\nPlatform: ${Platform.OS}`);
               Linking.openURL(`mailto:treyrea@gmail.com?subject=${subject}&body=${body}`);
             }}
             className="rounded-2xl p-4 mb-6 flex-row items-center"
@@ -474,7 +544,7 @@ export const SettingsScreen = () => {
 
           {/* Footer */}
           <Text className="text-center text-xs mb-6" style={{ color: "#8B7355" }}>
-            DeerAge v1.0{"\n"}
+            DeerAge v{Constants.expoConfig?.version ?? "1.0.9"}{"\n"}
             Powered by RackScore™ AI
           </Text>
         </View>

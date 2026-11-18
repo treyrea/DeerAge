@@ -1,0 +1,109 @@
+appId: com.vibecode.deerage-qj3cfq
+---
+- launchApp:
+    permissions:
+      camera: allow
+      photos: allow
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
+    timeout: 40000
+    visibilityPercentage: 40
+- tapOn: ".*Age My Deer.*"
+- extendedWaitUntil:
+    visible:
+      id: mode-back
+    timeout: 15000
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          id: mode-back
+      - scrollUntilVisible:
+          element:
+            text: ".*Age My Deer.*"
+          direction: DOWN
+          timeout: 15000
+          visibilityPercentage: 40
+      - tapOn: ".*Age My Deer.*"
+      - extendedWaitUntil:
+          visible:
+            id: mode-back
+          timeout: 15000
+- takeScreenshot: rapid-scan
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
+    timeout: 30000
+    visibilityPercentage: 40
+- takeScreenshot: relaunch
+- tapOn:
+    id: mode-back
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: e2e-paywall
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
+- tapOn:
+    id: e2e-paywall
+- extendedWaitUntil:
+    visible: ".*Continue with Season Pass.*"
+    timeout: 15000
+- repeat:
+    times: 5
+    commands:
+      - tapOn: ".*Continue with Season Pass.*"
+- takeScreenshot: rapid-buy
+- tapOn:
+    id: paywall-close
+- scrollUntilVisible:
+    element:
+      id: e2e-fail
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
+- tapOn:
+    id: e2e-fail
+- extendedWaitUntil:
+    visible: "ANALYSIS FAILED"
+    timeout: 15000
+- takeScreenshot: analysis-failed
+- tapOn: "Back to Home"
+- launchApp:
+    permissions:
+      camera: deny
+      photos: deny
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
+    timeout: 40000
+    visibilityPercentage: 40
+- tapOn: ".*Age My Deer.*"
+- extendedWaitUntil:
+    visible: ".*Take Photo.*"
+    timeout: 15000
+- tapOn: ".*Take Photo.*"
+- extendedWaitUntil:
+    visible: "Camera permission required"
+    timeout: 15000
+- takeScreenshot: camera-denied
+- tapOn:
+    id: camera-close
+- tapOn: ".*Upload Photo.*"
+- extendedWaitUntil:
+    visible: ".*Open Gallery.*"
+    timeout: 15000
+- tapOn: ".*Open Gallery.*"
+- extendedWaitUntil:
+    visible: "Sorry, we need camera roll permissions to upload photos!"
+    timeout: 15000
+- takeScreenshot: photos-denied
+- tapOn: "OK"

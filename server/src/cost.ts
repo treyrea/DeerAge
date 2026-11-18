@@ -34,8 +34,27 @@ export function outputUsdPerMillion(): number {
   return rate("OPENAI_OUTPUT_USD_PER_MILLION", 20);
 }
 
-export function costUsd(usage: TokenUsage): number {
-  return (usage.promptTokens * inputUsdPerMillion() + usage.completionTokens * outputUsdPerMillion()) / 1_000_000;
+export function geminiInputUsdPerMillion(): number {
+  return rate("GEMINI_INPUT_USD_PER_MILLION", 1.5);
+}
+
+export function geminiOutputUsdPerMillion(): number {
+  return rate("GEMINI_OUTPUT_USD_PER_MILLION", 7.5);
+}
+
+export function costUsd(usage: TokenUsage, rates?: { inputPerMillion?: number; outputPerMillion?: number }): number {
+  const input = rates?.inputPerMillion ?? inputUsdPerMillion();
+  const output = rates?.outputPerMillion ?? outputUsdPerMillion();
+  return (usage.promptTokens * input + usage.completionTokens * output) / 1_000_000;
+}
+
+/** Hold for one Hydrogen age photo: quality, gate, Step A, and up to four closers. */
+export function hydrogenReserveUsd(): number {
+  const usage = { promptTokens: 6 * 4000, completionTokens: 6 * 6000 };
+  return Math.max(costUsd(usage, {
+    inputPerMillion: geminiInputUsdPerMillion(),
+    outputPerMillion: geminiOutputUsdPerMillion(),
+  }), 0.000001);
 }
 
 /** High estimate used to hold a slot against the daily cap before the call returns. */

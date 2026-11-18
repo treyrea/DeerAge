@@ -1,0 +1,1 @@
+export const FAIR_LIMIT_NOTE = "Photo aging is an estimate. A jawbone or lab tooth age is the tiebreaker, and a lab tooth age is the strongest proof. If one proves us wrong, your next month is free.";

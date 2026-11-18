@@ -7,8 +7,17 @@ import { SplashScreen } from "./src/screens/SplashScreen";
 import { useState, useEffect } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { useNetworkStore } from "./src/state/networkStore";
+import { e2eEnabled, useE2eFlags } from "./src/e2e/flags";
 import { useSubscriptionStore } from "./src/state/subscriptionStore";
+import { refreshScanCredits } from "./src/api/scan-credits";
 import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
+import { CommunityPrompts, leafRouteName } from "./src/components/CommunityPrompts";
+import { UpdateGate } from "./src/components/UpdateGate";
+import { refreshRemoteConfig } from "./src/state/remoteConfig";
+import { useHunterProfile } from "./src/state/hunterProfile";
+import { useHarvestStore } from "./src/state/harvestStore";
+import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefresh } from "./src/lib/push";
+import { useCommunityStore } from "./src/state/communityStore";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -17,6 +26,7 @@ export default MainApp;
 
 function MainApp() {
   const [showSplash, setShowSplash] = useState(true);
+  const [routeName, setRouteName] = useState("");
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
   const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
@@ -25,6 +35,7 @@ function MainApp() {
   // Monitor network connectivity
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
+      if (e2eEnabled && useE2eFlags.getState().holdOffline) return;
       useNetworkStore.getState().setNetworkState(
         state.isConnected ?? false,
         state.isInternetReachable ?? null,
@@ -39,12 +50,43 @@ function MainApp() {
   useEffect(() => {
     // Read CustomerInfo only. Restore runs when the hunter taps Restore.
     void refreshEntitlement();
+    void refreshScanCredits();
 
     const unsubscribe = addCustomerInfoUpdateListener((customerInfo) => {
       applyCustomerInfo(customerInfo);
     });
 
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    void refreshRemoteConfig();
+    let noted = false;
+    const note = () => {
+      if (noted) return;
+      noted = true;
+      useHunterProfile.getState().noteSession();
+    };
+    if (useHunterProfile.persist.hasHydrated()) note();
+    const unsub = useHunterProfile.persist.onFinishHydration(note);
+    Object.values(useHarvestStore.getState().entries).filter((entry) => !entry.synced).forEach((entry) => {
+      useHarvestStore.getState().save(entry);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    configurePushHandling();
+    const refresh = () => {
+      void refreshPushRegistration();
+    };
+    if (useCommunityStore.persist.hasHydrated()) refresh();
+    const unsubHydration = useCommunityStore.persist.onFinishHydration(refresh);
+    const unsubToken = subscribePushTokenRefresh();
+    return () => {
+      unsubHydration();
+      unsubToken();
+    };
   }, []);
 
   if (showSplash) {
@@ -80,8 +122,10 @@ function MainApp() {
             </Text>
           </View>
         )}
-        <NavigationContainer>
+        <NavigationContainer onStateChange={(state) => setRouteName(leafRouteName(state))}>
           <RootNavigator />
+          <CommunityPrompts routeName={routeName} />
+          <UpdateGate />
           <StatusBar style="light" />
         </NavigationContainer>
       </SafeAreaProvider>

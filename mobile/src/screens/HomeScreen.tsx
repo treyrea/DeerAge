@@ -20,7 +20,14 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useHunterProfile } from "../state/hunterProfile";
+import { DeerMark } from "../components/DeerMark";
 import { UpdateAvailableBanner } from "../components/UpdateAvailableBanner";
+import { FeedHomeCard } from "../components/FeedHomeCard";
+import { E2ePanel } from "../e2e/E2ePanel";
+import { LegacyPlanCard } from "../components/LegacyPlanCard";
+import { WinBackPrompt } from "../components/WinBackPrompt";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { pendingHarvestCount, useHarvestStore } from "../state/harvestStore";
 import * as Haptics from "expo-haptics";
 
 // Custom rack ruler icon for Score My Rack
@@ -41,6 +48,11 @@ export const HomeScreen = () => {
   const canStartAnalysis = useSubscriptionStore((s) => s.canStartAnalysis);
   const onboardingDone = useHunterProfile((s) => s.completed);
   const profileHydrated = useHunterProfile((s) => s.hydrated);
+  const seasonalBanner = useRemoteConfig((s) => s.copy.seasonalBanner);
+  const homeTips = useRemoteConfig((s) => s.copy.homeTips);
+  const harvestOn = useRemoteConfig((s) => s.flags.harvestCheck);
+  const harvests = useHarvestStore((s) => s.entries);
+  const waitingHarvests = harvestOn ? pendingHarvestCount(harvests) : 0;
 
   useEffect(() => {
     if (profileHydrated && !onboardingDone) {
@@ -56,9 +68,29 @@ export const HomeScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <WinBackPrompt />
       <ScrollView>
         <View className="px-6 py-8">
           <UpdateAvailableBanner />
+          {seasonalBanner ? (
+            <View style={{ backgroundColor: "#3D4A2F", borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: "#D4AF37" }}>
+              <Text style={{ color: "#D4AF37", fontWeight: "700" }}>{seasonalBanner}</Text>
+            </View>
+          ) : null}
+          {waitingHarvests > 0 ? (
+            <Pressable
+              onPress={() => navigation.navigate("History")}
+              style={{ backgroundColor: "#3D4A2F", borderRadius: 14, padding: 14, marginBottom: 16 }}
+            >
+              <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>Add a jawbone age</Text>
+              <Text style={{ color: "#E5D4B8", marginTop: 4 }}>
+                {waitingHarvests === 1 ? "One harvest is waiting for a confirmed age." : `${waitingHarvests} harvests are waiting for a confirmed age.`}
+              </Text>
+            </Pressable>
+          ) : null}
+          <LegacyPlanCard />
+          <FeedHomeCard />
+          <E2ePanel />
           {/* Offline Alert Banner - Only show when offline */}
           {!isOnline && (
             <Pressable
@@ -105,6 +137,9 @@ export const HomeScreen = () => {
             <Text className="text-base mt-1" style={{ color: "#E5D4B8" }}>
               Know before you pull the trigger
             </Text>
+            {homeTips[0] ? (
+              <Text style={{ color: "#8B7355", fontSize: 13, marginTop: 8, textAlign: "center" }}>{homeTips[0]}</Text>
+            ) : null}
           </View>
 
           {/* QUICK CHECK - Hero Button */}
@@ -168,7 +203,7 @@ export const HomeScreen = () => {
               }}
             >
               <View className="w-14 h-14 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: "#3D4A2F" }}>
-                <Text style={{ fontSize: 28 }}>🦌</Text>
+                <DeerMark size={44} />
               </View>
               <View className="flex-1">
                 <Text className="text-white text-lg font-bold">Age My Deer</Text>

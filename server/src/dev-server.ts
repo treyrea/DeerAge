@@ -2,6 +2,7 @@ import http from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { route, type Incoming } from "./http.js";
+import { applyOutgoing } from "./respond.js";
 
 function loadEnv(file: string) {
   if (!existsSync(file)) return;
@@ -44,9 +45,7 @@ const server = http.createServer(async (req, res) => {
   };
   try {
     const result = await route(incoming);
-    res.statusCode = result.status;
-    res.setHeader("content-type", "application/json");
-    res.end(JSON.stringify(result.body));
+    applyOutgoing(res, result);
   } catch {
     res.statusCode = 500;
     res.setHeader("content-type", "application/json");

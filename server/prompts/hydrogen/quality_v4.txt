@@ -1,0 +1,35 @@
+Look only at this photo. Do not age the deer. Do not name an age. Answer these factual questions about whether the body can be judged from this photo. For each question, pick one label. If you are unsure, pick CANT_TELL and give a short reason.
+
+(1) VIEW_ANGLE — How is the body aimed at the camera?
+BROADSIDE: chest and rump are at about the same distance; the belly is a true side contour. A modest head turn is still BROADSIDE if the body itself is side-on.
+QUARTERING: the chest is clearly closer than the rump, or the rump is clearly closer than the chest, but a side-ish body contour is still visible (not just the chest or just the rump).
+HEAD_ON: the deer faces the camera and little or no side of the body is visible.
+REAR: the rump faces the camera, or the angle is a steep quartering-away that is almost rear, so the belly is not a side profile.
+CANT_TELL
+
+(2) STANDING_UPRIGHT — Is the deer on its feet with the body upright (not bedded or lying down)? YES, NO, or CANT_TELL. A deer standing with its head down to feed is still YES here if it is on its feet.
+
+(3) HEAD_POSITION
+UP: the head is up, or only slightly turned, so the neck and the neck-shoulder junction can be seen.
+SLIGHT_DIP: the head is only a little lowered, still near the height of the back and shoulders, and the muzzle is clearly off the ground.
+DOWN_FEEDING: use this if the muzzle is at or near the ground, a feeder, or a bait pan, or if the neck is stretched out horizontally or downward so the head is well below the back and shoulders. Use DOWN_FEEDING in those cases even if some of the neck, the neck-shoulder junction, or the back can still be seen. A feeder or bait pan visible in the frame is not enough by itself. A slight lowering of the muzzle while the head stays near back or shoulder height is SLIGHT_DIP or UP, not DOWN_FEEDING.
+CANT_TELL
+
+(4) BELLY_WAIST_VISIBLE — Can the waist and belly line be read, not hidden by grass, brush, a tree, a crop, a graphic box, or another deer? YES, NO, or CANT_TELL. Hidden hooves alone do not make this NO if the belly line itself is visible.
+
+(5) NECK_CHEST_VISIBLE — Are the neck and chest, including the neck-shoulder junction, visible and not blocked by a tree, brush, crop, or another deer? YES, NO, or CANT_TELL.
+
+(6) LEGS_JUDGEABLE — Is enough of the legs visible to judge length versus body depth? YES if the cannon bones and the belly line are visible even when the hooves are in grass. NO if the lower legs are cropped off the frame, or are buried in tall grass or brush so that length versus body depth cannot be judged. YES, NO, or CANT_TELL.
+
+(7) SUBJECT_SEPARABLE — Is there one deer that is clearly the subject? YES if it is the only deer, or if other deer are only at the edges and do not overlap this deer's back, loin, or belly. NO if another deer overlaps the body enough to hide the back, loin, or belly, or the subject cannot be told apart. YES, NO, or CANT_TELL.
+
+(8) DEER_LARGE_ENOUGH — Does the deer fill enough of the frame that the body contour can be read? YES if the body is large enough in the frame. NO if the deer is a tiny thumbnail, a small collage tile, or a distant speck. YES, NO, or CANT_TELL.
+
+(9) CONTOUR_READABLE — At a normal viewing size, can the belly, waist, neck-shoulder, and back be read? YES even on a night trail-camera or infrared photo if those lines are sharp enough to read. NO if the image is severely soft, dim, blown-out, or obscured so those lines cannot be read. A slightly soft photo is still YES if the contour is readable. YES, NO, or CANT_TELL.
+
+(10) LIGHTING — DAY, NIGHT_IR, NIGHT_OTHER, or CANT_TELL. Record only; do not treat night or infrared as a defect by itself.
+
+Output JSON only, in this exact shape:
+{"view_angle":"BROADSIDE or QUARTERING or HEAD_ON or REAR or CANT_TELL","view_angle_reason":"...","standing_upright":"YES or NO or CANT_TELL","standing_upright_reason":"...","head_position":"UP or SLIGHT_DIP or DOWN_FEEDING or CANT_TELL","head_position_reason":"...","belly_waist_visible":"YES or NO or CANT_TELL","belly_waist_visible_reason":"...","neck_chest_visible":"YES or NO or CANT_TELL","neck_chest_visible_reason":"...","legs_judgeable":"YES or NO or CANT_TELL","legs_judgeable_reason":"...","subject_separable":"YES or NO or CANT_TELL","subject_separable_reason":"...","deer_large_enough":"YES or NO or CANT_TELL","deer_large_enough_reason":"...","contour_readable":"YES or NO or CANT_TELL","contour_readable_reason":"...","lighting":"DAY or NIGHT_IR or NIGHT_OTHER or CANT_TELL","lighting_reason":"..."}
+
+Do not add a gate, an age, or a retake decision. Code will apply the rule.
