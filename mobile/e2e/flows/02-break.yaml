@@ -5,9 +5,9 @@ appId: com.vibecode.deerage-qj3cfq
       camera: allow
       photos: allow
 - extendedWaitUntil:
-    visible: "Age My Deer"
+    visible: ".*Age My Deer.*"
     timeout: 40000
-- tapOn: "Age My Deer"
+- tapOn: ".*Age My Deer.*"
 - extendedWaitUntil:
     visible:
       id: mode-back
@@ -17,7 +17,7 @@ appId: com.vibecode.deerage-qj3cfq
     commands:
       - tapOn:
           id: mode-back
-      - tapOn: "Age My Deer"
+      - tapOn: ".*Age My Deer.*"
       - extendedWaitUntil:
           visible:
             id: mode-back
@@ -27,7 +27,7 @@ appId: com.vibecode.deerage-qj3cfq
 - launchApp:
     stopApp: false
 - extendedWaitUntil:
-    visible: "Age My Deer"
+    visible: ".*Age My Deer.*"
     timeout: 30000
 - takeScreenshot: relaunch
 - tapOn:
@@ -36,12 +36,12 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn:
     id: e2e-paywall
 - extendedWaitUntil:
-    visible: "Continue with Season Pass"
+    visible: ".*Continue with Season Pass.*"
     timeout: 15000
 - repeat:
     times: 5
     commands:
-      - tapOn: "Continue with Season Pass"
+      - tapOn: ".*Continue with Season Pass.*"
 - takeScreenshot: rapid-buy
 - tapOn:
     id: paywall-close
@@ -57,23 +57,23 @@ appId: com.vibecode.deerage-qj3cfq
       camera: deny
       photos: deny
 - extendedWaitUntil:
-    visible: "Age My Deer"
+    visible: ".*Age My Deer.*"
     timeout: 40000
-- tapOn: "Age My Deer"
+- tapOn: ".*Age My Deer.*"
 - extendedWaitUntil:
-    visible: "Take Photo"
+    visible: ".*Take Photo.*"
     timeout: 15000
-- tapOn: "Take Photo"
+- tapOn: ".*Take Photo.*"
 - extendedWaitUntil:
     visible: "Camera permission required"
     timeout: 15000
 - takeScreenshot: camera-denied
 - back
-- tapOn: "Upload Photo"
+- tapOn: ".*Upload Photo.*"
 - extendedWaitUntil:
-    visible: "Open Gallery"
+    visible: ".*Open Gallery.*"
     timeout: 15000
-- tapOn: "Open Gallery"
+- tapOn: ".*Open Gallery.*"
 - extendedWaitUntil:
     visible: "Sorry, we need camera roll permissions to upload photos!"
     timeout: 15000

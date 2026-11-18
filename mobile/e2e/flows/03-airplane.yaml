@@ -2,12 +2,12 @@ appId: com.vibecode.deerage-qj3cfq
 ---
 - launchApp
 - extendedWaitUntil:
-    visible: "Age My Deer"
+    visible: ".*Age My Deer.*"
     timeout: 40000
 - takeScreenshot: status-bar-network
 - tapOn:
     id: e2e-offline
 - extendedWaitUntil:
-    visible: "No Signal"
+    visible: ".*No Signal.*"
     timeout: 10000
 - takeScreenshot: no-signal
