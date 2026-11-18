@@ -243,14 +243,14 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
               xcrun simctl install "$UDID" "$APP"
-              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1
@@ -391,14 +391,14 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
-            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
               xcrun simctl install "$UDID" "$APP"
-              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1
