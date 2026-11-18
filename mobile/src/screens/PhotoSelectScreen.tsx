@@ -19,6 +19,8 @@ import { DistancePicker } from "../components/DistancePicker";
 import { DistanceChip } from "../components/DistanceDisplay";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { e2eEnabled } from "../e2e/flags";
+import { seededPhotoUri } from "../e2e/seed-photo";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -95,11 +97,11 @@ export const PhotoSelectScreen = () => {
   };
 
   // Run the actual analysis
-  const runAnalysis = async () => {
-    if (!selectedImage) return;
+  const runAnalysis = async (imageUri = selectedImage) => {
+    if (!imageUri) return;
 
     try {
-      console.log("[PhotoSelect] Starting analysis for image:", selectedImage);
+      console.log("[PhotoSelect] Starting analysis for image:", imageUri);
 
       // Store pending distance if captured
       if (capturedDistance) {
@@ -113,7 +115,7 @@ export const PhotoSelectScreen = () => {
       // Create a single frame from the uploaded photo
       const frame: DeerAnalysisFrame = {
         frameIndex: 0,
-        imageUri: selectedImage,
+        imageUri,
         detectedAntlers: false, // Will be determined during analysis
         confidence: "Low",
         partialOcclusion: false,
@@ -252,6 +254,20 @@ export const PhotoSelectScreen = () => {
                 <Text className="text-white text-lg font-bold ml-2">Open Gallery</Text>
               </View>
             </Pressable>
+            {e2eEnabled ? (
+              <Pressable
+                testID="e2e-seed-photo"
+                onPress={() => {
+                  void seededPhotoUri().then((uri) => {
+                    setSelectedImage(uri);
+                    void runAnalysis(uri);
+                  });
+                }}
+                className="bg-neutral-800 rounded-xl py-4 px-8 items-center mt-4"
+              >
+                <Text className="text-white text-base font-semibold">Use seeded photo</Text>
+              </Pressable>
+            ) : null}
 
             {/* Info */}
             <View className="mt-12 mx-6">

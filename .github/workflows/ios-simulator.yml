@@ -52,7 +52,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v6-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
+          key: sim-app-v7-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
       - name: Install JS dependencies
         if: steps.sim-app.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -132,7 +132,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v6-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
+          key: sim-app-v7-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
       - name: Upload the simulator app
         if: success()
         uses: actions/upload-artifact@v4
@@ -243,12 +243,14 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
               xcrun simctl install "$UDID" "$APP"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1
@@ -389,12 +391,14 @@ jobs:
             echo "Device $NAME $UDID"
             boot_one "$UDID"
             xcrun simctl install "$UDID" "$APP"
+            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
               xcrun simctl install "$UDID" "$APP"
+              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/seed/deer.jpg"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1

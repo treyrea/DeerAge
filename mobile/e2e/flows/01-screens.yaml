@@ -1,5 +1,9 @@
 appId: com.vibecode.deerage-qj3cfq
+# Live camera capture is a manual TestFlight check. The simulator has no camera.
 ---
+- addMedia:
+    files:
+      - "../seed/deer.jpg"
 - launchApp:
     clearState: true
     permissions:
@@ -23,16 +27,22 @@ appId: com.vibecode.deerage-qj3cfq
     timeout: 20000
 - takeScreenshot: hunt-region
 - tapOn: "Yes"
+# Leave the camera screen if it opened. A missing camera must not stop the walkthrough.
 - extendedWaitUntil:
     visible:
       id: camera-close
     timeout: 20000
-- takeScreenshot: camera
+    optional: true
+- takeScreenshot: camera-unavailable
 - tapOn:
     id: camera-close
-- extendedWaitUntil:
-    visible: "Age My Deer"
-    timeout: 15000
+    optional: true
+- scrollUntilVisible:
+    element:
+      text: "Age My Deer"
+    direction: DOWN
+    timeout: 20000
+    visibilityPercentage: 60
 - takeScreenshot: home
 - tapOn: "Age My Deer"
 - extendedWaitUntil:
@@ -45,16 +55,10 @@ appId: com.vibecode.deerage-qj3cfq
     timeout: 15000
 - takeScreenshot: photo-library
 - tapOn:
-    id: photo-back
-- extendedWaitUntil:
-    visible:
-      id: e2e-age
-    timeout: 15000
-- tapOn:
-    id: e2e-age
+    id: e2e-seed-photo
 - extendedWaitUntil:
     visible: "4.5"
-    timeout: 15000
+    timeout: 30000
 - takeScreenshot: age-result
 - scrollUntilVisible:
     element:

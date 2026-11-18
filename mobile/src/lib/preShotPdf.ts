@@ -64,7 +64,7 @@ export async function sharePreShotRecord(localId: string): Promise<void> {
     <p>Your lease minimum at this moment: <strong>${escapeHtml(String(record.leaseMinimum))}</strong></p>
     ${record.huntLabel ? `<p>Aged against ${escapeHtml(record.huntLabel)} norms</p>` : ""}
     ${record.bodyOnlyAge != null ? `<p>Body-only read: ${escapeHtml(String(record.bodyOnlyAge))}. Main read: ${escapeHtml(String(record.mainAge ?? "n/a"))}. Fast read: ${escapeHtml(String(record.fastAge ?? "n/a"))}.</p>` : ""}
-    <p>Confidence: ${escapeHtml(String(record.confidence))}%</p>
+    ${record.confidence > 0 ? `<p>Confidence: ${escapeHtml(String(record.confidence))}%</p>` : ""}
     ${record.scoreLabel ? `<p>${escapeHtml(record.scoreLabel)}</p>` : ""}
     ${cues ? `<p style="margin-bottom:0">Why this age class</p><ul>${cues}</ul>` : ""}
     <p>Phone time: ${escapeHtml(when(record.deviceTime))}<br>Server receipt time: ${escapeHtml(when(record.serverTime))}</p>

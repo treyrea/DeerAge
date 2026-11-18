@@ -287,7 +287,8 @@ export const AgeResultScreen = () => {
               </Text>
             </View>
 
-            {/* Confidence */}
+            {/* Hydrogen does not return a confidence. A hardcoded 0 is not a read. */}
+            {explainableAge.overallConfidence > 0 ? (
             <View className="mb-4">
               <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>
                 Overall Confidence
@@ -307,6 +308,7 @@ export const AgeResultScreen = () => {
                 </Text>
               </View>
             </View>
+            ) : null}
 
             {shootOrPass ? null : (
             <View

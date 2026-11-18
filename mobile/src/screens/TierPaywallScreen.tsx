@@ -306,7 +306,7 @@ export const TierPaywallScreen = () => {
                 <Text style={{ color: "#F5F5DC", fontSize: 20, fontWeight: "800", marginTop: 2 }}>{summary.headline}</Text>
                 <Text style={{ color: "#E5D4B8", marginTop: 2 }}>
                   {summary.call}
-                  {typeof summary.confidence === "number" ? ` · ${summary.confidence}%` : ""}
+                  {typeof summary.confidence === "number" && summary.confidence > 0 ? ` · ${summary.confidence}%` : ""}
                 </Text>
               </View>
             </View>
