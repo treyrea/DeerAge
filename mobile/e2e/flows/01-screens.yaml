@@ -35,9 +35,12 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn:
     id: camera-close
     optional: true
-- extendedWaitUntil:
-    visible: ".*Age My Deer.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
     timeout: 20000
+    visibilityPercentage: 40
 - takeScreenshot: home
 - tapOn: ".*Age My Deer.*"
 - extendedWaitUntil:
@@ -68,6 +71,12 @@ appId: com.vibecode.deerage-qj3cfq
 - takeScreenshot: wrong-call
 - tapOn:
     id: age-close
+- scrollUntilVisible:
+    element:
+      id: e2e-range
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-range
 - extendedWaitUntil:
@@ -94,16 +103,24 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn: "Back to Home"
 - tapOn:
     id: e2e-paywall
-- extendedWaitUntil:
-    visible: ".*Season Pass.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Season Pass.*"
+    direction: DOWN
     timeout: 15000
+    visibilityPercentage: 40
 - assertVisible: ".*Monthly.*"
 - assertVisible: '.*\$39\.99.*'
 - assertVisible: '.*\$12\.99.*'
+- scrollUntilVisible:
+    element:
+      text: '.*\$7\.99.*'
+    direction: DOWN
+    timeout: 15000
+    visibilityPercentage: 40
 - assertVisible: ".*10 scans.*"
 - assertVisible: '.*\$2\.99.*'
 - assertVisible: ".*30 scans.*"
-- assertVisible: '.*\$7\.99.*'
 - takeScreenshot: paywall
 - tapOn:
     id: paywall-close

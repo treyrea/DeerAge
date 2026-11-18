@@ -4,9 +4,12 @@ appId: com.vibecode.deerage-qj3cfq
     permissions:
       camera: allow
       photos: allow
-- extendedWaitUntil:
-    visible: ".*Age My Deer.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
     timeout: 40000
+    visibilityPercentage: 40
 - tapOn: ".*Age My Deer.*"
 - extendedWaitUntil:
     visible:
@@ -17,6 +20,12 @@ appId: com.vibecode.deerage-qj3cfq
     commands:
       - tapOn:
           id: mode-back
+      - scrollUntilVisible:
+          element:
+            text: ".*Age My Deer.*"
+          direction: DOWN
+          timeout: 15000
+          visibilityPercentage: 40
       - tapOn: ".*Age My Deer.*"
       - extendedWaitUntil:
           visible:
@@ -26,13 +35,22 @@ appId: com.vibecode.deerage-qj3cfq
 - pressKey: Home
 - launchApp:
     stopApp: false
-- extendedWaitUntil:
-    visible: ".*Age My Deer.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
     timeout: 30000
+    visibilityPercentage: 40
 - takeScreenshot: relaunch
 - tapOn:
     id: mode-back
     optional: true
+- scrollUntilVisible:
+    element:
+      id: e2e-paywall
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-paywall
 - extendedWaitUntil:
@@ -45,6 +63,12 @@ appId: com.vibecode.deerage-qj3cfq
 - takeScreenshot: rapid-buy
 - tapOn:
     id: paywall-close
+- scrollUntilVisible:
+    element:
+      id: e2e-fail
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-fail
 - extendedWaitUntil:
@@ -56,9 +80,12 @@ appId: com.vibecode.deerage-qj3cfq
     permissions:
       camera: deny
       photos: deny
-- extendedWaitUntil:
-    visible: ".*Age My Deer.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
     timeout: 40000
+    visibilityPercentage: 40
 - tapOn: ".*Age My Deer.*"
 - extendedWaitUntil:
     visible: ".*Take Photo.*"

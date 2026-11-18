@@ -1,10 +1,19 @@
 appId: com.vibecode.deerage-qj3cfq
 ---
 - launchApp
-- extendedWaitUntil:
-    visible: ".*Age My Deer.*"
+- scrollUntilVisible:
+    element:
+      text: ".*Age My Deer.*"
+    direction: DOWN
     timeout: 40000
+    visibilityPercentage: 40
 - takeScreenshot: status-bar-network
+- scrollUntilVisible:
+    element:
+      id: e2e-offline
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-offline
 - extendedWaitUntil:
