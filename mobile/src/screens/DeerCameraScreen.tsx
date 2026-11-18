@@ -273,21 +273,39 @@ export const DeerCameraScreen = () => {
 
   if (!hasPermission) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">Camera permission required</Text>
-        <Text className="text-gray-400 text-sm mt-2 text-center px-8">
-          Please enable camera access to use the Deer Age scoring feature.
-        </Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">Camera permission required</Text>
+          <Text className="text-gray-400 text-sm mt-2 text-center px-8">
+            Please enable camera access to use the Deer Age scoring feature.
+          </Text>
+        </View>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">No camera available</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">No camera available</Text>
+        </View>
       </View>
     );
   }

@@ -115,24 +115,42 @@ export const QuickCheckCameraScreen = () => {
 
   if (!hasPermission) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">Camera permission required</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
-          onPress={requestPermission}
-          className="mt-4 bg-green-600 px-6 py-3 rounded-lg"
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
         >
-          <Text className="text-white font-semibold">Grant Permission</Text>
+          <Ionicons name="close" size={24} color="white" />
         </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">Camera permission required</Text>
+          <Pressable
+            onPress={requestPermission}
+            className="mt-4 bg-green-600 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-semibold">Grant Permission</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (!device) {
     return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Ionicons name="camera-outline" size={64} color="#666" />
-        <Text className="text-white text-lg mt-4">No camera available</Text>
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
+        <Pressable
+          testID="camera-close"
+          onPress={() => navigation.goBack()}
+          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+        <View className="flex-1 items-center justify-center">
+          <Ionicons name="camera-outline" size={64} color="#666" />
+          <Text className="text-white text-lg mt-4">No camera available</Text>
+        </View>
       </View>
     );
   }
