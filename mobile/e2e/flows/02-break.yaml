@@ -95,7 +95,8 @@ appId: com.vibecode.deerage-qj3cfq
     visible: "Camera permission required"
     timeout: 15000
 - takeScreenshot: camera-denied
-- back
+- tapOn:
+    id: camera-close
 - tapOn: ".*Upload Photo.*"
 - extendedWaitUntil:
     visible: ".*Open Gallery.*"

@@ -30,7 +30,19 @@ const ageResult = {
   imageQuality: "good",
 };
 
-const server = http.createServer((req, res) => {
+function drain(req) {
+  return new Promise((resolve) => {
+    req.on("data", () => {});
+    req.on("end", resolve);
+    req.on("error", resolve);
+  });
+}
+
+const server = http.createServer(async (req, res) => {
+  // Read the photo body before answering. A large POST otherwise fills the
+  // socket and the app waits until its 30s abort, still on the spinner.
+  if (req.method === "POST") await drain(req);
+  console.log(req.method, req.url);
   const url = new URL(req.url || "/", "http://127.0.0.1");
   if (req.method === "GET" && url.pathname === "/api/config") {
     return send(res, 200, {
