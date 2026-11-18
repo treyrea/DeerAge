@@ -1,8 +1,7 @@
 appId: com.vibecode.deerage-qj3cfq
 # Live camera capture is a manual TestFlight check. The simulator has no camera.
+# The photo is added with simctl before Maestro starts.
 ---
-- addMedia:
-    - "./deer.jpg"
 - launchApp:
     clearState: true
     permissions:

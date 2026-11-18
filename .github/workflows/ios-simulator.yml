@@ -47,12 +47,15 @@ jobs:
         with:
           path: mobile/ios-build
           key: derived-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json') }}
+      - name: Fingerprint the simulator app
+        id: simkey
+        run: echo "hash=${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}" >> "$GITHUB_OUTPUT"
       - name: Restore a previously built simulator app
         id: sim-app
         uses: actions/cache/restore@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v7-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
+          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
       - name: Install JS dependencies
         if: steps.sim-app.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -132,7 +135,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v7-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}
+          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
       - name: Upload the simulator app
         if: success()
         uses: actions/upload-artifact@v4
