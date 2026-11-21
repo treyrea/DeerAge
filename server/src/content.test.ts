@@ -287,6 +287,7 @@ describe("community endpoints", { concurrency: 1 }, () => {
     const saved = await route(request("PATCH", "/api/admin/config", {
       seasonalBanner: "The rut is on",
       paywallHeadline: "A season of reads",
+      verdictWalk: "LET HIM WALK",
       flags: { shootOrPass: false },
       homeTips: ["Broadside, whole body"],
     }, ADMIN));
@@ -296,6 +297,8 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(payload(config).minVersion, "1.0.8");
     assert.equal(payload(config).copy.seasonalBanner, "The rut is on");
     assert.equal(payload(config).copy.paywallHeadline, "A season of reads");
+    assert.equal(payload(config).copy.verdictWalk, "LET HIM WALK");
+    assert.equal(payload(config).copy.verdictTake, "");
     assert.equal(payload(config).flags.shootOrPass, false);
     assert.equal(payload(config).flags.feed, true);
   });

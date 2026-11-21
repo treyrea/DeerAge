@@ -59,6 +59,12 @@ export interface RemoteConfig {
     regionHeadsUp: string;
     leaseManagerText: string;
     leaseManagerButton: string;
+    /** Empty means the app uses its built-in verdict words. */
+    verdictTake: string;
+    verdictWalk: string;
+    verdictLook: string;
+    verdictNote: string;
+    setMinimumPrompt: string;
   };
   products: {
     offeringId: string;
@@ -105,6 +111,11 @@ export function defaultRemoteConfig(): RemoteConfig {
       regionHeadsUp: "",
       leaseManagerText: "",
       leaseManagerButton: "",
+      verdictTake: "",
+      verdictWalk: "",
+      verdictLook: "",
+      verdictNote: "",
+      setMinimumPrompt: "",
     },
     products: defaultProducts(),
     aging: defaultAgingConfig(),
@@ -131,6 +142,11 @@ function mergeConfig(stored: unknown): RemoteConfig {
     if (typeof incoming.regionHeadsUp === "string") copy.regionHeadsUp = incoming.regionHeadsUp.slice(0, 280);
     if (typeof incoming.leaseManagerText === "string") copy.leaseManagerText = incoming.leaseManagerText.slice(0, 500);
     if (typeof incoming.leaseManagerButton === "string") copy.leaseManagerButton = incoming.leaseManagerButton.slice(0, 80);
+    if (typeof incoming.verdictTake === "string") copy.verdictTake = incoming.verdictTake.slice(0, 24);
+    if (typeof incoming.verdictWalk === "string") copy.verdictWalk = incoming.verdictWalk.slice(0, 24);
+    if (typeof incoming.verdictLook === "string") copy.verdictLook = incoming.verdictLook.slice(0, 32);
+    if (typeof incoming.verdictNote === "string") copy.verdictNote = incoming.verdictNote.slice(0, 160);
+    if (typeof incoming.setMinimumPrompt === "string") copy.setMinimumPrompt = incoming.setMinimumPrompt.slice(0, 120);
     if (Array.isArray(incoming.homeTips)) {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
@@ -252,6 +268,11 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (body.regionHeadsUp != null) current.copy.regionHeadsUp = body.regionHeadsUp === "" ? "" : cleanText(body.regionHeadsUp, 280);
     if (body.leaseManagerText != null) current.copy.leaseManagerText = body.leaseManagerText === "" ? "" : cleanText(body.leaseManagerText, 500);
     if (body.leaseManagerButton != null) current.copy.leaseManagerButton = body.leaseManagerButton === "" ? "" : cleanText(body.leaseManagerButton, 80);
+    if (body.verdictTake != null) current.copy.verdictTake = body.verdictTake === "" ? "" : cleanText(body.verdictTake, 24);
+    if (body.verdictWalk != null) current.copy.verdictWalk = body.verdictWalk === "" ? "" : cleanText(body.verdictWalk, 24);
+    if (body.verdictLook != null) current.copy.verdictLook = body.verdictLook === "" ? "" : cleanText(body.verdictLook, 32);
+    if (body.verdictNote != null) current.copy.verdictNote = body.verdictNote === "" ? "" : cleanText(body.verdictNote, 160);
+    if (body.setMinimumPrompt != null) current.copy.setMinimumPrompt = body.setMinimumPrompt === "" ? "" : cleanText(body.setMinimumPrompt, 120);
     if (body.products && typeof body.products === "object") {
       const incoming = body.products as Record<string, unknown>;
       for (const name of ["offeringId", "seasonPassId", "monthlyId", "winBackOfferId"] as const) {
