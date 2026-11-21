@@ -115,6 +115,12 @@ appId: com.vibecode.deerage-qj3cfq
     timeout: 15000
 - takeScreenshot: retake
 - tapOn: "Back to Home"
+- scrollUntilVisible:
+    element:
+      id: e2e-paywall
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-paywall
 - scrollUntilVisible:
@@ -128,13 +134,20 @@ appId: com.vibecode.deerage-qj3cfq
 - assertVisible: '.*\$12\.99.*'
 - scrollUntilVisible:
     element:
-      text: '.*\$7\.99.*'
+      text: ".*10 scans.*"
     direction: DOWN
     timeout: 15000
     visibilityPercentage: 40
 - assertVisible: ".*10 scans.*"
 - assertVisible: '.*\$2\.99.*'
+- scrollUntilVisible:
+    element:
+      text: '.*\$7\.99.*'
+    direction: DOWN
+    timeout: 15000
+    visibilityPercentage: 40
 - assertVisible: ".*30 scans.*"
+- assertVisible: '.*\$7\.99.*'
 - takeScreenshot: paywall
 - tapOn:
     id: paywall-close
@@ -174,6 +187,12 @@ appId: com.vibecode.deerage-qj3cfq
 - takeScreenshot: settings-email
 - tapOn:
     text: "Home, tab.*"
+- scrollUntilVisible:
+    element:
+      id: e2e-update
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
 - tapOn:
     id: e2e-update
 - extendedWaitUntil:

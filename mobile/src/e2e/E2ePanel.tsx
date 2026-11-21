@@ -79,7 +79,11 @@ export const E2ePanel = () => {
             error: "Try a side-on shot so the chest, belly, and rump are all visible.",
             errorCode: "retake",
           });
-          navigation.navigate("Processing");
+          // Navigate after the age screen has reacted to the cleared result.
+          // Otherwise that screen replaces this route and the retake never shows.
+          requestAnimationFrame(() => {
+            navigation.navigate("Processing");
+          });
         }}
         style={row}
       >
@@ -119,7 +123,9 @@ export const E2ePanel = () => {
             error: "Analysis failed. Try again in a moment.",
             errorCode: "unknown",
           });
-          navigation.navigate("Processing");
+          requestAnimationFrame(() => {
+            navigation.navigate("Processing");
+          });
         }}
         style={row}
       >

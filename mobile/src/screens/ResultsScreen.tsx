@@ -125,7 +125,7 @@ export const ResultsScreen = () => {
 
   // Handle missing result - redirect to home
   useEffect(() => {
-    if (!currentResult) {
+    if (!currentResult && navigation.isFocused()) {
       navigation.replace("HomeMain");
     }
   }, [currentResult, navigation]);

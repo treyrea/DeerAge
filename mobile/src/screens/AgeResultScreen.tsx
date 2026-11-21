@@ -90,11 +90,12 @@ export const AgeResultScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
-  // Handle missing result
+  // Leave this screen only while it is the one on top. A sample retake clears
+  // the result and opens Processing. Replacing the route from a screen that
+  // is already covered sends that Processing screen back home.
   useEffect(() => {
-    if (!currentResult) {
-      navigation.replace("HomeMain");
-    }
+    if (currentResult || !navigation.isFocused()) return;
+    navigation.replace("HomeMain");
   }, [currentResult, navigation]);
 
   if (!currentResult || !currentResult.explainableAge) {
