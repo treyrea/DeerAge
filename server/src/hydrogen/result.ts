@@ -5,6 +5,7 @@
 
 import { classLabel, classStep, type FieldCall } from "../field-call.js";
 import { fillRangeNote } from "./aging.js";
+import { readCopy } from "./read-copy.js";
 
 export function hydrogenAgeBody(input: {
   low: number;
@@ -33,12 +34,19 @@ export function hydrogenAgeBody(input: {
       : below
         ? `${rangeSentence} Under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`
         : `${rangeSentence} Your minimum is ${minimumLabel}. Don't risk the fine.`;
-  const cue = input.hunterCue.trim();
   const why = input.reason.trim();
-  const cueBullets = [
-    ...(why ? [{ area: "Body", text: why.slice(0, 90) }] : []),
-    ...(cue ? [{ area: "Cue", text: cue.slice(0, 90) }] : []),
-  ];
+  const copy = readCopy(input.hunterCue, why);
+  // Reasons only. The look-for line stays in hunterCue so 1.0.9 does not
+  // print a second, cut-off copy of it under "WHY THIS AGE CLASS".
+  const cueBullets = copy.reasons.map((text) => ({ area: "Body", text }));
+  // When the only sentence is the look-for line, 1.0.9's detail section still
+  // needs one full cue or it shows a false "no body features" warning.
+  const detail = copy.reasons.length > 0 ? copy.reasons : copy.lookFor ? [copy.lookFor] : [];
+  const cues = detail.map((text) => ({
+    name: "chest_depth",
+    displayName: copy.reasons.length > 0 ? "Body" : "What to look for",
+    pattern: text,
+  }));
   return {
     ageYears: input.low,
     estimatedAgeYears: input.low,
@@ -46,7 +54,9 @@ export function hydrogenAgeBody(input: {
     estimatedAge: input.label,
     ageLabel: input.label,
     isRange: input.isRange,
-    hunterCue: cue,
+    hunterCue: copy.lookFor,
+    lookFor: copy.lookFor,
+    reasons: copy.reasons,
     ageReason: why,
     pipeline: "hydrogen",
     confidence: 0,
@@ -59,7 +69,8 @@ export function hydrogenAgeBody(input: {
     shooterPassLabel: fieldCall === "SHOOTER" ? "SHOOTER" : "LET WALK",
     shooterPassReason: fieldCallNote,
     cueBullets,
-    topCues: cue ? [cue] : [],
+    cues,
+    topCues: detail,
     visibleParts: [],
     betterAngle: "",
     decision: fieldCall === "SHOOTER" ? "SHOOT" : "LET WALK",
