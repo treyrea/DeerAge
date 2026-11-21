@@ -170,9 +170,6 @@ appId: com.vibecode.deerage-qj3cfq
 - takeScreenshot: messages
 - tapOn:
     id: messages-back
-# Back from Messages returns to Home. The push and email controls live on Settings.
-- tapOn:
-    text: "Settings, tab.*"
 - scrollUntilVisible:
     element:
       text: "Updates and polls"

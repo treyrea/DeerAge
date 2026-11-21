@@ -3,13 +3,14 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { answerRescan, deleteReportPhoto, loadMessages, markMessageRead, postCallReport, rescanReport, type DeerMessage } from "../api/call-report";
 import { SecondLookLink } from "../components/SecondLookLink";
 import { FAIR_LIMIT_NOTE } from "../lib/fair-limit";
 
 export const MessagesScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<{ SettingsMain: undefined }>>();
   const [messages, setMessages] = useState<DeerMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -60,7 +61,7 @@ export const MessagesScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Pressable testID="messages-back" onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable testID="messages-back" onPress={() => navigation.navigate("SettingsMain")} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Messages from DeerAge</Text>
