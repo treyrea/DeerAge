@@ -48,9 +48,9 @@ export function costUsd(usage: TokenUsage, rates?: { inputPerMillion?: number; o
   return (usage.promptTokens * input + usage.completionTokens * output) / 1_000_000;
 }
 
-/** Hold for one Hydrogen age photo: quality, gate, Step A, and up to four closers. */
+/** Hold for one Hydrogen age photo: walk (up to 6) plus the plain call and the cross-check. */
 export function hydrogenReserveUsd(): number {
-  const usage = { promptTokens: 6 * 4000, completionTokens: 6 * 6000 };
+  const usage = { promptTokens: 8 * 4000, completionTokens: 8 * 6000 };
   return Math.max(costUsd(usage, {
     inputPerMillion: geminiInputUsdPerMillion(),
     outputPerMillion: geminiOutputUsdPerMillion(),

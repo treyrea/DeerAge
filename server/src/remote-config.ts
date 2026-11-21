@@ -7,6 +7,15 @@ import { fairUsePerDay, fairUsePerMonth } from "./limits.js";
 import { allowBucket, ensureRedis, readJson, redisSet } from "./kv.js";
 import { FREE_LIFETIME_ANALYSES } from "./config.js";
 import {
+  CROSSCHECK_PROMPT_MAX,
+  defaultAgingConfig,
+  normalizeAging,
+  PLAIN_PROMPT_MAX,
+  RANGE_NOTE_MAX,
+  clampCallTimeout,
+  type AgingConfig,
+} from "./hydrogen/aging.js";
+import {
   ApiError,
   type Incoming,
   type Outgoing,
@@ -57,6 +66,7 @@ export interface RemoteConfig {
     monthlyId: string;
     winBackOfferId: string;
   };
+  aging: AgingConfig;
 }
 
 function productId(name: string, fallback: string): string {
@@ -97,6 +107,7 @@ export function defaultRemoteConfig(): RemoteConfig {
       leaseManagerButton: "",
     },
     products: defaultProducts(),
+    aging: defaultAgingConfig(),
   };
 }
 
@@ -138,6 +149,7 @@ function mergeConfig(stored: unknown): RemoteConfig {
     flags,
     copy,
     products,
+    aging: normalizeAging(row.aging),
   };
 }
 
@@ -173,6 +185,46 @@ function boolOf(value: unknown): boolean | undefined {
   if (value === "true") return true;
   if (value === "false") return false;
   return undefined;
+}
+
+function patchText(value: unknown, max: number, label: string): string {
+  if (typeof value !== "string") throw new ApiError(400, "invalid_request", `${label} must be text.`);
+  const text = value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim();
+  if (text.length > max) throw new ApiError(400, "invalid_request", `${label} is too long.`);
+  return text;
+}
+
+/** Applies an admin aging patch. Empty prompt strings clear back to the bundled files. */
+export function patchAging(current: AgingConfig, incoming: unknown): AgingConfig {
+  if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {
+    throw new ApiError(400, "invalid_request", "aging must be an object.");
+  }
+  const row = incoming as Record<string, unknown>;
+  const next: AgingConfig = { ...current };
+  if (row.router != null) {
+    if (row.router !== "c4nr" && row.router !== "off") {
+      throw new ApiError(400, "invalid_request", "aging.router must be c4nr or off.");
+    }
+    next.router = row.router;
+  }
+  if (row.crossCheck != null) {
+    const value = boolOf(row.crossCheck);
+    if (value == null) throw new ApiError(400, "invalid_request", "aging.crossCheck must be true or false.");
+    next.crossCheck = value;
+  }
+  if (row.plainPrompt != null) next.plainPrompt = patchText(row.plainPrompt, PLAIN_PROMPT_MAX, "aging.plainPrompt");
+  if (row.crossCheckPrompt != null) {
+    next.crossCheckPrompt = patchText(row.crossCheckPrompt, CROSSCHECK_PROMPT_MAX, "aging.crossCheckPrompt");
+  }
+  if (row.callTimeoutMs != null) next.callTimeoutMs = clampCallTimeout(row.callTimeoutMs);
+  if (row.rangeNote != null) {
+    const note = patchText(row.rangeNote, RANGE_NOTE_MAX, "aging.rangeNote");
+    if (note && !note.includes("{label}")) {
+      throw new ApiError(400, "invalid_request", "aging.rangeNote must include {label}.");
+    }
+    next.rangeNote = note || defaultAgingConfig().rangeNote;
+  }
+  return next;
 }
 
 export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing> {
@@ -211,6 +263,7 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (Array.isArray(body.homeTips)) {
       current.copy.homeTips = body.homeTips.filter((tip): tip is string => typeof tip === "string").map((tip) => tip.trim()).filter(Boolean).slice(0, 4);
     }
+    if (body.aging != null) current.aging = patchAging(current.aging, body.aging);
     await redisSet(KEY, JSON.stringify(current));
     return ok({ config: current });
   } catch (error) {

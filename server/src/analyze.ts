@@ -18,9 +18,11 @@ import { UpstreamError } from "./openai.js";
 import { issueRecord } from "./record.js";
 import { runAgeCall } from "./age-pipeline.js";
 import { geminiCaller } from "./hydrogen/gemini.js";
-import { walkHydrogen } from "./hydrogen/pipeline.js";
 import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
+import { ageWithRouter } from "./hydrogen/age-with-router.js";
+import { createScanBudget } from "./hydrogen/budget.js";
+import { loadRemoteConfig } from "./remote-config.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
@@ -358,11 +360,16 @@ async function finishJob(input: {
         provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
       });
       const started = Date.now();
+      const aging = (await loadRemoteConfig()).aging;
+      const budget = createScanBudget(aging.callTimeoutMs);
+      const caller = geminiCaller(input.images[0], input.usage, { timeoutMs: aging.callTimeoutMs, budget });
       const resolved = await resolveHydrogenAge({
         minimum: input.minimum,
+        rangeNote: aging.rangeNote,
+        backupOnStop: aging.router === "c4nr",
         circuitOpen: () => circuitOpen("gemini"),
         note: (ok) => circuitNote("gemini", ok),
-        primary: () => walkHydrogen(geminiCaller(input.images[0], input.usage)),
+        primary: () => ageWithRouter({ call: caller, settings: aging }),
         backup: async () => {
           const age = await runAgeCall(input.images[0], input.minimum);
           return age.result;

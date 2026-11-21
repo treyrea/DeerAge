@@ -20,7 +20,7 @@ export function backupRange(years: number): { low: number; high: number; label: 
   return { low, high, label: `${String(low)}–${highLabel}` };
 }
 
-export function backupAgeBody(result: Record<string, unknown>, minimum: number): Record<string, unknown> {
+export function backupAgeBody(result: Record<string, unknown>, minimum: number, rangeNote?: string): Record<string, unknown> {
   const years = Number(result.estimatedAgeYears ?? result.ageYears);
   if (!Number.isFinite(years) || years <= 0) {
     return { ...result, pipeline: "backup", backup: true };
@@ -34,6 +34,7 @@ export function backupAgeBody(result: Record<string, unknown>, minimum: number):
     hunterCue: "",
     reason: "The first model did not finish, so this is a range.",
     minimum,
+    rangeNote,
   });
   return { ...body, pipeline: "backup", backup: true };
 }
@@ -51,20 +52,33 @@ export async function resolveHydrogenAge(input: {
   circuitOpen: () => Promise<boolean>;
   note: (ok: boolean) => Promise<void>;
   log?: (event: Record<string, unknown>) => void;
+  rangeNote?: string;
+  /** C4nr: an unparsed walk with no plain age uses the gateway range. Off keeps today's error. */
+  backupOnStop?: boolean;
 }): Promise<AgeResolution> {
   const log = input.log ?? ((event) => {
     console.log(JSON.stringify(event));
   });
   if (await input.circuitOpen()) {
     log({ event: "provider_fallback", provider: "gemini", reason: "circuit_open" });
-    return fromBackup(input.backup, input.minimum, log);
+    return fromBackup(input.backup, input.minimum, log, input.rangeNote);
   }
   try {
     const outcome = await input.primary();
     await input.note(true);
     if (outcome.kind === "retake") return { kind: "retake", message: outcome.message };
-    if (outcome.kind !== "age") return { kind: "stop" };
-    return { kind: "age", backup: false, result: hydrogenAgeBody({ ...outcome, minimum: input.minimum }) };
+    if (outcome.kind === "age") {
+      return {
+        kind: "age",
+        backup: false,
+        result: hydrogenAgeBody({ ...outcome, minimum: input.minimum, rangeNote: input.rangeNote }),
+      };
+    }
+    if (input.backupOnStop) {
+      log({ event: "provider_fallback", provider: "gemini", reason: "walk_stop", detail: outcome.reason });
+      return fromBackup(input.backup, input.minimum, log, input.rangeNote);
+    }
+    return { kind: "stop" };
   } catch (error) {
     await input.note(false);
     const status = error && typeof error === "object" && "status" in error ? Number((error as { status: number }).status) : 0;
@@ -75,7 +89,7 @@ export async function resolveHydrogenAge(input: {
       reason: error instanceof Error ? error.name : "error",
     });
     log({ event: "provider_fallback", provider: "gemini", to: "gateway" });
-    return fromBackup(input.backup, input.minimum, log);
+    return fromBackup(input.backup, input.minimum, log, input.rangeNote);
   }
 }
 
@@ -83,12 +97,13 @@ async function fromBackup(
   backup: () => Promise<Record<string, unknown> | null>,
   minimum: number,
   log: (event: Record<string, unknown>) => void,
+  rangeNote?: string,
 ): Promise<AgeResolution> {
   try {
     const result = await backup();
     if (!result) return { kind: "fail" };
     log({ event: "provider_latency", provider: "gateway", backup: true });
-    return { kind: "age", backup: true, result: backupAgeBody(result, minimum) };
+    return { kind: "age", backup: true, result: backupAgeBody(result, minimum, rangeNote) };
   } catch (error) {
     log({
       event: "provider_error",
