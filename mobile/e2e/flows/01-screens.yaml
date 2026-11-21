@@ -170,6 +170,9 @@ appId: com.vibecode.deerage-qj3cfq
 - takeScreenshot: messages
 - tapOn:
     id: messages-back
+# Back from Messages returns to Home. The push and email controls live on Settings.
+- tapOn:
+    text: "Settings, tab.*"
 - scrollUntilVisible:
     element:
       text: "Updates and polls"
@@ -180,6 +183,13 @@ appId: com.vibecode.deerage-qj3cfq
 - scrollUntilVisible:
     element:
       text: "Rut-timing alerts"
+    direction: DOWN
+    timeout: 25000
+    visibilityPercentage: 40
+- assertVisible: "Rut-timing alerts"
+- scrollUntilVisible:
+    element:
+      text: "Send me alerts"
     direction: DOWN
     timeout: 25000
     visibilityPercentage: 40
