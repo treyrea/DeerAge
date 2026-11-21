@@ -10,10 +10,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import { agingEngineFor } from "../aging-switch.js";
+import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd } from "../cost.js";
+import { UpstreamError } from "../openai.js";
 import { hydrogenAgeBody } from "./result.js";
-import { geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
+import { ScanBudget, ScanDeadlineError } from "./budget.js";
+import { generateGeminiText, geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
 import { walkHydrogen, type ModelCaller } from "./pipeline.js";
-import { buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
+import { activeCrossCheckPrompt, activePlainPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
 import { RETAKE_MESSAGE_DEFAULT, RETAKE_MESSAGES, decideQuality, parseCloser, parseQuality } from "./rules.js";
 
 const HASHES: Record<string, string> = {
@@ -26,6 +29,8 @@ const HASHES: Record<string, string> = {
   "range_25_v4.txt": "c68c783970f80bea55da54e84fa264fb2167b6b8c4cc646f0c08829c4f886ec4",
   "bind.txt": "7f9a59f5bcc0b833d0a0cbafc6bd25d718bd1c6017f1786764dd917119e872fe",
   "season.txt": "96eaeeb5eae05b375c4b294952317d7cd69a1e973a4a605cd08e7c1ab1e9a388",
+  "plain_v1.txt": "a4a007949f83dd58623c22117078351b53de42f730297aaf59060799a933c574",
+  "crosscheck_v1.txt": "8f327978585a92b96283ac5c0c26da93c6cada4f46e912754f55a57c6ffb0063",
 };
 
 function sha(name: string): string {
@@ -73,6 +78,10 @@ test("prompt files match the tested hashes", () => {
   for (const [name, expect] of Object.entries(HASHES)) {
     assert.equal(sha(name), expect, name);
   }
+  assert.equal(createHash("sha256").update(activePlainPrompt()).digest("hex"), HASHES["plain_v1.txt"]);
+  assert.equal(createHash("sha256").update(activeCrossCheckPrompt()).digest("hex"), HASHES["crosscheck_v1.txt"]);
+  assert.equal(activePlainPrompt("How old is he?"), "How old is he?");
+  assert.equal(activeCrossCheckPrompt("  facts only  "), "facts only");
 });
 
 test("quality v5: legs and CANT_TELL do not retake; one fail uses its message", () => {
@@ -151,7 +160,7 @@ test("retake stops before the gate and shows the single-fail message", async () 
 test("baby gate stops at 1.5 and does not describe or compare", async () => {
   const script = scripted([quality(), gate("YES", "YES")]);
   const result = await walkHydrogen(script.call);
-  assert.deepEqual(result, { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "" });
+  assert.deepEqual(result, { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true });
   assert.equal(script.prompts.length, 2);
 });
 
@@ -264,17 +273,157 @@ test("a Hydrogen age becomes the 1.0.9 field call, and a straddling range stays 
   assert.equal(shooter.fieldCall, "SHOOTER");
   assert.equal(shooter.ageLabel, "4.5");
   assert.equal(shooter.meetsMinimumAge, true);
+  assert.equal(shooter.fieldCallNote, "Reads 4.5, at or above your lease minimum of 4.5. This is a field read from the photo, not a jawbone age.");
   const range = hydrogenAgeBody({ low: 4.5, high: 5.5, label: "4.5–5.5+", isRange: true, hunterCue: "A sag would age it up.", reason: "Short legs and a tight belly.", minimum: 4.5 });
   assert.equal(range.fieldCall, "SHOOTER");
+  assert.equal(range.ageLabel, "4.5–5.5+");
   assert.equal(range.hunterCue, "A sag would age it up.");
+  assert.match(String(range.fieldCallNote), /Reads 4\.5\u20135\.5\+: a 1-year range/);
+  assert.match(String(range.fieldCallNote), /At or above your lease minimum of 4\.5/);
   const split = hydrogenAgeBody({ low: 3.5, high: 4.5, label: "3.5–4.5", isRange: true, hunterCue: "", reason: "", minimum: 4.5 });
   assert.equal(split.fieldCall, "BORDERLINE");
   assert.equal(split.shooterPassLabel, "LET WALK");
+  assert.match(String(split.fieldCallNote), /1-year range/);
+  assert.match(String(split.fieldCallNote), /Don't risk the fine/);
+  const custom = hydrogenAgeBody({ low: 3.5, high: 4.5, label: "3.5–4.5", isRange: true, hunterCue: "", reason: "", minimum: 4.5, rangeNote: "Spread {label} only." });
+  assert.match(String(custom.fieldCallNote), /^Spread 3\.5\u20134\.5 only\./);
   const young = hydrogenAgeBody({ low: 2.5, high: 3.5, label: "2.5–3.5", isRange: true, hunterCue: "", reason: "", minimum: 4.5 });
   assert.equal(young.fieldCall, "LET WALK");
+  assert.match(String(young.fieldCallNote), /Under your lease minimum of 4\.5/);
   const baby = hydrogenAgeBody({ low: 1.5, high: 1.5, label: "1.5", isRange: false, hunterCue: "", reason: "", minimum: 3.5 });
   assert.equal(baby.fieldCall, "LET WALK");
   assert.equal(baby.ageClass, "1.5");
+});
+
+test("the hydrogen hold covers the walk plus the plain call and the cross-check", () => {
+  const usage = { promptTokens: 8 * 4000, completionTokens: 8 * 6000 };
+  const expected = Math.max(costUsd(usage, {
+    inputPerMillion: geminiInputUsdPerMillion(),
+    outputPerMillion: geminiOutputUsdPerMillion(),
+  }), 0.000001);
+  assert.equal(hydrogenReserveUsd(), expected);
+  if (geminiInputUsdPerMillion() === 1.5 && geminiOutputUsdPerMillion() === 7.5) {
+    assert.equal(Number(hydrogenReserveUsd().toFixed(3)), 0.408);
+  }
+});
+
+test("a call that cannot finish before the scan deadline is not started", async () => {
+  let fetches = 0;
+  await assert.rejects(
+    () => generateGeminiText({
+      key: "test-key",
+      prompt: "prompt",
+      imageBase64: "QUJD",
+      usage: emptyUsage(),
+      timeoutMs: 50,
+      budget: new ScanBudget(Date.now(), 50),
+      fetchImpl: (async () => {
+        fetches += 1;
+        return new Response("{}", { status: 200 });
+      }) as typeof fetch,
+    }),
+    ScanDeadlineError,
+  );
+  assert.equal(fetches, 0);
+});
+
+function scriptedFetch(steps: Array<"hang" | { status: number; text: string }>): { fetchImpl: typeof fetch; calls: () => number } {
+  let calls = 0;
+  const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+    const step = steps[Math.min(calls, steps.length - 1)];
+    calls += 1;
+    if (step === "hang") {
+      await new Promise((_resolve, reject) => {
+        const abort = () => {
+          const error = new Error("aborted");
+          error.name = "AbortError";
+          reject(error);
+        };
+        if (init?.signal?.aborted) abort();
+        else init?.signal?.addEventListener("abort", abort, { once: true });
+      });
+    }
+    const body = step === "hang" ? "" : JSON.stringify({
+      candidates: [{ content: { parts: [{ text: step.text }] } }],
+      usageMetadata: { promptTokenCount: 3, candidatesTokenCount: 2, thoughtsTokenCount: 1 },
+    });
+    return new Response(body, { status: step === "hang" ? 200 : step.status });
+  }) as typeof fetch;
+  return { fetchImpl, calls: () => calls };
+}
+
+function geminiInput(fetchImpl: typeof fetch, timeoutMs: number, accept?: (text: string) => boolean) {
+  return {
+    key: "test-key",
+    prompt: "prompt",
+    imageBase64: "QUJD",
+    usage: emptyUsage(),
+    timeoutMs,
+    budget: new ScanBudget(Date.now() + 60_000, timeoutMs),
+    fetchImpl,
+    accept,
+  };
+}
+
+test("gemini retries a timeout, 429, 500, or empty body once, and does not retry a 400", async () => {
+  const denied = scriptedFetch([{ status: 400, text: "no" }]);
+  await assert.rejects(() => generateGeminiText(geminiInput(denied.fetchImpl, 30)), (error: unknown) => error instanceof UpstreamError && error.status === 400);
+  assert.equal(denied.calls(), 1);
+
+  const busy = scriptedFetch([{ status: 429, text: "" }, { status: 200, text: "{\"closer\":\"OLDER\"}" }]);
+  assert.equal(await generateGeminiText(geminiInput(busy.fetchImpl, 30)), "{\"closer\":\"OLDER\"}");
+  assert.equal(busy.calls(), 2);
+
+  const down = scriptedFetch([{ status: 503, text: "" }, { status: 200, text: "ok" }]);
+  assert.equal(await generateGeminiText(geminiInput(down.fetchImpl, 30)), "ok");
+  assert.equal(down.calls(), 2);
+
+  const stillDown = scriptedFetch([{ status: 500, text: "" }, { status: 500, text: "" }]);
+  await assert.rejects(() => generateGeminiText(geminiInput(stillDown.fetchImpl, 30)), (error: unknown) => error instanceof UpstreamError && error.status === 500);
+  assert.equal(stillDown.calls(), 2);
+
+  const empty = scriptedFetch([{ status: 200, text: "  " }, { status: 200, text: "3.5-year-old" }]);
+  assert.equal(await generateGeminiText(geminiInput(empty.fetchImpl, 30)), "3.5-year-old");
+  assert.equal(empty.calls(), 2);
+
+  const unparsed = scriptedFetch([{ status: 200, text: "no age" }, { status: 200, text: "OLDER" }]);
+  const accepted = await generateGeminiText(geminiInput(unparsed.fetchImpl, 30, (text) => text === "OLDER"));
+  assert.equal(accepted, "OLDER");
+  assert.equal(unparsed.calls(), 2);
+
+  const timed = scriptedFetch(["hang", { status: 200, text: "back" }]);
+  assert.equal(await generateGeminiText(geminiInput(timed.fetchImpl, 40)), "back");
+  assert.equal(timed.calls(), 2);
+});
+
+test("a retry is skipped when it cannot finish before the deadline", async () => {
+  const timed = scriptedFetch(["hang", { status: 200, text: "late" }]);
+  const started = Date.now();
+  await assert.rejects(
+    () => generateGeminiText({
+      key: "test-key",
+      prompt: "prompt",
+      imageBase64: "QUJD",
+      usage: emptyUsage(),
+      timeoutMs: 80,
+      budget: new ScanBudget(started + 100, 80),
+      fetchImpl: timed.fetchImpl,
+    }),
+    (error: unknown) => error instanceof UpstreamError && error.status === 504,
+  );
+  assert.equal(timed.calls(), 1);
+});
+
+test("the walk does not start a call after the scan deadline", async () => {
+  let calls = 0;
+  const budget = new ScanBudget(0, 120_000, () => 0);
+  const call: ModelCaller = async () => {
+    if (!budget.canStart()) throw new ScanDeadlineError();
+    calls += 1;
+    return { text: "{}" };
+  };
+  await assert.rejects(() => walkHydrogen(call), ScanDeadlineError);
+  assert.equal(calls, 0);
 });
 
 test("clients older than 1.0.9 stay on the existing age path", () => {

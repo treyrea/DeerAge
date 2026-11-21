@@ -18,6 +18,8 @@ export interface HydrogenPromptSet {
   bind: string;
   season: string;
   chart: ChartPack;
+  plain: string;
+  crossCheck: string;
 }
 
 let cachedDir: string | null = null;
@@ -55,8 +57,23 @@ export function hydrogenPrompts(): HydrogenPromptSet {
     bind: readPrompt("bind.txt"),
     season: readPrompt("season.txt"),
     chart: JSON.parse(readPrompt("chart.json")) as ChartPack,
+    plain: readPrompt("plain_v1.txt"),
+    crossCheck: readPrompt("crosscheck_v1.txt"),
   };
   return cached;
+}
+
+/** A non-empty override replaces the bundled file for this scan. The file text is not trimmed. */
+export function activePlainPrompt(override?: string): string {
+  const custom = override?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim() ?? "";
+  if (custom) return custom;
+  return hydrogenPrompts().plain;
+}
+
+export function activeCrossCheckPrompt(override?: string): string {
+  const custom = override?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim() ?? "";
+  if (custom) return custom;
+  return hydrogenPrompts().crossCheck;
 }
 
 export function ageLabel(age: number, labels: Record<string, string>): string {

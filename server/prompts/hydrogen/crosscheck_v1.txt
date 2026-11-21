@@ -1,0 +1,24 @@
+Look only at this photo. Do not age the deer. Do not name an age. Ignore the neck for questions 1 to 5. Answer short factual questions about what you can see. For each question pick one label. If the part is hidden, cropped, blurred or you are unsure, pick CANT_TELL. Give a short reason for each.
+
+BODY (do not use the neck for these):
+(1) LEGS_VS_CHEST — Compare the front leg from the bottom of the chest (brisket) down to the ground with the depth of the chest from the top of the shoulders (withers) down to the brisket. LEGS_LONGER (leg clearly longer than chest depth), ABOUT_EQUAL, LEGS_SHORTER (leg clearly shorter than chest depth), or CANT_TELL (lower legs hidden or cropped).
+(2) BELLY_LINE — From the front legs back to the hind legs, does the underline TUCK_UP (rises clearly toward the hind legs), stay STRAIGHT (level, about as deep as the chest all the way back), or SAG (hangs lower in the middle than the bottom of the chest)? TUCK_UP, STRAIGHT, SAG, or CANT_TELL.
+(3) BACK_LINE — Is the back LEVEL (straight from withers to hips) or SWAYED (clearly dips down behind the shoulders)? LEVEL, SWAYED, or CANT_TELL.
+(4) FRONT_VS_REAR — Compare the depth and bulk of the chest and shoulders with the hindquarters (hips and rump). FRONT_MUCH_HEAVIER (chest and shoulders clearly deeper and bulkier than the hindquarters), SIMILAR (front only a little heavier or about the same), or CANT_TELL.
+(5) BRISKET — Does the bottom of the chest hang clearly below the elbows as a low, heavy brisket? YES, NO, or CANT_TELL.
+
+PHOTO:
+(6) FACE_TO_CAMERA — Is the face pointed at the camera so both eyes are seen from the front? YES, NO, or CANT_TELL.
+(7) OBJECT_IN_FRONT — Is any part of the deer's chest, belly, flank, back, hips or rump hidden behind a tree trunk, post, branch or another deer? Do not count grass or brush around the legs or hooves. YES or NO. If YES, name the part.
+(8) OBJECT_ON_HEAD_NECK — Does a tree trunk, post or branch cross in front of the deer's neck, head or antlers? YES or NO.
+
+ANTLERS (answer CANT_TELL if no antlers or they cannot be seen):
+(9) SPREAD_VS_EARS — Compare the widest inside spread of the main beams with the tips of the ears. INSIDE (beams inside the ear tips), EVEN (about at the ear tips), OUTSIDE (clearly wider than the ear tips), or CANT_TELL.
+(10) POINTS_ONE_SIDE — The most points you can count on one antler, counting the beam tip and every tine at least about an inch long. A number from 1 to 8, or CANT_TELL.
+(11) BEAM_MASS — Compare the thickness of the antler base with the thickness of the deer's eye from front to back. THIN (base about as thick as the eye or thinner), MEDIUM, HEAVY (base clearly thicker than the eye, beams stay thick out to the tips), or CANT_TELL.
+(12) TINES_VS_EARS — Are the longest tines clearly longer than the ears? YES, NO, or CANT_TELL.
+
+Output JSON only, in this exact shape:
+{"legs_vs_chest":"...","legs_vs_chest_reason":"...","belly_line":"...","belly_line_reason":"...","back_line":"...","back_line_reason":"...","front_vs_rear":"...","front_vs_rear_reason":"...","brisket":"...","brisket_reason":"...","face_to_camera":"...","object_in_front":"...","object_in_front_part":"...","object_on_head_neck":"...","spread_vs_ears":"...","spread_vs_ears_reason":"...","points_one_side":"...","beam_mass":"...","beam_mass_reason":"...","tines_vs_ears":"..."}
+
+Do not add an age or a decision. Code will apply the rules.

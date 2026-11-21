@@ -1,0 +1,2539 @@
+{
+ "note": "Router C4nr fixtures from 51 stored answers (plain r1/r2 + real 1.0.10 run). Anonymized. Ages: 5.5 = 5.5+.",
+ "cases": [
+  {
+   "id": "c01",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck is best placed in the **2.5-year-old** age class (with a small po",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body characteristics, this buck appears to be **2.5 years old** (2½",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c02",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck is most likely in the **2.5-year-old** (2½ years) age class—or at",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck is best placed in the **2.5-year-old** age class (young adul",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c03",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on standard whitetail body-aging characteristics, this buck falls into the **3.5-year-old** age class (potentially",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the physical characteristics visible in the photo, this buck appears to be in the **3.5-year-old** age class (m",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "3.5–4.5"
+  },
+  {
+   "id": "c04",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck is in the **4.5 to 5.5+ y",
+    "parsed": [
+     4.5,
+     5.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck falls into the **4.5-year",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c05",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is best placed in the **4.5-year-old** age class (mature, lik",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck falls into the **3.5-year-old",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c06",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is **1.5 years old (a",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck is in the **1.5-year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c07",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    2.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this buck is in the **2.5-year-old** age ",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This buck is best classified as a **2.5-year-old** (with a slim chance of being ",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "1.5–2.5"
+  },
+  {
+   "id": "c08",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is best classified as **2.5 years old** (or within the **2.5–3.5 ",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is best classified as **2.5 years old** (with an outside possibil",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c09",
+   "ours_1_0_10": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck falls into the **3.5 to 4.5-y",
+    "parsed": [
+     3.5,
+     4.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck falls into the **4.5 to 5.5+ year old (fully mature)** age cl",
+    "parsed": [
+     4.5,
+     5.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "5.5+"
+  },
+  {
+   "id": "c10",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "This whitetail buck is in the **1.5-year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck is in the **1.5-year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c11",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is in the **2.5-year-old*",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body proportions and physical characteristics, this whitetail buck is in the **2.5-year-old** age class (a ",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c12",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics, this buck is best classified as a **2.5-year-",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5–3.5",
+     "lo": 2.5,
+     "hi": 3.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5–3.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the buck's physical characteristics, he appears to be in the **2.5-year",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5–3.5",
+     "lo": 2.5,
+     "hi": 3.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5–3.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "3.5"
+  },
+  {
+   "id": "c13",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    2.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **1.5-year-",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is **1.5 years old (a yearling)**.\n\nKey ",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5–2.5"
+  },
+  {
+   "id": "c14",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **3.5-year-",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the buck’s physical characteristics, it fits best in the **2.5-year-old",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c15",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck falls into the **2.5-year-old",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5–3.5",
+     "lo": 2.5,
+     "hi": 3.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5–3.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is in the **2.5-year-old** age class.\n\n#",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5–3.5",
+     "lo": 2.5,
+     "hi": 3.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5–3.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "3.5"
+  },
+  {
+   "id": "c16",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is in the **2.5-year-old** age class. \n\n",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is in the **2.5-year-old** (2½-year-old)",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c17",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics and proportions, this buck appears to be in the **3.5-year-old** age class (often refe",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This buck fits best in the **2.5-year-ol",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c18",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics visible in the image, this is a **mature buck**, falling in the **4.5 to 5.5+ year",
+    "parsed": [
+     4.5,
+     5.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the physical characteristics visible in the photo, this whitetail buck is in the **mature age class—specifically 4.5 to 5.5 years old** (most likely **",
+    "parsed": [
+     4.5,
+     5.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c19",
+   "ours_1_0_10": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics visible in the image, this whitetail buck is in the **4.5-year-old** age class (or",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck falls into the **Mature age class—specifically 5.5+ years old** (",
+    "parsed": [
+     5.5,
+     5.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "5.5+"
+  },
+  {
+   "id": "c20",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "This whitetail buck is in the **1.5-year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **1.5-year-",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c21",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "This buck is **1.5 years old** (a **year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **1.5-year-",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c22",
+   "ours_1_0_10": [
+    "retake"
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on body characteristics used to age whitetail deer on the hoof, this buck is in the **2.5-year-old** (2½-year-old)",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck falls into the **2.5-year-old** (2½ years) age class.\n\n### K",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "RETAKE"
+  },
+  {
+   "id": "c23",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    2.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    2.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body proportions and characteristics, this whitetail buck is best placed in the **1.5-year-old (yearling)**",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the body characteristics visible in this photo, this buck is best classified as **1.5 years old (a yearling)**—",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "1.5–2.5"
+  },
+  {
+   "id": "c24",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is best placed in the **3.5-year-old** (3½-year-old) age class.\n\n",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This buck is in the **2.5-year-old** (2½",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5–3.5",
+     "lo": 2.5,
+     "hi": 3.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5–3.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "3.5"
+  },
+  {
+   "id": "c25",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "This whitetail buck appears to be in the **3.5-year-old** age class.\n\n### Key Ch",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on body characteristics, this buck appears to be in the **3.5-year-old** a",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c26",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his physical characteristics, this buck falls into the **4.5-year-old**",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body proportions and physical characteristics, this buck is in the **4.5- to 5.5-year-old** age class (most",
+    "parsed": [
+     5.5,
+     5.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c27",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on body characteristics used by wildlife biologists to age whitetails \"on the hoof,\" this buck is most likely in the **3.5-year-old** age class (with an o",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is best placed in the **3.5-year-old** a",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "3.5–4.5"
+  },
+  {
+   "id": "c28",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on standard body-characteristic criteria for aging whitetail deer on the hoof, this buck falls into the **3.5- to 4.5-year-old** age class (most likely a ",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck is in the **4.5-year-old** ag",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5–5.5+",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c29",
+   "ours_1_0_10": [
+    "retake"
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "retake"
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this buck falls into the **1.5-year-old (year",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body proportions and physical characteristics, this buck falls into the **1.5 to 2.5-year-old** age class—m",
+    "parsed": [
+     1.5,
+     2.5
+    ],
+    "expected": {
+     "label": "1.5–2.5",
+     "lo": 1.5,
+     "hi": 2.5,
+     "is_range": true,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "expected_if_plain_failed": "RETAKE"
+  },
+  {
+   "id": "c30",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this buck appears to be in the **2.5-year",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this buck appears to be in the **2.5-year",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "3.5–4.5"
+  },
+  {
+   "id": "c31",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **1.5-year-",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is in the **1.5-year-old (yearling)** ag",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c32",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck falls into the **2.5- to 3.5-year-old** age class (young adult / ",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is best placed in the **2.5-year-old** a",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c33",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on standard \"aging on the hoof\" body characteristics, this buck is most likely in the **3.5-year-old** age class.\n",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is in the **3.5-year-old*",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c34",
+   "ours_1_0_10": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    3.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is best placed in the **3.5-year-old** age class (potentially",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on standard whitetail body characteristics (aging \"on the hoof\"), this buck falls into the **3.5-year-old** age cl",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5–4.5",
+     "lo": 3.5,
+     "hi": 4.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5–4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "3.5–4.5"
+  },
+  {
+   "id": "c35",
+   "ours_1_0_10": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    5.5,
+    5.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this buck appears to be in the **3.5-year-old",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this buck is most likely in the **3.5-year-ol",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "5.5+",
+     "lo": 5.5,
+     "hi": 5.5,
+     "is_range": false,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "5.5+",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "5.5+"
+  },
+  {
+   "id": "c36",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body morphology, this whitetail buck falls into the **4.5-year-old*",
+    "parsed": [
+     4.5,
+     4.5
+    ],
+    "expected": {
+     "label": "4.5",
+     "lo": 4.5,
+     "hi": 4.5,
+     "is_range": false,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M2_both_mature"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck is in the **Mature** age class—most likely **4.5 to 5.5 years old",
+    "parsed": [
+     4.5,
+     5.5
+    ],
+    "expected": {
+     "label": "4.5",
+     "lo": 4.5,
+     "hi": 4.5,
+     "is_range": false,
+     "branch": "M2_both_mature"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M2_both_mature"
+    }
+   },
+   "expected_if_plain_failed": "4.5"
+  },
+  {
+   "id": "c37",
+   "ours_1_0_10": [
+    "retake"
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck is in the **3.5-year-old** ag",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on his body characteristics, this buck is in the **2.5-year-old** age clas",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "RETAKE"
+  },
+  {
+   "id": "c38",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics visible in the image, this deer falls into the **fawn (0.5-year-old / under 1 year",
+    "parsed": [
+     0.5,
+     0.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "D2_far_apart_use_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "D2_far_apart_use_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the deer's physical characteristics, this whitetail buck is in the **Fawn (0.5 years / <1 year old)** age class",
+    "parsed": [
+     0.5,
+     0.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "D2_far_apart_use_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "D2_far_apart_use_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c39",
+   "ours_1_0_10": [
+    "retake"
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "retake"
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the buck's body characteristics, this deer is best placed in the **1.5-year-old (yearling)** age class (though ",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and antler characteristics, this buck is most likely in the **1.5-year-old (yearling)** ag",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "expected_if_plain_failed": "RETAKE"
+  },
+  {
+   "id": "c40",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    1.5,
+    1.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics visible in the image, this whitetail buck is in the **1.5-year-old (yearling)** ag",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck is a **1.5-year-old ",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5",
+     "lo": 1.5,
+     "hi": 1.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5"
+  },
+  {
+   "id": "c41",
+   "ours_1_0_10": [
+    "age",
+    1.5,
+    2.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    2.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the body characteristics visible in the image, this whitetail buck is most likely in the **2.5-year-old** age c",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is in the **2.5-year-old*",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "1.5–2.5"
+  },
+  {
+   "id": "c42",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the buck’s physical characteristics, he falls into the **2.5-year-old**",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This buck appears to be in the **2.5-year-old** age class (roughly 2½ years old)",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c43",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "This buck appears to be in the **2.5-year-old** (2½-year-old) age class.\n\n### Ke",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this buck appears to be in the **2.5-year-old** age class. \n",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c44",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body characteristics, this whitetail buck falls into the **3.5-year",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck is in the **2.5-year-",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c45",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics of this buck's body, it appears to be in the **3.5-year-old** age class.\n\n### Key ",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "This whitetail buck most likely falls into the **3.5-year-old** age class. \n\nHer",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c46",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is in the **2.5-year-old** age class (po",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on body characteristics, this whitetail buck is best placed in the **3.5-year-old** age class (potentially on the ",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "3.5",
+     "lo": 3.5,
+     "hi": 3.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "3.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c47",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    3.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on the physical characteristics visible, this whitetail buck is best classified in the **2.5-year-old** age class ",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is most likely in the **2.5-year-old** a",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "A1_plain_inside_ours"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "A1_plain_inside_ours"
+    }
+   },
+   "expected_if_plain_failed": "2.5–3.5"
+  },
+  {
+   "id": "c48",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on standard body-characteristic guidelines (such as those used by the National Deer Association), this buck appears to be in the **3.5-year-old** age clas",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "4.5",
+     "lo": 4.5,
+     "hi": 4.5,
+     "is_range": false,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck appears to be in the **3.5-year-old** age class (potentially **3.",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "4.5",
+     "lo": 4.5,
+     "hi": 4.5,
+     "is_range": false,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "4.5"
+  },
+  {
+   "id": "c49",
+   "ours_1_0_10": [
+    "age",
+    4.5,
+    5.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    4.5,
+    4.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body proportions and physical characteristics, this whitetail buck is best placed in the **2.5-year-old** a",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its physical characteristics, this whitetail buck falls into the **3.5-year-old** age class (with **2.5 to 3.5 ",
+    "parsed": [
+     3.5,
+     3.5
+    ],
+    "expected": {
+     "label": "4.5–5.5+",
+     "lo": 4.5,
+     "hi": 5.5,
+     "is_range": true,
+     "branch": "M1_ours_mature_plain_young"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "4.5",
+     "branch": "M1_ours_mature_plain_young"
+    }
+   },
+   "expected_if_plain_failed": "4.5–5.5+"
+  },
+  {
+   "id": "c50",
+   "ours_1_0_10": [
+    "retake"
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "retake"
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on his body proportions, this buck appears to be in the **2.5-year-old** a",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on its body proportions, this buck appears to be in the **2.5-year-old** a",
+    "parsed": [
+     2.5,
+     2.5
+    ],
+    "expected": {
+     "label": "2.5",
+     "lo": 2.5,
+     "hi": 2.5,
+     "is_range": false,
+     "branch": "R1_ours_retake_use_plain"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "2.5",
+     "branch": "R1_ours_retake_use_plain"
+    }
+   },
+   "expected_if_plain_failed": "RETAKE"
+  },
+  {
+   "id": "c51",
+   "ours_1_0_10": [
+    "age",
+    2.5,
+    2.5
+   ],
+   "ours_walk_only_no_R1_R5": [
+    "age",
+    2.5,
+    2.5
+   ],
+   "plain_r1": {
+    "text_excerpt": "Based on its body characteristics, this whitetail buck is in the **1.5-year-old ",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5–2.5",
+     "lo": 1.5,
+     "hi": 2.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "plain_r2": {
+    "text_excerpt": "Based on the body characteristics visible in this trail camera image, this buck belongs in the **1.5-year-old (yearling)",
+    "parsed": [
+     1.5,
+     1.5
+    ],
+    "expected": {
+     "label": "1.5–2.5",
+     "lo": 1.5,
+     "hi": 2.5,
+     "is_range": true,
+     "branch": "D1_one_class_apart_range"
+    },
+    "expected_if_crosscheck_failed": {
+     "label": "1.5–2.5",
+     "branch": "D1_one_class_apart_range"
+    }
+   },
+   "expected_if_plain_failed": "2.5"
+  }
+ ]
+}

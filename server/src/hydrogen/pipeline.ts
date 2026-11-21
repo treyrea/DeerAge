@@ -3,7 +3,7 @@
  *
  * Order, from the tested stack plus the quality check that now runs first:
  * 1. Photo quality (e5_quality_v4 prompt, e5_quality_v5 decision).
- * 2. Baby gate. BABY stops at 1.5.
+ * 2. Baby gate. BABY stops at 1.5 and is marked viaBabyGate so a later rule can widen it.
  * 3. Step A body description, binding on every closer.
  * 4. Closers top-down: 5.5 vs 4.5, 4.5 vs 3.5, 3.5 vs 2.5, 2.5 vs 1.5.
  *    OLDER accepts the older age. RANGE accepts that pair's honest range.
@@ -17,7 +17,8 @@ export interface ModelReply {
   text: string;
 }
 
-export type ModelCaller = (prompt: string) => Promise<ModelReply>;
+/** accept is false when the body is empty or unparsed, which asks the caller to retry once. */
+export type ModelCaller = (prompt: string, accept?: (text: string) => boolean) => Promise<ModelReply>;
 
 export type WalkResult =
   | { kind: "retake"; message: string; fails: string[] }
@@ -29,26 +30,28 @@ export type WalkResult =
       isRange: boolean;
       hunterCue: string;
       reason: string;
+      /** True only for the baby-gate yearling. R4a needs it. */
+      viaBabyGate?: boolean;
     }
   | { kind: "stop"; reason: string };
 
 export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
   const prompts = hydrogenPrompts();
 
-  const quality = parseQuality((await call(prompts.quality)).text);
+  const quality = parseQuality((await call(prompts.quality, (text) => parseQuality(text) != null)).text);
   if (!quality) return { kind: "stop", reason: "unparsed quality" };
   const photo = decideQuality(quality);
   if (photo.decision === "RETAKE") {
     return { kind: "retake", message: photo.retake_message, fails: photo.fails };
   }
 
-  const gate = parseGate((await call(prompts.babyGate)).text);
+  const gate = parseGate((await call(prompts.babyGate, (text) => parseGate(text) != null)).text);
   if (!gate) return { kind: "stop", reason: "unparsed baby gate" };
   if (gate === "BABY") {
-    return { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "" };
+    return { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true };
   }
 
-  const description = (await call(prompts.stepA)).text.trim();
+  const description = (await call(prompts.stepA, (text) => text.trim().length > 0)).text.trim();
   if (!description) return { kind: "stop", reason: "empty step A" };
 
   let final: [number, number] | null = null;
@@ -58,7 +61,11 @@ export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
 
   for (const [older, younger] of PAIRS) {
     const rangeOk = allowRange(younger, older);
-    const parsed = parseCloser((await call(buildCloserPrompt(younger, older, description))).text, rangeOk);
+    const closerText = (await call(buildCloserPrompt(younger, older, description), (text) => {
+      const named = parseCloser(text, true).closer;
+      return named === "YOUNGER" || named === "OLDER" || named === "RANGE";
+    })).text;
+    const parsed = parseCloser(closerText, rangeOk);
     if (rangeOk && !parsed.ok) {
       return { kind: "stop", reason: `unparsed ${younger} vs ${older}` };
     }

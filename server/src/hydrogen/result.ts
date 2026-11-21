@@ -4,6 +4,7 @@
  */
 
 import { classLabel, classStep, type FieldCall } from "../field-call.js";
+import { fillRangeNote } from "./aging.js";
 
 export function hydrogenAgeBody(input: {
   low: number;
@@ -13,17 +14,25 @@ export function hydrogenAgeBody(input: {
   hunterCue: string;
   reason: string;
   minimum: number;
+  rangeNote?: string;
 }): Record<string, unknown> {
   const leaseMinimum = classStep(input.minimum);
   const minimumLabel = classLabel(leaseMinimum);
   const above = input.low + 1e-9 >= leaseMinimum;
   const below = input.high + 1e-9 < leaseMinimum;
   const fieldCall: FieldCall = above ? "SHOOTER" : below ? "LET WALK" : "BORDERLINE";
-  const fieldCallNote = above
-    ? `Reads ${input.label}, at or above your lease minimum of ${minimumLabel}. This is a field read from the photo, not a jawbone age.`
-    : below
-      ? `Reads ${input.label}, under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`
-      : `Reads ${input.label}, and your minimum is ${minimumLabel}. Don't risk the fine.`;
+  const rangeSentence = input.isRange ? fillRangeNote(input.rangeNote, input.label) : "";
+  const fieldCallNote = !input.isRange
+    ? above
+      ? `Reads ${input.label}, at or above your lease minimum of ${minimumLabel}. This is a field read from the photo, not a jawbone age.`
+      : below
+        ? `Reads ${input.label}, under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`
+        : `Reads ${input.label}, and your minimum is ${minimumLabel}. Don't risk the fine.`
+    : above
+      ? `${rangeSentence} At or above your lease minimum of ${minimumLabel}. This is a field read from the photo, not a jawbone age.`
+      : below
+        ? `${rangeSentence} Under your lease minimum of ${minimumLabel}. Let him walk. This is a field read from the photo, not a jawbone age.`
+        : `${rangeSentence} Your minimum is ${minimumLabel}. Don't risk the fine.`;
   const cue = input.hunterCue.trim();
   const why = input.reason.trim();
   const cueBullets = [
