@@ -4,6 +4,7 @@ appId: com.vibecode.deerage-qj3cfq
     permissions:
       camera: allow
       photos: allow
+- runFlow: dismiss-location.yaml
 - scrollUntilVisible:
     element:
       text: ".*Age My Deer.*"
@@ -80,6 +81,7 @@ appId: com.vibecode.deerage-qj3cfq
     permissions:
       camera: deny
       photos: deny
+- runFlow: dismiss-location.yaml
 - scrollUntilVisible:
     element:
       text: ".*Age My Deer.*"

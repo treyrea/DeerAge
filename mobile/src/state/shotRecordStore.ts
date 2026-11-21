@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import Constants from "expo-constants";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { e2eEnabled } from "../e2e/flags";
 import { flagEnabled } from "./remoteConfig";
 import { useSubscriptionStore } from "./subscriptionStore";
 import type { ShotDraft, ShotRecord } from "../types/shot-record";
@@ -35,6 +36,9 @@ let permissionRequest: Promise<boolean> | null = null;
 
 /** Asks once. A decline, or a failure, still lets the record save. */
 export async function optionalStandLocation(): Promise<{ latitude: number; longitude: number } | null> {
+  // The simulator build declines here. The system sheet is modal, so Maestro
+  // cannot see the age underneath it. A decline already saves the record.
+  if (e2eEnabled) return null;
   const state = useShotRecordStore.getState();
   if (state.locationDenied) return null;
   try {

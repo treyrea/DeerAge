@@ -1,6 +1,7 @@
 appId: com.vibecode.deerage-qj3cfq
 ---
 - launchApp
+- runFlow: dismiss-location.yaml
 - scrollUntilVisible:
     element:
       text: ".*Age My Deer.*"

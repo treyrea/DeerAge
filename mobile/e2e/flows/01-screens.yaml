@@ -1,9 +1,10 @@
 appId: com.vibecode.deerage-qj3cfq
 # Live camera capture is a manual TestFlight check. The simulator has no camera.
 # The photo is added with simctl before Maestro starts.
+# The workflow installs a fresh app and denies location first. clearState would
+# reinstall again and put that permission back to "not determined".
 ---
 - launchApp:
-    clearState: true
     permissions:
       camera: allow
       photos: allow
@@ -66,6 +67,7 @@ appId: com.vibecode.deerage-qj3cfq
     visibilityPercentage: 40
 - tapOn:
     id: e2e-age
+- runFlow: dismiss-location.yaml
 - extendedWaitUntil:
     visible: "4.5"
     timeout: 15000

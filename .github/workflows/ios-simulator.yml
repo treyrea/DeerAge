@@ -49,13 +49,13 @@ jobs:
           key: derived-${{ runner.os }}-${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json') }}
       - name: Fingerprint the simulator app
         id: simkey
-        run: echo "hash=${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js') }}" >> "$GITHUB_OUTPUT"
+        run: echo "hash=${{ hashFiles('mobile/package-lock.json', 'mobile/app.json', 'mobile/eas.json', 'mobile/babel.config.js', 'mobile/metro.config.js', 'mobile/App.tsx', 'mobile/index.ts', 'mobile/global.css', 'mobile/tailwind.config.js', 'mobile/src/**/*.ts', 'mobile/src/**/*.tsx') }}" >> "$GITHUB_OUTPUT"
       - name: Restore a previously built simulator app
         id: sim-app
         uses: actions/cache/restore@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
+          key: sim-app-v9-${{ steps.simkey.outputs.hash }}
       - name: Install JS dependencies
         if: steps.sim-app.outputs.cache-hit != 'true'
         working-directory: mobile
@@ -135,7 +135,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: mobile/sim-dist
-          key: sim-app-v8-${{ steps.simkey.outputs.hash }}
+          key: sim-app-v9-${{ steps.simkey.outputs.hash }}
       - name: Upload the simulator app
         if: success()
         uses: actions/upload-artifact@v4
@@ -226,6 +226,17 @@ jobs:
             xcrun simctl boot "$udid" || true
             xcrun simctl bootstatus "$udid" -b
           }
+          prepare_app() {
+            local udid="$1"
+            # A fresh install, then deny when-in-use location. The age screen asks
+            # for that permission. Maestro clearState reinstalls the app and would
+            # reset this choice, so the flows launch without clearState.
+            xcrun simctl uninstall "$udid" com.vibecode.deerage-qj3cfq || true
+            xcrun simctl install "$udid" "$APP"
+            xcrun simctl privacy "$udid" revoke location com.vibecode.deerage-qj3cfq || echo "when-in-use location revoke failed"
+            xcrun simctl privacy "$udid" revoke location-always com.vibecode.deerage-qj3cfq || echo "always location revoke failed"
+            xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+          }
           run_flows() {
             local udid="$1"
             local out="$2"
@@ -245,15 +256,13 @@ jobs:
             mkdir -p "$OUT"
             echo "Device $NAME $UDID"
             boot_one "$UDID"
-            xcrun simctl install "$UDID" "$APP"
-            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+            prepare_app "$UDID"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
-              xcrun simctl install "$UDID" "$APP"
-              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+              prepare_app "$UDID"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1
@@ -374,6 +383,17 @@ jobs:
             xcrun simctl boot "$udid" || true
             xcrun simctl bootstatus "$udid" -b
           }
+          prepare_app() {
+            local udid="$1"
+            # A fresh install, then deny when-in-use location. The age screen asks
+            # for that permission. Maestro clearState reinstalls the app and would
+            # reset this choice, so the flows launch without clearState.
+            xcrun simctl uninstall "$udid" com.vibecode.deerage-qj3cfq || true
+            xcrun simctl install "$udid" "$APP"
+            xcrun simctl privacy "$udid" revoke location com.vibecode.deerage-qj3cfq || echo "when-in-use location revoke failed"
+            xcrun simctl privacy "$udid" revoke location-always com.vibecode.deerage-qj3cfq || echo "always location revoke failed"
+            xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+          }
           run_flows() {
             local udid="$1"
             local out="$2"
@@ -393,15 +413,13 @@ jobs:
             mkdir -p "$OUT"
             echo "Device $NAME $UDID"
             boot_one "$UDID"
-            xcrun simctl install "$UDID" "$APP"
-            xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+            prepare_app "$UDID"
             # Do not launch and kill the app here. expo-updates treats that as a failed startup and aborts the next launch.
             if ! run_flows "$UDID" "$OUT" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
               capture "$UDID" "$OUT/failure"
               echo "Retrying $NAME after a simulator reboot"
               boot_one "$UDID"
-              xcrun simctl install "$UDID" "$APP"
-              xcrun simctl addmedia "$UDID" "$GITHUB_WORKSPACE/mobile/e2e/flows/deer.jpg"
+              prepare_app "$UDID"
               if ! run_flows "$UDID" "$OUT-retry" mobile/e2e/flows/01-screens.yaml mobile/e2e/flows/02-break.yaml; then
                 capture "$UDID" "$OUT-retry/failure"
                 exit 1
