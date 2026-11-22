@@ -3,6 +3,7 @@
  * The server runs the frames in parallel and returns the median age.
  */
 
+import { overlaysFrom } from "./body-overlays";
 import {
   AgeBand,
   AgeCue,
@@ -113,7 +114,7 @@ export async function analyzeExplainableAge(
     shooterPassLabel,
     shooterPassReason: typeof result.shooterPassReason === "string" ? result.shooterPassReason : topCues.join(". "),
     detectedCues,
-    bodyFeatureOverlays: [],
+    bodyFeatureOverlays: overlaysFrom(result.overlays),
     netAgePush: detectedCues.reduce((total, cue) => total + cue.ageWeight, 0),
     imageQuality: quality,
     occlusionLevel: "minimal",

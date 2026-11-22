@@ -241,6 +241,11 @@ export function patchAging(current: AgingConfig, incoming: unknown): AgingConfig
     if (value == null) throw new ApiError(400, "invalid_request", "aging.crossCheck must be true or false.");
     next.crossCheck = value;
   }
+  if (row.bodyBoxes != null) {
+    const value = boolOf(row.bodyBoxes);
+    if (value == null) throw new ApiError(400, "invalid_request", "aging.bodyBoxes must be true or false.");
+    next.bodyBoxes = value;
+  }
   if (row.plainPrompt != null) next.plainPrompt = patchText(row.plainPrompt, PLAIN_PROMPT_MAX, "aging.plainPrompt");
   if (row.crossCheckPrompt != null) {
     next.crossCheckPrompt = patchText(row.crossCheckPrompt, CROSSCHECK_PROMPT_MAX, "aging.crossCheckPrompt");
