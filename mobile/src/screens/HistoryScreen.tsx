@@ -3,13 +3,14 @@
  * Now includes distance display
  */
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useShotRecordStore } from "../state/shotRecordStore";
 import type { ShotRecord } from "../types/shot-record";
+import { quickRecordsNewestFirst } from "../lib/quick-records";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { formatScore } from "../utils/boone-crockett-calculator";
@@ -30,9 +31,10 @@ export const HistoryScreen = () => {
   const insets = useSafeAreaInsets();
 
   const { history, deleteFromHistory, clearHistory } = useDeerScoringStore();
-  const quickRecords = useShotRecordStore((s) => Object.values(s.records)
-    .filter((record) => record.mode === "quick")
-    .sort((a, b) => (a.deviceTime < b.deviceTime ? 1 : -1)));
+  // Select the stored object, then derive the list. A selector that returns a new array
+  // makes zustand 5 re-render forever and crashed this screen.
+  const shotRecords = useShotRecordStore((s) => s.records);
+  const quickRecords = useMemo(() => quickRecordsNewestFirst(shotRecords), [shotRecords]);
   const [activeTab, setActiveTab] = useState<"all" | "age" | "score">("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
