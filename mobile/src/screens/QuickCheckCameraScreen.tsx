@@ -22,7 +22,7 @@ import { useSubscriptionStore } from "../state/subscriptionStore";
 import { softPulse } from "../lib/haptics";
 import { BUTTON_GREEN, CREAM, GOLD, INK } from "../theme/contrast";
 import { tapSquare } from "../theme/tap";
-import { FramingBrackets } from "../components/FramingBrackets";
+import { FramingGuide } from "../components/FramingGuide";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -31,13 +31,10 @@ import { useWindowBox } from "../hooks/useWindowBox";
 import { isSubjectFillAvailable } from "../lib/subject-fill";
 import { resultTimeBadge } from "../lib/result-time-badge";
 import {
-  BODY_BOX_ASPECT,
   BODY_BOX_LIFT,
-  BODY_BOX_WIDTH,
-  FRAME_GOLD,
-  FRAME_GREEN,
   frameBodyGoodHintFromCopy,
   frameBodyHintFromCopy,
+  guideFrameSize,
 } from "../lib/frame-fill";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -71,10 +68,7 @@ export const QuickCheckCameraScreen = () => {
     preview: previewLayout.box,
     guide: guideLayout.box,
   });
-  const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
-  // Body box: about 90% of screen width, 3:2 wide, slightly above middle.
-  const guideWidth = width * BODY_BOX_WIDTH;
-  const guideHeight = guideWidth / BODY_BOX_ASPECT;
+  const guideSize = guideFrameSize(width);
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -263,21 +257,15 @@ export const QuickCheckCameraScreen = () => {
             <ScanProgressCompact fallbackMode="quick" />
           ) : (
             // Ready to capture - LARGER viewer window
-            <>
-              <View
-                ref={guideLayout.ref}
-                onLayout={guideLayout.onLayout}
-                style={{ width: guideWidth, height: guideHeight }}
-              >
-                <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
-              </View>
-
-              <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">
-                <Text className="text-center font-bold text-base" style={{ color: bracketColor }}>
-                  {bodyFilled ? frameBodyGoodHint : frameBodyHint}
-                </Text>
-              </View>
-            </>
+            <FramingGuide
+              width={guideSize.width}
+              height={guideSize.height}
+              filled={bodyFilled}
+              hint={frameBodyHint}
+              goodHint={frameBodyGoodHint}
+              guideRef={guideLayout.ref}
+              onGuideLayout={guideLayout.onLayout}
+            />
           )}
         </View>
 

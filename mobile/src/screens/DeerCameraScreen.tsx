@@ -15,8 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
 import { softPulse } from "../lib/haptics";
 import { tapSquare } from "../theme/tap";
-import { AntlerSilhouette } from "../components/AntlerSilhouette";
-import { FramingBrackets } from "../components/FramingBrackets";
+import { FramingGuide } from "../components/FramingGuide";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -24,13 +23,16 @@ import { useSubjectFill } from "../hooks/useSubjectFill";
 import { useWindowBox } from "../hooks/useWindowBox";
 import { isSubjectFillAvailable } from "../lib/subject-fill";
 import {
+  BODY_BOX_LIFT,
+  DEFAULT_FRAME_ANTLER_DETAIL,
+  DEFAULT_FRAME_ANTLER_HINT,
   FRAME_GOLD,
   FRAME_GREEN,
   frameBodyGoodHintFromCopy,
   frameBodyHintFromCopy,
+  guideFrameSize,
 } from "../lib/frame-fill";
 import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
-import { BODY_BOX_ASPECT, BODY_BOX_LIFT, BODY_BOX_WIDTH } from "../lib/frame-fill";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -65,19 +67,20 @@ export const DeerCameraScreen = () => {
   const frameBodyGoodHint = frameBodyGoodHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyGoodHint));
   const previewLayout = useWindowBox();
   const guideLayout = useWindowBox();
-  const bodyMode = analysisMode === "age";
-  const canDetectFill = bodyMode && isSubjectFillAvailable();
-  const bodyFilled = useSubjectFill({
+  const rackMode = analysisMode === "score";
+  // Same on-device saliency check as Age My Deer. It finds the main subject
+  // in the snapshot (a body or a rack), not a body-only classifier.
+  const canDetectFill = isSubjectFillAvailable();
+  const subjectFilled = useSubjectFill({
     enabled: canDetectFill && !isBurstCapturing && !isCountingDown && !isProcessing,
     cameraRef,
     preview: previewLayout.box,
     guide: guideLayout.box,
   });
-  const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
-  // Body box: about 90% of screen width, 3:2 wide like a deer standing broadside.
-  // Rack mode keeps its old box. The green-fill check measures this box on screen.
-  const guideWidth = bodyMode ? width * BODY_BOX_WIDTH : width * 0.85;
-  const guideHeight = bodyMode ? guideWidth / BODY_BOX_ASPECT : height * 0.30;
+  const frameHint = rackMode ? DEFAULT_FRAME_ANTLER_HINT : frameBodyHint;
+  const frameDetail = rackMode ? DEFAULT_FRAME_ANTLER_DETAIL : undefined;
+  // One box for age and rack: 90% of screen width, 3:2, slightly above center.
+  const guideSize = guideFrameSize(width);
 
 
   // Network state
@@ -331,11 +334,11 @@ export const DeerCameraScreen = () => {
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Center Viewfinder Guide (body box sits slightly above middle) */}
+        {/* Center viewfinder. Same box for age and rack, slightly above middle. */}
         <View
           className="flex-1 items-center justify-center"
           pointerEvents="none"
-          style={bodyMode ? { paddingBottom: height * BODY_BOX_LIFT } : undefined}
+          style={{ paddingBottom: height * BODY_BOX_LIFT }}
         >
           {isCountingDown ? (
             <View className="items-center">
@@ -350,18 +353,14 @@ export const DeerCameraScreen = () => {
             </View>
           ) : isBurstCapturing ? (
             <View className="items-center">
-              {bodyMode ? (
-                <View style={{ width: guideWidth, height: guideHeight }}>
-                  <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
-                </View>
-              ) : (
-                <View
-                  className="border-2 border-green-500/60 rounded-xl items-center justify-center"
-                  style={{ width: guideWidth, height: guideHeight }}
-                >
-                  <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
-                </View>
-              )}
+              <FramingGuide
+                width={guideSize.width}
+                height={guideSize.height}
+                filled={subjectFilled}
+                hint={frameHint}
+                goodHint={frameBodyGoodHint}
+                showCaption={false}
+              />
               <View className="mt-4 px-6 py-3 rounded-full" style={{ backgroundColor: "#14532D" }}>
                 <Text className="text-base font-bold text-center" style={{ color: "#F5F5DC" }}>
                   {`HOLD STILL - Capturing ${burstFrames} photos...`}
@@ -369,45 +368,16 @@ export const DeerCameraScreen = () => {
               </View>
             </View>
           ) : (
-            <>
-              {bodyMode ? (
-                <View
-                  ref={guideLayout.ref}
-                  onLayout={guideLayout.onLayout}
-                  style={{ width: guideWidth, height: guideHeight }}
-                >
-                  <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
-                </View>
-              ) : (
-                <View
-                  className="border-2 rounded-xl items-center justify-center"
-                  style={{
-                    width: guideWidth,
-                    height: guideHeight,
-                    borderColor: "rgba(168, 85, 247, 0.5)",
-                  }}
-                >
-                  <AntlerSilhouette size={150} color="#F5F5DC" opacity={0.85} />
-                </View>
-              )}
-
-              <View className="mt-6 bg-black/70 px-4 py-3 rounded-xl mx-8">
-                {bodyMode ? (
-                  <Text className="text-center font-bold text-base" style={{ color: bracketColor }}>
-                    {bodyFilled ? frameBodyGoodHint : frameBodyHint}
-                  </Text>
-                ) : (
-                  <>
-                    <Text className="text-center font-bold text-base" style={{ color: "#a855f7" }}>
-                      Frame the ANTLERS
-                    </Text>
-                    <Text className="text-white/70 text-center text-sm mt-1">
-                      Side angle with all tines visible
-                    </Text>
-                  </>
-                )}
-              </View>
-            </>
+            <FramingGuide
+              width={guideSize.width}
+              height={guideSize.height}
+              filled={subjectFilled}
+              hint={frameHint}
+              goodHint={frameBodyGoodHint}
+              detail={frameDetail}
+              guideRef={guideLayout.ref}
+              onGuideLayout={guideLayout.onLayout}
+            />
           )}
         </View>
 
@@ -425,7 +395,7 @@ export const DeerCameraScreen = () => {
                     maximumValue={maxZoom}
                     value={zoom}
                     onValueChange={setZoom}
-                    minimumTrackTintColor={analysisMode === "age" ? "#22c55e" : "#a855f7"}
+                    minimumTrackTintColor={rackMode ? FRAME_GOLD : FRAME_GREEN}
                     maximumTrackTintColor="rgba(255,255,255,0.3)"
                     thumbTintColor="#ffffff"
                   />

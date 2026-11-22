@@ -1,4 +1,9 @@
 import {
+  BODY_BOX_ASPECT,
+  BODY_BOX_LIFT,
+  BODY_BOX_WIDTH,
+  DEFAULT_FRAME_ANTLER_DETAIL,
+  DEFAULT_FRAME_ANTLER_HINT,
   DEFAULT_FRAME_BODY_GOOD_HINT,
   DEFAULT_FRAME_BODY_HINT,
   FILL_MIN,
@@ -8,6 +13,7 @@ import {
   coverageOfGuide,
   frameBodyGoodHintFromCopy,
   frameBodyHintFromCopy,
+  guideFrameSize,
   guideInPreview,
   intersectionArea,
   mapImageBoxToPreview,
@@ -112,10 +118,20 @@ describe("frame hint copy", () => {
 
 describe("body guide box size", () => {
   it("is about 90% of screen width with a 3:2 wide shape", () => {
-    const { BODY_BOX_WIDTH, BODY_BOX_ASPECT, BODY_BOX_LIFT } = require("./frame-fill");
     expect(BODY_BOX_WIDTH).toBeCloseTo(0.9);
     expect(BODY_BOX_ASPECT).toBeCloseTo(1.5);
     expect(BODY_BOX_LIFT).toBeGreaterThan(0);
     expect(BODY_BOX_LIFT).toBeLessThan(0.15);
+    const frame = guideFrameSize(400);
+    expect(frame.width).toBeCloseTo(360);
+    expect(frame.height).toBeCloseTo(240);
+  });
+});
+
+describe("antler viewfinder copy", () => {
+  it("asks to fill the box with the antlers and keeps the side-angle reminder short", () => {
+    expect(DEFAULT_FRAME_ANTLER_HINT).toBe("Zoom until the antlers fill the box");
+    expect(DEFAULT_FRAME_ANTLER_DETAIL).toBe("Side angle, all tines visible");
+    expect(DEFAULT_FRAME_BODY_GOOD_HINT).toBe("Good — hold steady");
   });
 });
