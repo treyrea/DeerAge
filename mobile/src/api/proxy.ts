@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
 import { POLL_DEADLINE_MS, statusPollContinues, statusPollDelayMs } from "./poll-schedule";
+import { resolveApiBaseUrl } from "./endpoint";
 import { ciApiBaseUrl } from "../e2e/ci-endpoint";
 import { activeHunt, homePlace, useHunterProfile } from "../state/hunterProfile";
 import { useSubscriptionStore } from "../state/subscriptionStore";
@@ -72,9 +73,8 @@ const CODES = new Set<AnalysisErrorCode>([
 ]);
 
 export function apiBaseUrl(): string {
-  const fromEnv = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  return ciApiBaseUrl.replace(/\/$/, "");
+  const extra = Constants.expoConfig?.extra as { apiBaseUrl?: unknown } | undefined;
+  return resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL, extra?.apiBaseUrl, ciApiBaseUrl);
 }
 
 export function installedAppVersion(): string {
@@ -157,7 +157,7 @@ export async function analyzeImages(input: {
   }
   const base = apiBaseUrl();
   if (!base) {
-    throw new AnalysisError("not_configured", "DeerAge isn't connected to the analysis service yet.");
+    throw new AnalysisError("not_configured");
   }
   if (!useSubscriptionStore.getState().canStartAnalysis()) {
     throw new AnalysisError("quota");

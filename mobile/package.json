@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "ota:production": "eas update --channel production --platform ios --environment production"
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^0.12.2",

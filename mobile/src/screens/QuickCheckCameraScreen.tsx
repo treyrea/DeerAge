@@ -64,7 +64,7 @@ export const QuickCheckCameraScreen = () => {
 
     const network = useNetworkStore.getState();
     if (!network.isConnected || network.isInternetReachable === false) {
-      Alert.alert("Age mode is offline", "Quick Check needs a connection. DeerAge sends the photo to estimate age.");
+      Alert.alert("You're offline", "Quick Check needs a connection. DeerAge sends the photo to estimate age.");
       return;
     }
     if (!useSubscriptionStore.getState().canStartAnalysis()) {
@@ -104,7 +104,7 @@ export const QuickCheckCameraScreen = () => {
       setIsAnalyzing(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = isAnalysisError(error) ? error.message : "Quick Check didn't finish. Check your connection and try again.";
-      Alert.alert(isAnalysisError(error) && error.code === "quota" ? "Free analyses used" : "Quick Check failed", message, isAnalysisError(error) && error.code === "quota" ? [
+      Alert.alert(isAnalysisError(error) && error.code === "quota" ? "Free analyses used" : isAnalysisError(error) && error.code === "not_configured" ? "Can't reach DeerAge" : "Quick Check failed", message, isAnalysisError(error) && error.code === "quota" ? [
         { text: "Not now", style: "cancel" },
         { text: "See plans", onPress: () => navigation.navigate("TierPaywall", { reason: "free_limit" }) },
       ] : undefined);

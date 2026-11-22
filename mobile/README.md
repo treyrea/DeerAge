@@ -935,3 +935,7 @@ Shareable artifacts:
 - Shooter/Pass suggestions are guidelines based on age estimation
 - All measurements in inches per B&C standards
 - RackScore™ AI improves with continued use and feedback
+
+## Over-the-air updates
+
+Publish with `npm run ota:production`. It passes `--environment production` so EAS loads `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_REVENUECAT_APPLE_KEY`. Without it the bundle ships with neither value: before PR #19 that broke every scan ("isn't connected to the analysis service yet"), and it still leaves purchases without the RevenueCat key.

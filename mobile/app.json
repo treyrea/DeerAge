@@ -32,7 +32,8 @@
     "extra": {
       "eas": {
         "projectId": "7cc67b2e-b3c4-408f-bb74-850c9de5ac8e"
-      }
+      },
+      "apiBaseUrl": "https://deerage-api.vercel.app"
     },
     "icon": "./icon.png",
     "plugins": [
