@@ -175,3 +175,10 @@ function lumAt(data: Buffer, width: number, channels: number, x: number, y: numb
   const p = (y * width + x) * channels;
   return 0.2126 * data[p] + 0.7152 * data[p + 1] + 0.0722 * data[p + 2];
 }
+
+test("the server copy of the vignette math matches shared/vignette-crop.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const shared = readFileSync(new URL("../../shared/vignette-crop.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("./vignette-crop-math.ts", import.meta.url), "utf8");
+  assert.equal(copy.endsWith(shared), true);
+});

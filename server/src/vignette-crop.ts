@@ -1,7 +1,7 @@
-export { findCircularVignetteCrop, scaleCropRect, VIGNETTE_DARK_MAX, type CropRect } from "../../shared/vignette-crop.js";
+export { findCircularVignetteCrop, scaleCropRect, VIGNETTE_DARK_MAX, type CropRect } from "./vignette-crop-math.js";
 
 import sharp from "sharp";
-import { findCircularVignetteCrop } from "../../shared/vignette-crop.js";
+import { findCircularVignetteCrop } from "./vignette-crop-math.js";
 
 /** Max width the model should see, matching the app's jpegBase64 resize. */
 export const SCAN_IMAGE_WIDTH = 768;
