@@ -1,0 +1,8 @@
+{
+  "name": "deerage-subject-fill",
+  "version": "1.0.0",
+  "description": "On-device Vision saliency detector for the DeerAge viewfinder",
+  "main": "src/index.ts",
+  "license": "UNLICENSED",
+  "private": true
+}
