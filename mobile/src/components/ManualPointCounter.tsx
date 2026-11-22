@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { countingBoxSize } from "../lib/photo-fit";
 import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Circle } from "react-native-svg";
@@ -30,7 +31,7 @@ interface ManualPointCounterProps {
 
 type CountingStep = "right" | "left" | "review";
 
-const IMAGE_SIZE = 350;
+const MAX_IMAGE_SIZE = 350;
 const CONTAINER_HEIGHT = 350;
 const PAN_STEP = 30; // Pixels to move per button press
 
@@ -46,6 +47,10 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
   const [leftPoints, setLeftPoints] = React.useState<Point[]>([]);
   const [zoom, setZoom] = React.useState(1);
   const [containerWidth, setContainerWidth] = React.useState(350);
+  // Square photo box sized to the full row width (measured before the pan
+  // buttons appear), so the edges of the photo are never clipped.
+  const [rowWidth, setRowWidth] = React.useState(0);
+  const imageSize = countingBoxSize(rowWidth, MAX_IMAGE_SIZE);
   const [panX, setPanX] = React.useState(0);
   const [panY, setPanY] = React.useState(0);
 
@@ -65,12 +70,12 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
 
   // Calculate max pan bounds
   const getMaxPan = React.useCallback(() => {
-    const scaledSize = IMAGE_SIZE * zoom;
+    const scaledSize = imageSize * zoom;
     return {
       x: Math.max(0, (scaledSize - containerWidth) / 2),
       y: Math.max(0, (scaledSize - CONTAINER_HEIGHT) / 2),
     };
-  }, [zoom, containerWidth]);
+  }, [zoom, containerWidth, imageSize]);
 
   // Reset pan when zoom changes
   React.useEffect(() => {
@@ -120,7 +125,7 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
     const imageY = locationY;
 
     // Only add point if within image bounds
-    if (imageX >= 0 && imageX <= IMAGE_SIZE && imageY >= 0 && imageY <= IMAGE_SIZE) {
+    if (imageX >= 0 && imageX <= imageSize && imageY >= 0 && imageY <= imageSize) {
       const newPoint: Point = {
         x: imageX,
         y: imageY,
@@ -128,7 +133,7 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
       };
       setCurrentPoints((prevPoints) => [...prevPoints, newPoint]);
     }
-  }, [step, setCurrentPoints]);
+  }, [step, setCurrentPoints, imageSize]);
 
   // Animated style for the image container
   const animatedImageStyle = useAnimatedStyle(() => ({
@@ -309,14 +314,20 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
       )}
 
       {/* Image Area and Pan Controls */}
-      <View className="flex-row">
+      <View
+        className="flex-row"
+        onLayout={(event) => {
+          const width = event.nativeEvent.layout.width;
+          setRowWidth((prev) => (prev > 0 ? prev : width));
+        }}
+      >
         {/* Image Container */}
         <View style={styles.imageContainer} onLayout={handleContainerLayout} className="flex-1">
           <View style={styles.imageWrapper}>
-            <Animated.View style={[styles.animatedContainer, animatedImageStyle]}>
+            <Animated.View style={[{ width: imageSize, height: imageSize }, animatedImageStyle]}>
               <Image
                 source={{ uri: imageUri }}
-                style={styles.image}
+                style={{ width: imageSize, height: imageSize }}
                 resizeMode="contain"
               />
 
@@ -558,13 +569,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  animatedContainer: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-  },
-  image: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
   },
 });

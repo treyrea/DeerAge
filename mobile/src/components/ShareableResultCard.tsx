@@ -14,7 +14,7 @@
  * - Encourage organic sharing
  */
 
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,6 +24,8 @@ import * as Haptics from "expo-haptics";
 import ViewShot from "react-native-view-shot";
 import * as MediaLibrary from "expo-media-library";
 import { formatAgeClass } from "../utils/age-class";
+import { usePhotoAspect } from "../hooks/usePhotoAspect";
+import { fittedPhotoHeight } from "../lib/photo-fit";
 
 // ============================================================================
 // TYPES
@@ -222,14 +224,21 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
   data,
   compact,
 }) => {
+  // Show the whole photo so the full rack is visible (cover cut it off).
+  const aspect = usePhotoAspect(data.imageUri);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const photoHeight = fittedPhotoHeight(frameWidth, aspect, compact ? 360 : 440, compact ? 200 : 280);
   return (
     <View className="overflow-hidden rounded-2xl" style={{ backgroundColor: "#1a1f16" }}>
       {/* Image with overlay */}
-      <View style={{ height: compact ? 200 : 280 }}>
+      <View
+        style={{ height: photoHeight, backgroundColor: "#000" }}
+        onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+      >
         <Image
           source={{ uri: data.imageUri }}
           style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
+          contentFit="contain"
         />
         {/* Gradient overlay */}
         <LinearGradient
