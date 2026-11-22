@@ -1,5 +1,5 @@
 /**
- * Empty in git. The iOS simulator workflow overwrites this file before
- * prebuild so the mock API is a source string, with no key and no EAS secret.
+ * Empty in git. Release builds keep this empty and use EXPO_PUBLIC_API_BASE_URL.
+ * No key and no EAS secret belong here.
  */
 export const ciApiBaseUrl = "";
