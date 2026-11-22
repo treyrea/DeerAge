@@ -104,9 +104,13 @@ async function main(): Promise<void> {
         }
         if (row.grossScore != null) {
           const score = await runScoreCall([image]);
-          gross = String(score.result.grossScore ?? "");
           cost += score.costs.reduce((sum, item) => sum + item.usd, 0);
-          if (score.backup) note = note ? `${note}; backup score` : "backup score";
+          if (score.noDeer || !score.result) {
+            note = note ? `${note}; not_deer` : "not_deer";
+          } else {
+            gross = String(score.result.grossScore ?? "");
+            if (score.backup) note = note ? `${note}; backup score` : "backup score";
+          }
         }
       })(), 300_000);
     } catch (error) {

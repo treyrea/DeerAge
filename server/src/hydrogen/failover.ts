@@ -104,6 +104,9 @@ async function fromBackup(
   try {
     const result = await backup();
     if (!result) return { kind: "fail" };
+    if (result.kind === "no_deer" && result.ageYears == null && result.estimatedAgeYears == null && result.grossScore == null) {
+      return { kind: "no_deer" };
+    }
     log({ event: "provider_latency", provider: "gateway", backup: true });
     return { kind: "age", backup: true, result: backupAgeBody(result, minimum, rangeNote) };
   } catch (error) {

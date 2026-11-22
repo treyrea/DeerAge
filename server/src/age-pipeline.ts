@@ -5,6 +5,7 @@
 
 import { classStep, finalCall } from "./field-call.js";
 import { callModel, parseFinal, type ModelCall } from "./gateway.js";
+import { deerPresentValue, groupIsNoDeer, readingIsNoDeer, type DeerPresentAnswer } from "./hydrogen/no-deer.js";
 import { coverAntlers } from "./mask.js";
 import { antlerBoxPrompt, bodyFirstAgePrompt, fastAgePrompt, maskedAgePrompt } from "./prompts.js";
 
@@ -16,6 +17,7 @@ export interface AgeReading {
   cues: string[];
   labeled: { area: string; text: string }[];
   stop: "not_deer" | "no_antlers" | "unreadable" | null;
+  deerPresent: DeerPresentAnswer;
   backup: boolean;
 }
 
@@ -35,6 +37,7 @@ const EMPTY: AgeReading = {
   cues: [],
   labeled: [],
   stop: null,
+  deerPresent: "unknown",
   backup: false,
 };
 
@@ -53,6 +56,7 @@ export function readingFrom(text: string, backup = false): AgeReading {
     cues: labeled.map((cue) => cue.text).slice(0, 6),
     labeled: labeled.slice(0, 6),
     stop,
+    deerPresent: deerPresentValue(parsed.deer_present),
     backup,
   };
 }
@@ -136,9 +140,17 @@ export function maskedVerdict(readings: Array<AgeReading | null>): { bodyYears: 
   };
 }
 
+type AgeCaller = typeof callModel;
+let ageCaller: AgeCaller = callModel;
+
+/** Tests script the gateway replies. Production keeps callModel. */
+export function setAgeCallerForTests(next: AgeCaller | null): void {
+  ageCaller = next ?? callModel;
+}
+
 async function safeCall(role: "fast" | "age" | "ageFallback" | "boxes" | "masked", prompt: string, images: string[], timeoutMs: number, maxTokens: number, effort: "low" | "medium" | null, model?: string): Promise<ModelCall | null> {
   try {
-    return await callModel({
+    return await ageCaller({
       role,
       prompt,
       images,
@@ -194,13 +206,20 @@ export async function runAgeCall(
     costs.push(call);
     return readingFrom(call.text);
   });
-  if (mains.every((reading) => !reading.age && !reading.stop)) {
+  const finishNoDeer = async (): Promise<AgeOutcome> => {
+    const blind = await blindPromise;
+    for (const call of blind.calls) costs.push(call);
+    return { stop: "not_deer", provisional, readings: { fast, main: mains[0] ?? null, bodyOnly: null }, costs, result: null };
+  };
+  if (groupIsNoDeer(mains)) return finishNoDeer();
+  if (mains.every((reading) => !reading.age && !reading.stop && reading.deerPresent !== "absent")) {
     const fallback = await safeCall("ageFallback", bodyFirstAgePrompt(minimum), [image], 20_000, 2000, "low");
     if (fallback) {
       costs.push(fallback);
       mains = [readingFrom(fallback.text, true)];
     }
   }
+  if (groupIsNoDeer(mains)) return finishNoDeer();
   const youngFast = fast?.age != null && classStep(fast.age) <= 2.5;
   const stopped = mains.find((reading) => reading.stop && !reading.age);
   if (stopped?.stop && !(stopped.stop === "no_antlers" && youngFast)) {
@@ -210,7 +229,10 @@ export async function runAgeCall(
   for (const call of blind.calls) costs.push(call);
   const verdict = maskedVerdict(blind.readings);
   const main = combineMains(mains, minimum, models.length > 1);
-  const bodyOnly = blind.readings.find((reading) => reading?.age != null) ?? null;
+  const bodyOnly = blind.readings.find((reading) => reading?.age != null && !readingIsNoDeer(reading.deerPresent, reading.stop)) ?? null;
+  if (!main?.age && fast && readingIsNoDeer(fast.deerPresent, fast.stop) && !mains.some((reading) => reading.deerPresent === "present")) {
+    return { stop: "not_deer", provisional, readings: { fast, main, bodyOnly: null }, costs, result: null };
+  }
   if (!main?.age) {
     const decision = finalCall({ mainYears: null, bodyYears: verdict.bodyYears, minimum, confirmed: false, bodyMissing: true });
     return { stop: null, provisional, readings: { fast, main, bodyOnly }, costs, result: resultBody(decision, fast, main, bodyOnly, minimum) };
@@ -247,7 +269,7 @@ function resultBody(
   bodyOnly: AgeReading | null,
   minimum: number,
 ): Record<string, unknown> {
-  const source = main?.age != null ? main : fast;
+  const source = main?.age != null ? main : fast && !readingIsNoDeer(fast.deerPresent, fast.stop) ? fast : null;
   const labeled = (source?.labeled?.length ? source.labeled : bodyOnly?.labeled) ?? [];
   const cues = labeled.map((cue) => ({
     area: cue.area === "antler" ? "Antler" : cue.area.charAt(0).toUpperCase() + cue.area.slice(1),

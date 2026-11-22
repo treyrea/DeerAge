@@ -17,10 +17,10 @@ test("a FINAL line is the only JSON the scan keeps", () => {
 test("the first screen holds when the fast read is young, and one young body vetoes a shooter", () => {
   assert.equal(provisionalFromFast().fieldCall, "HOLD");
   assert.equal(provisionalFromFast().ageClass, "");
-  const young = maskedVerdict([{ age: 2.5, confidence: 40, visibleParts: [], betterAngle: "", cues: [], labeled: [], stop: null, backup: false }, null]);
+  const young = maskedVerdict([{ age: 2.5, confidence: 40, visibleParts: [], betterAngle: "", cues: [], labeled: [], stop: null, deerPresent: "unknown", backup: false }, null]);
   assert.equal(young.vetoYoung, true);
   assert.equal(young.missing, false);
-  const empty = maskedVerdict([null, { age: null, confidence: 0, visibleParts: [], betterAngle: "", cues: [], labeled: [], stop: null, backup: false }]);
+  const empty = maskedVerdict([null, { age: null, confidence: 0, visibleParts: [], betterAngle: "", cues: [], labeled: [], stop: null, deerPresent: "unknown", backup: false }]);
   assert.equal(empty.missing, true);
 });
 
