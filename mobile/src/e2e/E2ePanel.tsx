@@ -42,6 +42,10 @@ function sampleAge(label: string, fieldCall: "SHOOTER" | "LET WALK" | "BORDERLIN
         fieldCallNote: label,
         ageLabel: label,
         isRange,
+        hunterCue: isRange
+          ? "Age it up toward 4.5 if the chest is deep and the belly nearly matches, or down toward 3.5 if the flank tuck shows."
+          : "A deep chest with the belly hanging even with it.",
+        reasons: isRange ? ["The body fits both ages in this photo."] : ["The chest is deep and the waist is full."],
         cueBullets: [{ area: "Body", text: label }],
       },
     } as never,

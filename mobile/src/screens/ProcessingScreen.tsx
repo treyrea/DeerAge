@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo } from "react";
-import { View, Text, ActivityIndicator, ScrollView, Pressable, Image, Dimensions } from "react-native";
+import { View, Text, ActivityIndicator, ScrollView, Pressable, Image, Dimensions, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -12,12 +12,13 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { BLIND, verdictWord } from "../utils/blind-verdict";
+import { type AnalysisErrorCode, messageForCode } from "../api/errors";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-import { type AnalysisErrorCode, messageForCode } from "../api/errors";
 
 type ErrorCategory = AnalysisErrorCode;
 
@@ -76,6 +77,8 @@ export const ProcessingScreen = () => {
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
   const provisional = useDeerScoringStore((s) => s.provisional);
   const clearCurrentResult = useDeerScoringStore((s) => s.clearCurrentResult);
+  const setAnalysisMode = useDeerScoringStore((s) => s.setAnalysisMode);
+  const verdictLook = useRemoteConfig((s) => s.copy.verdictLook);
 
   // Get the image URI for error display
   const imageUri = capturedFrames[0]?.imageUri;
@@ -94,10 +97,14 @@ export const ProcessingScreen = () => {
 
   // Haptic feedback on error
   useEffect(() => {
-    if (error) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    if (!error) return;
+    const look = errorCode === "retake" || errorCode === "poor_quality" || errorCode === "unreadable" || errorCode === "no_body";
+    if (look && analysisMode === "age") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      return;
     }
-  }, [error]);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+  }, [error, errorCode, analysisMode]);
 
   // Navigate to results when processing completes
   useEffect(() => {
@@ -135,7 +142,61 @@ export const ProcessingScreen = () => {
     navigation.popToTop();
   };
 
+  const scanAgain = () => {
+    setAnalysisMode(analysisMode);
+    clearCurrentResult();
+    navigation.popToTop();
+    navigation.navigate("ModeSelect", { mode: analysisMode });
+  };
+
+  const needsAnotherLook = Boolean(
+    errorInfo && analysisMode === "age" && (
+      errorInfo.category === "retake"
+      || errorInfo.category === "poor_quality"
+      || errorInfo.category === "unreadable"
+      || errorInfo.category === "no_body"
+    ),
+  );
+
   // Error UI - Graceful with tips (similar to QuickCheckResultScreen)
+  if (error && errorInfo && needsAnotherLook) {
+    const title = verdictWord("look", { look: verdictLook });
+    return (
+      <View style={{ flex: 1, backgroundColor: BLIND.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <StatusBar barStyle="light-content" />
+        <View style={{ paddingHorizontal: 8 }}>
+          <Pressable onPress={handleHome} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" }}>
+            <Ionicons name="close" size={26} color={BLIND.muted} />
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+          <Text
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+            numberOfLines={1}
+            style={{ color: BLIND.look, fontSize: 40, fontWeight: "800", textAlign: "center" }}
+          >
+            {title}
+          </Text>
+          <Text style={{ color: BLIND.ink, fontSize: 17, lineHeight: 24, marginTop: 16, textAlign: "center" }}>
+            {errorInfo.subtitle}
+          </Text>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={{ width: 72, height: 72, borderRadius: 12, alignSelf: "center", marginTop: 16 }} />
+          ) : null}
+        </ScrollView>
+        <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
+          <Pressable onPress={scanAgain} style={{ flex: 1, minHeight: 60, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: BLIND.ink, fontSize: 18, fontWeight: "700" }}>Scan again</Text>
+          </Pressable>
+          <Pressable testID="retake-done" onPress={handleHome} style={{ flex: 1, minHeight: 60, borderRadius: 14, backgroundColor: BLIND.button, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: BLIND.buttonInk, fontSize: 18, fontWeight: "700" }}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   if (error && errorInfo) {
     return (
       <View style={{ flex: 1, backgroundColor: "#1a1a1a" }}>

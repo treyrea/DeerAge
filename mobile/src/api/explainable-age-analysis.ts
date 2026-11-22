@@ -128,6 +128,10 @@ export async function analyzeExplainableAge(
     ageLabel,
     isRange: result.isRange === true,
     hunterCue: typeof result.hunterCue === "string" && result.hunterCue.trim() ? result.hunterCue.trim() : undefined,
+    lookFor: typeof result.lookFor === "string" && result.lookFor.trim() ? result.lookFor.trim() : undefined,
+    reasons: Array.isArray(result.reasons)
+      ? result.reasons.filter((line): line is string => typeof line === "string" && line.trim().length > 0).map((line) => line.trim())
+      : undefined,
     pipeline: hydrogen ? "hydrogen" : "openai",
   };
 }

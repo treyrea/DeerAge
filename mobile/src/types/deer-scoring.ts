@@ -285,6 +285,10 @@ export interface ExplainableAgeEstimation {
   ageLabel?: string;
   isRange?: boolean;
   hunterCue?: string;
+  /** One full "what to look for" line. Falls back to hunterCue when missing. */
+  lookFor?: string;
+  /** Body reasons with the look-for line removed. Missing means an older payload. */
+  reasons?: string[];
   pipeline?: "hydrogen" | "openai";
 }
 

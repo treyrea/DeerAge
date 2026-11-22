@@ -23,6 +23,11 @@ export interface AppCopy {
   regionHeadsUp: string;
   leaseManagerText: string;
   leaseManagerButton: string;
+  verdictTake: string;
+  verdictWalk: string;
+  verdictLook: string;
+  verdictNote: string;
+  setMinimumPrompt: string;
 }
 
 export interface ProductConfig {
@@ -77,7 +82,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
     (set) => ({
       flags: FLAGS,
       products: DEFAULT_PRODUCTS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "" },
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
       minVersion: "",
@@ -103,6 +108,11 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             regionHeadsUp: typeof copy.regionHeadsUp === "string" ? copy.regionHeadsUp : "",
             leaseManagerText: typeof copy.leaseManagerText === "string" ? copy.leaseManagerText : "",
             leaseManagerButton: typeof copy.leaseManagerButton === "string" ? copy.leaseManagerButton : "",
+            verdictTake: typeof copy.verdictTake === "string" ? copy.verdictTake : "",
+            verdictWalk: typeof copy.verdictWalk === "string" ? copy.verdictWalk : "",
+            verdictLook: typeof copy.verdictLook === "string" ? copy.verdictLook : "",
+            verdictNote: typeof copy.verdictNote === "string" ? copy.verdictNote : "",
+            setMinimumPrompt: typeof copy.setMinimumPrompt === "string" ? copy.setMinimumPrompt : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });
