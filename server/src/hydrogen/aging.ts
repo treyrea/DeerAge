@@ -24,6 +24,8 @@ export interface AgingConfig {
   callTimeoutMs: number;
   /** Sentence with a {label} placeholder. Hunters see it in fieldCallNote for a range. */
   rangeNote: string;
+  /** Outline the body parts behind the age on the age result photo (one small gateway call). */
+  bodyBoxes: boolean;
 }
 
 export function defaultAgingConfig(): AgingConfig {
@@ -34,6 +36,7 @@ export function defaultAgingConfig(): AgingConfig {
     crossCheckPrompt: "",
     callTimeoutMs: DEFAULT_CALL_TIMEOUT_MS,
     rangeNote: DEFAULT_RANGE_NOTE,
+    bodyBoxes: true,
   };
 }
 
@@ -62,6 +65,7 @@ export function normalizeAging(stored: unknown): AgingConfig {
     crossCheckPrompt: storedText(row.crossCheckPrompt, CROSSCHECK_PROMPT_MAX),
     callTimeoutMs: clampCallTimeout(row.callTimeoutMs ?? base.callTimeoutMs),
     rangeNote: rangeNote || base.rangeNote,
+    bodyBoxes: typeof row.bodyBoxes === "boolean" ? row.bodyBoxes : base.bodyBoxes,
   };
 }
 

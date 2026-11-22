@@ -3,10 +3,11 @@
  * Renders labeled bounding boxes over deer body features with interactive tap-to-focus
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Image, Pressable, Modal, ScrollView, Dimensions } from "react-native";
 import { BodyFeatureOverlay, AgeCue } from "../types/deer-scoring";
 import { Ionicons } from "@expo/vector-icons";
+import { containedRect } from "../api/body-overlays";
 
 interface Props {
   imageUri: string;
@@ -22,6 +23,17 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
   onToggleOverlays,
 }) => {
   const [selectedOverlay, setSelectedOverlay] = useState<BodyFeatureOverlay | null>(null);
+  const [photoSize, setPhotoSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    let live = true;
+    Image.getSize(imageUri, (width, height) => {
+      if (live) setPhotoSize({ width, height });
+    }, () => undefined);
+    return () => {
+      live = false;
+    };
+  }, [imageUri]);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
 
   const handleOverlayPress = (overlay: BodyFeatureOverlay) => {
@@ -35,6 +47,11 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
         <Text className="text-sm font-semibold" style={{ color: "#E5D4B8" }}>
           Body Feature Analysis
         </Text>
+        {overlays.length === 0 ? (
+          <Text className="text-xs" style={{ color: "#8B7355" }}>
+            No outlines for this photo
+          </Text>
+        ) : (
         <Pressable
           onPress={onToggleOverlays}
           className="flex-row items-center px-3 py-2 rounded-lg"
@@ -49,6 +66,7 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
             {showOverlays ? "Hide" : "Show"} Overlays
           </Text>
         </Pressable>
+        )}
       </View>
 
       {/* Image with Overlays */}
@@ -75,10 +93,12 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
             }}
           >
             {overlays.map((overlay, index) => {
-              const left = (overlay.boundingBox.x / 100) * imageLayout.width;
-              const top = (overlay.boundingBox.y / 100) * imageLayout.height;
-              const width = (overlay.boundingBox.width / 100) * imageLayout.width;
-              const height = (overlay.boundingBox.height / 100) * imageLayout.height;
+              // Boxes are percent of the photo; "contain" letterboxes it inside the view.
+              const rect = containedRect(imageLayout.width, imageLayout.height, photoSize.width, photoSize.height);
+              const left = rect.left + (overlay.boundingBox.x / 100) * rect.width;
+              const top = rect.top + (overlay.boundingBox.y / 100) * rect.height;
+              const width = (overlay.boundingBox.width / 100) * rect.width;
+              const height = (overlay.boundingBox.height / 100) * rect.height;
 
               return (
                 <Pressable
@@ -154,6 +174,7 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
                     <Text className="text-lg font-bold text-white">
                       {selectedOverlay.name}
                     </Text>
+                    {selectedOverlay.confidence > 0 ? (
                     <View className="flex-row items-center mt-1">
                       <View
                         className="rounded px-2 py-0.5"
@@ -171,11 +192,20 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
                         </Text>
                       </View>
                     </View>
+                    ) : null}
                   </View>
                   <Pressable onPress={() => setSelectedOverlay(null)}>
                     <Ionicons name="close-circle" size={32} color="#E5D4B8" />
                   </Pressable>
                 </View>
+
+                {!selectedOverlay.cue && selectedOverlay.label && selectedOverlay.label !== selectedOverlay.name ? (
+                  <Text className="text-base text-white mb-4">
+                    {selectedOverlay.label.startsWith(`${selectedOverlay.name}: `)
+                      ? selectedOverlay.label.slice(selectedOverlay.name.length + 2)
+                      : selectedOverlay.label}
+                  </Text>
+                ) : null}
 
                 {/* Detected Pattern */}
                 {selectedOverlay.cue && (

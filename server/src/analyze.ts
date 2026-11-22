@@ -1,4 +1,5 @@
 import { saveContributionForJob } from "./contributions.js";
+import { findBodyBoxes, gatewayBoxCaller, withOverlays } from "./body-boxes.js";
 import { agingEngineFor, HYDROGEN_MODEL, type AgingEngine } from "./aging-switch.js";
 import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, plainReserveUsd, type TokenUsage } from "./cost.js";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config.js";
@@ -414,6 +415,8 @@ async function finishJob(input: {
       const aging = remote.aging;
       const budget = createScanBudget(aging.callTimeoutMs);
       const caller = geminiCaller(input.images[0], input.usage, { timeoutMs: aging.callTimeoutMs, budget });
+      // Runs beside the age read; it only draws outlines and never changes the age.
+      const outlines = aging.bodyBoxes ? findBodyBoxes(input.images[0], gatewayBoxCaller) : null;
       const resolved = await resolveHydrogenAge({
         minimum: input.minimum,
         rangeNote: aging.rangeNote,
@@ -452,8 +455,17 @@ async function finishJob(input: {
         });
         return;
       }
-      const result = resolved.result;
-      const usd = await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId);
+      const found = outlines ? await outlines : null;
+      const result = found ? withOverlays(resolved.result, found.boxes) : resolved.result;
+      if (found) {
+        console.log(JSON.stringify({
+          event: "body_boxes",
+          parts: Object.keys(found.boxes).length,
+          overlays: Array.isArray(result.overlays) ? result.overlays.length : 0,
+          usd: Number(found.usd.toFixed(6)),
+        }));
+      }
+      const usd = await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId, found?.usd ?? 0);
       const record = await issueRecord({
         appUserId: input.appUserId,
         images: input.images,
@@ -640,11 +652,11 @@ async function finishQuickHydrogen(
   return true;
 }
 
-async function settleHydrogen(usage: TokenUsage, reserved: number, mode: string, appUserId: string): Promise<number> {
+async function settleHydrogen(usage: TokenUsage, reserved: number, mode: string, appUserId: string, extraUsd = 0): Promise<number> {
   const estimated = costUsd(usage, {
     inputPerMillion: geminiInputUsdPerMillion(),
     outputPerMillion: geminiOutputUsdPerMillion(),
-  });
+  }) + Math.max(0, extraUsd);
   await reconcileSpend(reserved, estimated);
   console.log(JSON.stringify({
     event: "analysis_cost",
