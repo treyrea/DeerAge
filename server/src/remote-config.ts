@@ -263,6 +263,13 @@ export function patchAging(current: AgingConfig, incoming: unknown): AgingConfig
     if (value == null) throw new ApiError(400, "invalid_request", "aging.crossCheck must be true or false.");
     next.crossCheck = value;
   }
+  for (const key of ["parallelStart", "parallelClosers"] as const) {
+    if (row[key] != null) {
+      const value = boolOf(row[key]);
+      if (value == null) throw new ApiError(400, "invalid_request", `aging.${key} must be true or false.`);
+      next[key] = value;
+    }
+  }
   if (row.bodyBoxes != null) {
     const value = boolOf(row.bodyBoxes);
     if (value == null) throw new ApiError(400, "invalid_request", "aging.bodyBoxes must be true or false.");

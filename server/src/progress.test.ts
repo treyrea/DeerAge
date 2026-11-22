@@ -59,3 +59,11 @@ test("a late progress write never overwrites a finished job", async () => {
   const after = await loadJob(job.id);
   assert.equal(after?.status, "done");
 });
+
+test("parallel walk estimates are shorter and count down inside a batch", () => {
+  const sequential = walkRemainingMs({ step: "quality" });
+  const parallel = walkRemainingMs({ step: "quality", parallel: true });
+  assert.ok(parallel < sequential);
+  assert.ok(walkRemainingMs({ step: "closer", index: 0, parallel: true }, 5_000) < walkRemainingMs({ step: "closer", index: 0, parallel: true }, 0));
+  assert.equal(walkRemainingMs({ step: "closer", index: 2, parallel: true }, 60_000), 0);
+});

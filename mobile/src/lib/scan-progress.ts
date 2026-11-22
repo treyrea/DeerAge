@@ -18,7 +18,7 @@ export interface ServerProgress {
 /** Used before the server has reported (sending the photo, or an older server). Medians of logged scans. */
 export const FALLBACK_ETA_MS: Record<ScanMode, number> = {
   quick: 6_000,
-  age: 32_000,
+  age: 25_000,
   score: 18_000,
 };
 

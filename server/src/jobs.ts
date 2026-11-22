@@ -46,9 +46,11 @@ const finished = new Set<string>();
  * Writes for one job go out in order, and once a job is done or failed a late
  * "running" write (a progress tick, a provisional note) can never overwrite it.
  */
-export function saveJob(job: ScanJob): Promise<void> {
-  if (job.status === "running" && finished.has(job.id)) return Promise.resolve();
-  if (job.status !== "running") finished.add(job.id);
+export function saveJob(input: ScanJob): Promise<void> {
+  if (input.status === "running" && finished.has(input.id)) return Promise.resolve();
+  if (input.status !== "running") finished.add(input.id);
+  // A finished job has nothing left to wait for.
+  const job = input.status === "running" ? input : { ...input, progress: null };
   memory.set(job.id, job);
   const previous = writes.get(job.id) ?? Promise.resolve();
   const write = previous.then(async () => {
