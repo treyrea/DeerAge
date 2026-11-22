@@ -28,6 +28,9 @@ import { useWindowBox } from "../hooks/useWindowBox";
 import { isSubjectFillAvailable } from "../lib/subject-fill";
 import { resultTimeBadge } from "../lib/result-time-badge";
 import {
+  BODY_BOX_ASPECT,
+  BODY_BOX_LIFT,
+  BODY_BOX_WIDTH,
   FRAME_GOLD,
   FRAME_GREEN,
   frameBodyGoodHintFromCopy,
@@ -65,8 +68,9 @@ export const QuickCheckCameraScreen = () => {
     guide: guideLayout.box,
   });
   const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
-  const guideWidth = width * 0.85;
-  const guideHeight = height * 0.30;
+  // Body box: about 90% of screen width, 3:2 wide, slightly above middle.
+  const guideWidth = width * BODY_BOX_WIDTH;
+  const guideHeight = guideWidth / BODY_BOX_ASPECT;
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -231,7 +235,11 @@ export const QuickCheckCameraScreen = () => {
         </View>
 
         {/* Center Guide - Body focused - LARGER */}
-        <View className="flex-1 items-center justify-center" pointerEvents="none">
+        <View
+          className="flex-1 items-center justify-center"
+          pointerEvents="none"
+          style={{ paddingBottom: height * BODY_BOX_LIFT }}
+        >
           {isAnalyzing ? (
             // Analyzing: one bar, one line, honest time left
             <ScanProgressCompact fallbackMode="quick" />
