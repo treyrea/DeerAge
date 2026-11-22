@@ -47,7 +47,9 @@ export const QuickCheckResultScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
 
   const isShoot = result.decision === "SHOOT";
-  const isInvalidImage = result.isValidImage === false;
+  // A result with no age is a failed read. Show the retake screen, never the lease minimum as an age.
+  const missingAge = result.isValidImage !== false && (typeof result.ageYears !== "number" || !(result.ageYears > 0));
+  const isInvalidImage = result.isValidImage === false || missingAge;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   const followUp = useResultFollowUp(!isInvalidImage);
@@ -123,7 +125,9 @@ export const QuickCheckResultScreen = () => {
 
             {/* Invalid Image Title */}
             <Text className="text-3xl font-black mb-2 text-amber-400">
-              {result.invalidImageReason === "head_mount"
+              {missingAge
+                ? "NO AGE READ"
+                : result.invalidImageReason === "head_mount"
                 ? "HEAD MOUNT DETECTED"
                 : result.invalidImageReason === "not_deer"
                 ? "NOT A DEER"
@@ -134,7 +138,9 @@ export const QuickCheckResultScreen = () => {
 
             {/* Explanation */}
             <Text className="text-white/80 text-lg text-center px-4 mb-4">
-              {result.invalidImageMessage || "This image cannot be analyzed for deer aging."}
+              {missingAge
+                ? "DeerAge couldn't read this photo. Try again in a moment."
+                : result.invalidImageMessage || "This image cannot be analyzed for deer aging."}
             </Text>
 
             {/* Tips */}
@@ -198,7 +204,11 @@ export const QuickCheckResultScreen = () => {
     ? "Neck-Brisket"
     : result.keyFeature === "chest_hindquarter"
     ? "Chest Depth"
-    : "Leg Proportion";
+    : result.keyFeature === "leg_body"
+    ? "Leg Proportion"
+    : "";
+  // Checked above: a missing age already returned the retake screen.
+  const ageYears = result.ageYears as number;
 
   const shareRead = () => {
     const call = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
@@ -218,7 +228,7 @@ export const QuickCheckResultScreen = () => {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}>
           {shootOrPass ? (
             <FieldCallCard
-              ageYears={result.ageYears ?? leaseMinimum}
+              ageYears={ageYears}
               confidence={result.confidence}
               minimum={leaseMinimum}
               cueBullets={result.cueBullets}
@@ -230,7 +240,7 @@ export const QuickCheckResultScreen = () => {
             />
           ) : (
             <FieldCallCard
-              ageYears={result.ageYears ?? leaseMinimum}
+              ageYears={ageYears}
               confidence={result.confidence}
               minimum={leaseMinimum}
               fallbackCues={result.topCues ?? [result.explanation]}

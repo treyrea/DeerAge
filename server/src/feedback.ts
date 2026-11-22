@@ -231,6 +231,7 @@ export async function handleRescan(req: Incoming): Promise<Outgoing> {
     if (!image) throw new ApiError(400, "invalid_request", "The kept photo is no longer stored.");
     const minimum = Number(record.resultSnapshot?.leaseMinimum);
     const outcome = await rescanKeptPhoto(image, Number.isFinite(minimum) && minimum > 0 ? minimum : 4.5);
+    if (outcome.error === "upstream") throw new ApiError(502, "upstream", "Couldn't re-scan that photo. Try again in a moment.");
     const next = outcome.result;
     record.rescanUsed = true;
     record.rescanResult = {
