@@ -13,6 +13,11 @@ export const FRAME_OUTLINE = "#111111";
 export const FRAME_STROKE_PT = 4;
 export const FRAME_ARM_PT = 36;
 
+/** Body guide box: share of screen width, width:height aspect, and lift above center (share of screen height). */
+export const BODY_BOX_WIDTH = 0.9;
+export const BODY_BOX_ASPECT = 3 / 2;
+export const BODY_BOX_LIFT = 0.08;
+
 export const DEFAULT_FRAME_BODY_HINT = "Zoom until the body fills the box";
 export const DEFAULT_FRAME_BODY_GOOD_HINT = "Good — hold steady";
 

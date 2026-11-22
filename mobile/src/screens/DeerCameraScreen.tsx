@@ -34,6 +34,7 @@ import {
   frameBodyHintFromCopy,
 } from "../lib/frame-fill";
 import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
+import { BODY_BOX_ASPECT, BODY_BOX_LIFT, BODY_BOX_WIDTH } from "../lib/frame-fill";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -81,8 +82,10 @@ export const DeerCameraScreen = () => {
     guide: guideLayout.box,
   });
   const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
-  const guideWidth = width * 0.85;
-  const guideHeight = bodyMode ? height * 0.35 : height * 0.30;
+  // Body box: about 90% of screen width, 3:2 wide like a deer standing broadside.
+  // Rack mode keeps its old box. The green-fill check measures this box on screen.
+  const guideWidth = bodyMode ? width * BODY_BOX_WIDTH : width * 0.85;
+  const guideHeight = bodyMode ? guideWidth / BODY_BOX_ASPECT : height * 0.30;
 
   // Distance store
   const distanceSettings = useDistanceStore((s) => s.settings);
@@ -380,8 +383,12 @@ export const DeerCameraScreen = () => {
           <View className="w-10" />
         </View>
 
-        {/* Center Viewfinder Guide */}
-        <View className="flex-1 items-center justify-center" pointerEvents="none">
+        {/* Center Viewfinder Guide (body box sits slightly above middle) */}
+        <View
+          className="flex-1 items-center justify-center"
+          pointerEvents="none"
+          style={bodyMode ? { paddingBottom: height * BODY_BOX_LIFT } : undefined}
+        >
           {isCountingDown ? (
             <View className="items-center">
               <View className="w-32 h-32 rounded-full bg-black/70 items-center justify-center border-4 border-amber-500">
@@ -389,7 +396,7 @@ export const DeerCameraScreen = () => {
               </View>
               <View className="mt-4 bg-amber-600/90 px-6 py-3 rounded-full">
                 <Text className="text-white text-base font-bold text-center">
-                  GET READY - Hold still for 8 photos!
+                  {`GET READY - Hold still for ${burstFrames} photos!`}
                 </Text>
               </View>
             </View>
@@ -409,7 +416,7 @@ export const DeerCameraScreen = () => {
               )}
               <View className="mt-4 bg-green-600/90 px-6 py-3 rounded-full">
                 <Text className="text-white text-base font-bold text-center">
-                  HOLD STILL - Capturing 8 photos...
+                  {`HOLD STILL - Capturing ${burstFrames} photos...`}
                 </Text>
               </View>
             </View>
