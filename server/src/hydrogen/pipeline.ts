@@ -11,14 +11,34 @@
  */
 
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
+import type { WalkStep } from "../progress.js";
 import { PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
 
 export interface ModelReply {
   text: string;
 }
 
-/** accept is false when the body is empty or unparsed, which asks the caller to retry once. */
-export type ModelCaller = (prompt: string, accept?: (text: string) => boolean) => Promise<ModelReply>;
+/**
+ * accept is false when the body is empty or unparsed, which asks the caller to retry once.
+ * signal cancels a call whose answer is no longer needed (a speculative call after the walk ended).
+ */
+export type ModelCaller = (prompt: string, accept?: (text: string) => boolean, signal?: AbortSignal) => Promise<ModelReply>;
+
+/**
+ * How the walk schedules its calls. Both default on; remote config aging.parallelStart /
+ * aging.parallelClosers turn them off without a deploy.
+ * - parallelStart: photo check, baby gate and Step A start together. Step A and the gate do not
+ *   read the photo check's answer, so the answers are the same; only the waiting changes.
+ * - parallelClosers: all closer pairs start together once Step A is in (each reads only Step A).
+ * Either way the answers are read in the original order with the original rules, so the result
+ * equals the one-at-a-time walk for the same model outputs. Calls the walk no longer needs are cancelled.
+ */
+export interface WalkSchedule {
+  parallelStart: boolean;
+  parallelClosers: boolean;
+}
+
+export const SEQUENTIAL_WALK: WalkSchedule = { parallelStart: false, parallelClosers: false };
 
 export type WalkResult =
   | { kind: "no_deer" }
@@ -36,40 +56,126 @@ export type WalkResult =
     }
   | { kind: "stop"; reason: string };
 
-export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
-  const prompts = hydrogenPrompts();
+/** Told before each walk call starts, for the waiting screen's progress bar. */
+export type WalkStepListener = (step: WalkStep) => void;
 
-  const qualityText = (await call(prompts.quality, (text) => deerAnswer(text) === "absent" || parseQuality(text) != null)).text;
-  if (deerAnswer(qualityText) === "absent") return { kind: "no_deer" };
+interface Pending {
+  promise: Promise<ModelReply>;
+  cancel: () => void;
+}
+
+function launch(call: ModelCaller, prompt: string, accept: (text: string) => boolean): Pending {
+  const controller = new AbortController();
+  const promise = call(prompt, accept, controller.signal);
+  // A cancelled or unused call must never surface as an unhandled rejection.
+  promise.catch(() => undefined);
+  return { promise, cancel: () => controller.abort() };
+}
+
+export async function walkHydrogen(
+  call: ModelCaller,
+  onStep?: WalkStepListener,
+  schedule: WalkSchedule = SEQUENTIAL_WALK,
+): Promise<WalkResult> {
+  const prompts = hydrogenPrompts();
+  const step = (next: WalkStep) => {
+    try {
+      onStep?.(next);
+    } catch {
+      // Progress is display only; it never stops a scan.
+    }
+  };
+  const acceptQuality = (text: string) => deerAnswer(text) === "absent" || parseQuality(text) != null;
+  const acceptGate = (text: string) => parseGate(text) != null;
+  const acceptStepA = (text: string) => text.trim().length > 0;
+  const acceptCloser = (text: string) => {
+    const named = parseCloser(text, true).closer;
+    return named === "YOUNGER" || named === "OLDER" || named === "RANGE";
+  };
+
+  step({ step: "quality", parallel: schedule.parallelStart });
+  const quality$ = launch(call, prompts.quality, acceptQuality);
+  let gate$: Pending | null = schedule.parallelStart ? launch(call, prompts.babyGate, acceptGate) : null;
+  let stepA$: Pending | null = schedule.parallelStart ? launch(call, prompts.stepA, acceptStepA) : null;
+  const cancelRest = () => {
+    gate$?.cancel();
+    stepA$?.cancel();
+  };
+
+  let qualityText: string;
+  try {
+    qualityText = (await quality$.promise).text;
+  } catch (error) {
+    cancelRest();
+    throw error;
+  }
+  if (deerAnswer(qualityText) === "absent") {
+    cancelRest();
+    return { kind: "no_deer" };
+  }
   const quality = parseQuality(qualityText);
-  if (!quality) return { kind: "stop", reason: "unparsed quality" };
+  if (!quality) {
+    cancelRest();
+    return { kind: "stop", reason: "unparsed quality" };
+  }
   const photo = decideQuality(quality);
   if (photo.decision === "RETAKE") {
+    cancelRest();
     return { kind: "retake", message: photo.retake_message, fails: photo.fails };
   }
 
-  const gate = parseGate((await call(prompts.babyGate, (text) => parseGate(text) != null)).text);
-  if (!gate) return { kind: "stop", reason: "unparsed baby gate" };
+  step({ step: "gate", parallel: schedule.parallelStart });
+  gate$ ??= launch(call, prompts.babyGate, acceptGate);
+  let gateText: string;
+  try {
+    gateText = (await gate$.promise).text;
+  } catch (error) {
+    stepA$?.cancel();
+    throw error;
+  }
+  const gate = parseGate(gateText);
+  if (!gate) {
+    stepA$?.cancel();
+    return { kind: "stop", reason: "unparsed baby gate" };
+  }
   if (gate === "BABY") {
+    stepA$?.cancel();
     return { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true };
   }
 
-  const description = (await call(prompts.stepA, (text) => text.trim().length > 0)).text.trim();
+  step({ step: "stepA", parallel: schedule.parallelStart });
+  stepA$ ??= launch(call, prompts.stepA, acceptStepA);
+  const description = (await stepA$.promise).text.trim();
+  gate$ = null;
+  stepA$ = null;
   if (!description) return { kind: "stop", reason: "empty step A" };
+
+  const closers: Array<Pending | null> = PAIRS.map(([older, younger]) =>
+    schedule.parallelClosers ? launch(call, buildCloserPrompt(younger, older, description), acceptCloser) : null,
+  );
+  const cancelClosersFrom = (index: number) => {
+    for (let i = index; i < closers.length; i += 1) closers[i]?.cancel();
+  };
 
   let final: [number, number] | null = null;
   let isRange = false;
   let hunterCue = "";
   let reason = "";
 
-  for (const [older, younger] of PAIRS) {
+  for (const [index, [older, younger]] of PAIRS.entries()) {
+    step({ step: "closer", index, parallel: schedule.parallelClosers });
     const rangeOk = allowRange(younger, older);
-    const closerText = (await call(buildCloserPrompt(younger, older, description), (text) => {
-      const named = parseCloser(text, true).closer;
-      return named === "YOUNGER" || named === "OLDER" || named === "RANGE";
-    })).text;
+    const pending = closers[index] ?? launch(call, buildCloserPrompt(younger, older, description), acceptCloser);
+    let closerText: string;
+    try {
+      closerText = (await pending.promise).text;
+    } catch (error) {
+      cancelClosersFrom(index + 1);
+      throw error;
+    }
     const parsed = parseCloser(closerText, rangeOk);
     if (rangeOk && !parsed.ok) {
+      cancelClosersFrom(index + 1);
       return { kind: "stop", reason: `unparsed ${younger} vs ${older}` };
     }
     if (rangeOk && parsed.closer === "RANGE" && parsed.ok) {
@@ -86,7 +192,10 @@ export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
       final = [1.5, 1.5];
       reason = parsed.reason;
     }
-    if (final) break;
+    if (final) {
+      cancelClosersFrom(index + 1);
+      break;
+    }
   }
 
   if (!final) return { kind: "stop", reason: "no final" };

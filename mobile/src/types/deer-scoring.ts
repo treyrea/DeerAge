@@ -290,6 +290,8 @@ export interface ExplainableAgeEstimation {
   /** Body reasons with the look-for line removed. Missing means an older payload. */
   reasons?: string[];
   pipeline?: "hydrogen" | "openai";
+  /** Server job id of this scan; used to add a real age to a shared scan. */
+  scanJobId?: string;
 }
 
 export interface PropertyRules {

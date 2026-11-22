@@ -1,12 +1,15 @@
-/** One scan polls until the server deadline, then stops. Delays back off so a stuck job cannot spin. */
-export const MAX_STATUS_POLLS = 70;
+/**
+ * One scan polls until the server deadline, then stops.
+ * Polls stay quick for the first minute (most scans finish inside it), so the
+ * result and the progress bar show up within about 1.5 s; then they back off.
+ */
+export const MAX_STATUS_POLLS = 110;
 export const POLL_DEADLINE_MS = 300_000;
 
 export function statusPollDelayMs(attempt: number): number {
-  if (attempt < 4) return 1500;
-  if (attempt < 10) return 2500;
-  if (attempt < 20) return 4000;
-  return 5000;
+  if (attempt < 40) return 1500;
+  if (attempt < 64) return 2500;
+  return 4000;
 }
 
 export function statusPollContinues(attempt: number, elapsedMs: number): boolean {

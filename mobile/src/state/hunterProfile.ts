@@ -26,6 +26,8 @@ export interface HunterProfileState {
   /** Off until he asks. Existing managers and records migrate to on. */
   leaseRules: boolean;
   leaseRulesChosen: boolean;
+  /** "Help improve DeerAge": off until he turns it on after reading what is shared. */
+  helpImprove: boolean;
   goodResultCount: number;
   hasRequestedReview: boolean;
   sessionCount: number;
@@ -49,6 +51,7 @@ export interface HunterProfileState {
   confirmHunt: (place: Place) => void;
   setLeaseManager: (name: string, phone: string) => void;
   setLeaseRules: (enabled: boolean) => void;
+  setHelpImprove: (enabled: boolean) => void;
 }
 
 export function goalToMinimumAge(goal: HuntGoal): number {
@@ -132,6 +135,7 @@ export const useHunterProfile = create<HunterProfileState>()(
       leaseManagerPhone: "",
       leaseRules: false,
       leaseRulesChosen: false,
+      helpImprove: false,
       goodResultCount: 0,
       hasRequestedReview: false,
       sessionCount: 0,
@@ -172,6 +176,7 @@ export const useHunterProfile = create<HunterProfileState>()(
         leaseManagerPhone: phone.trim().slice(0, 40),
       }),
       setLeaseRules: (enabled) => set({ leaseRules: enabled, leaseRulesChosen: true }),
+      setHelpImprove: (enabled) => set({ helpImprove: enabled }),
     }),
     {
       name: "deerage-hunter-profile",
@@ -193,6 +198,7 @@ export const useHunterProfile = create<HunterProfileState>()(
         leaseManagerPhone: state.leaseManagerPhone,
         leaseRules: state.leaseRules,
         leaseRulesChosen: state.leaseRulesChosen,
+        helpImprove: state.helpImprove,
         goodResultCount: state.goodResultCount,
         hasRequestedReview: state.hasRequestedReview,
         sessionCount: state.sessionCount,

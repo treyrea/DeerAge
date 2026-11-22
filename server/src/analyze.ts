@@ -1,3 +1,4 @@
+import { saveContributionForJob } from "./contributions.js";
 import { findBodyBoxes, gatewayBoxCaller, withOverlays } from "./body-boxes.js";
 import { agingEngineFor, HYDROGEN_MODEL, type AgingEngine } from "./aging-switch.js";
 import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, plainReserveUsd, type TokenUsage } from "./cost.js";
@@ -28,7 +29,8 @@ import { loadRemoteConfig } from "./remote-config.js";
 import { leaseRulesOf, quickReserveUsd, runQuickHydrogen, toQuickShape, type QuickConfig, type QuickEngine } from "./quick-engine.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
-import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
+import { keepAlive, loadJob, newJobId, saveJob, saveProgress, type ScanJob } from "./jobs.js";
+import { ageProgress, initialProgress } from "./progress.js";
 import type { ModelCall } from "./gateway.js";
 interface HuntContext {
   state?: string;
@@ -47,6 +49,8 @@ interface HuntContext {
 }
 
 export interface AnalyzeBody {
+  /** "Help improve DeerAge" switch from the app. */
+  contribute?: boolean;
   mode?: string;
   appUserId?: string;
   images?: unknown;
@@ -277,11 +281,14 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     const context = contextOf(body);
     const minimum = context.minimumShooterAge ?? 4.5;
     const jobId = newJobId();
-    const job: ScanJob = { id: jobId, status: "running", mode, provisional: null, final: null, error: null };
+    const progressKind = mode === "score" ? "score" : mode === "quick" && quickEngine !== "age" ? "plain" : "age";
+    const job: ScanJob = { id: jobId, status: "running", mode, provisional: null, final: null, error: null, progress: initialProgress(progressKind) };
     await saveJob(job);
     const reserved = spendReserved;
     spendReserved = 0;
-    keepAlive(finishJob({
+    // "Help improve DeerAge": only when the hunter opted in; the owner switch is checked inside.
+    const contribute = body.contribute === true && !isEval;
+    const finished = finishJob({
       job,
       images,
       mode,
@@ -295,14 +302,19 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       releaseFairUse: async () => {
         if (fairUseHeld) await releaseFairUse(appUserId);
       },
-    }));
+    });
+    keepAlive(contribute
+      ? finished.then(() => saveContributionForJob({ jobId, appUserId, mode, minimum, images }).catch((error: unknown) => {
+        console.log(JSON.stringify({ event: "contribution_failed", message: error instanceof Error ? error.message.slice(0, 120) : "failed" }));
+      }))
+      : finished);
     const scanCredits = await readCredits(appUserId);
     const freeUsesRemaining = !access || access.entitled || isEval
       ? null
       : freeHeld
         ? Math.max(0, (access.freeUsesRemaining ?? 0) - 1)
         : access.freeUsesRemaining;
-    return { status: 202, body: { ok: true, jobId, mode, entitled: Boolean(access?.entitled), freeUsesRemaining, scanCredits } };
+    return { status: 202, body: { ok: true, jobId, mode, entitled: Boolean(access?.entitled), freeUsesRemaining, scanCredits, progress: job.progress, serverNow: Date.now() } };
   } catch (error) {
     if (spendReserved > 0) {
       await settleCost(usage, spendReserved, mode, appUserId).catch(() => undefined);
@@ -405,6 +417,10 @@ async function finishJob(input: {
       const aging = remote.aging;
       const budget = createScanBudget(aging.callTimeoutMs);
       const caller = geminiCaller(input.images[0], input.usage, { timeoutMs: aging.callTimeoutMs, budget });
+      const progress = ageProgress((next) => saveProgress(input.job, next), {
+        startedAt: input.job.progress?.startedAt,
+        crossCheck: aging.crossCheck,
+      });
       // Runs beside the age read; it only draws outlines and never changes the age.
       const outlines = aging.bodyBoxes ? findBodyBoxes(input.images[0], gatewayBoxCaller) : null;
       const resolved = await resolveHydrogenAge({
@@ -413,7 +429,7 @@ async function finishJob(input: {
         backupOnStop: aging.router === "c4nr",
         circuitOpen: () => circuitOpen("gemini"),
         note: (ok) => circuitNote("gemini", ok),
-        primary: () => ageWithRouter({ call: caller, settings: aging }),
+        primary: () => ageWithRouter({ call: caller, settings: aging, progress }),
         backup: async () => {
           const age = await runAgeCall(input.images[0], input.minimum);
           if (age.stop === "not_deer") return { kind: "no_deer" };
@@ -445,6 +461,7 @@ async function finishJob(input: {
         });
         return;
       }
+      progress.finishing();
       const found = outlines ? await outlines : null;
       const result = found ? withOverlays(resolved.result, found.boxes) : resolved.result;
       if (found) {
@@ -579,7 +596,15 @@ async function finishQuickHydrogen(
       backupOnStop: aging.router === "c4nr",
       circuitOpen: () => circuitOpen("gemini"),
       note: (ok) => circuitNote("gemini", ok),
-      primary: () => ageWithRouter({ call: caller, settings: aging, plain }),
+      primary: () => ageWithRouter({
+        call: caller,
+        settings: aging,
+        plain,
+        progress: ageProgress((next) => saveProgress(input.job, next), {
+          startedAt: input.job.progress?.startedAt,
+          crossCheck: aging.crossCheck,
+        }),
+      }),
       backup: async () => {
         if (plain) return { ageYears: plain[0] };
         const age = await runAgeCall(input.images[0], input.minimum);
@@ -685,6 +710,6 @@ export async function handleJobStatus(id: string): Promise<{ status: number; bod
   }
   const job = await loadJob(id);
   if (!job) return { status: 404, body: { ok: false, code: "invalid_request", message: "No scan with that id." } };
-  return { status: 200, body: { ok: true, ...job } };
+  return { status: 200, body: { ok: true, ...job, serverNow: Date.now() } };
 }
 

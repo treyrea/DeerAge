@@ -5,6 +5,7 @@
 
 import { randomBytes } from "node:crypto";
 import { redisGet, redisSet } from "./kv.js";
+import type { ScanProgress } from "./progress.js";
 
 export interface ScanJob {
   id: string;
@@ -13,6 +14,8 @@ export interface ScanJob {
   provisional: unknown;
   final: unknown;
   error: { code: string; message: string; kind?: string; tip?: string } | null;
+  /** Which step is running and the expected time left, for the waiting screen. */
+  progress?: ScanProgress | null;
 }
 
 const memory = new Map<string, ScanJob>();
@@ -36,13 +39,40 @@ export function newJobId(): string {
   return `job_${randomBytes(8).toString("hex")}`;
 }
 
-export async function saveJob(job: ScanJob): Promise<void> {
+const writes = new Map<string, Promise<void>>();
+const finished = new Set<string>();
+
+/**
+ * Writes for one job go out in order, and once a job is done or failed a late
+ * "running" write (a progress tick, a provisional note) can never overwrite it.
+ */
+export function saveJob(input: ScanJob): Promise<void> {
+  if (input.status === "running" && finished.has(input.id)) return Promise.resolve();
+  if (input.status !== "running") finished.add(input.id);
+  // A finished job has nothing left to wait for.
+  const job = input.status === "running" ? input : { ...input, progress: null };
   memory.set(job.id, job);
-  try {
-    await redisSet(`deerage:job:${job.id}`, JSON.stringify(job));
-  } catch {
-    // The in-memory copy still serves this process.
-  }
+  const previous = writes.get(job.id) ?? Promise.resolve();
+  const write = previous.then(async () => {
+    try {
+      await redisSet(`deerage:job:${job.id}`, JSON.stringify(job));
+    } catch {
+      // The in-memory copy still serves this process.
+    }
+  });
+  writes.set(job.id, write);
+  void write.then(() => {
+    if (writes.get(job.id) === write) writes.delete(job.id);
+  });
+  if (finished.size > 5000) finished.clear();
+  return write;
+}
+
+/** Adds the latest progress to the job as this process last saved it. Never blocks the scan. */
+export function saveProgress(job: ScanJob, progress: ScanProgress): void {
+  const current = memory.get(job.id) ?? job;
+  if (current.status !== "running") return;
+  void saveJob({ ...current, progress });
 }
 
 export async function loadJob(id: string): Promise<ScanJob | null> {
