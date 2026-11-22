@@ -61,6 +61,30 @@ function timeZone(): string {
   return process.env.FAIR_USE_TIMEZONE?.trim() || "America/Chicago";
 }
 
+/** "Central" from America/Chicago. An unknown zone stays Central, the documented default. */
+export function fairUseZoneName(zone = timeZone()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "longGeneric",
+    }).formatToParts(new Date());
+    const name = parts.find((part) => part.type === "timeZoneName")?.value?.trim() ?? "";
+    const short = name.replace(/\s+Time$/, "").trim();
+    if (short) return short;
+  } catch {
+    // Intl rejects a timezone the server does not know.
+  }
+  return "Central";
+}
+
+/** The sentence on a fair-use limit. The app shows this text as the server sent it. */
+export function fairUseLimitMessage(kind: "daily" | "monthly", zoneName = fairUseZoneName()): string {
+  if (kind === "monthly") {
+    return `You've reached this month's limit. It resets at the start of next month, at midnight ${zoneName}.`;
+  }
+  return `You've reached today's limit. It resets at midnight ${zoneName}.`;
+}
+
 function zonedParts(date: Date): { year: string; month: string; day: string } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timeZone(),

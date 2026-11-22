@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
+import { FairUseLimitView } from "../components/FairUseLimit";
 import { ScanProgressView } from "../components/ScanProgressView";
 import { useScanProgress } from "../state/scanProgress";
 
@@ -56,7 +57,7 @@ const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "sco
     return base("TOO MANY REQUESTS", messageForCode("rate_limited"), ["Wait a few seconds, then try again"], "hourglass", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
   }
   if (category === "fair_use") {
-    return base("TODAY'S ANALYSES USED", messageForCode("fair_use"), ["Everyday use resets tomorrow"], "calendar", "#D4AF37", ["#3D4A2F", "#1a1f16", "#1a1a1a"]);
+    return base("DAILY LIMIT REACHED", messageForCode("fair_use"), [], "calendar", "#D4AF37", ["#3D4A2F", "#1a1f16", "#1a1a1a"]);
   }
   if (category === "busy") {
     return base("DEERAGE IS BUSY", messageForCode("busy"), ["Wait a little while and try the same photo again"], "hourglass", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
@@ -78,6 +79,8 @@ export const ProcessingScreen = () => {
   const currentResult = useDeerScoringStore((s) => s.currentResult);
   const error = useDeerScoringStore((s) => s.error);
   const errorCode = useDeerScoringStore((s) => s.errorCode);
+  const errorLimit = useDeerScoringStore((s) => s.errorLimit);
+  const errorCreditsBypass = useDeerScoringStore((s) => s.errorCreditsBypass);
   const errorTip = useDeerScoringStore((s) => s.errorTip);
   const capturedFrames = useDeerScoringStore((s) => s.capturedFrames);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
@@ -106,6 +109,10 @@ export const ProcessingScreen = () => {
   // Haptic feedback on error
   useEffect(() => {
     if (!error) return;
+    if (errorCode === "fair_use") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      return;
+    }
     const look = errorCode === "retake" || errorCode === "poor_quality" || errorCode === "unreadable" || errorCode === "no_body";
     if (look && analysisMode === "age") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -165,6 +172,10 @@ export const ProcessingScreen = () => {
       || errorInfo.category === "no_body"
     ),
   );
+
+  if (error && errorCode === "fair_use") {
+    return <FairUseLimitView message={error} limit={errorLimit} offerPacks={errorCreditsBypass} onHome={handleHome} />;
+  }
 
   if (error && errorCode === "no_deer") {
     const title = noDeerTitle.trim() || error || NO_DEER_TITLE;
