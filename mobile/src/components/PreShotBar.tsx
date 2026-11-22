@@ -123,7 +123,9 @@ export const ShotRecordPage = ({
         <Pressable accessibilityLabel="Back" onPress={onBack} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
-        <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Pre-shot record</Text>
+        <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>
+          {record.mode === "quick" ? "Quick Check" : record.mode === "age" ? "Age" : record.mode === "score" ? "Rack" : "Saved record"}
+        </Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
