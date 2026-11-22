@@ -133,6 +133,8 @@ export const QuickCheckResultScreen = () => {
                 ? "NOT A DEER"
                 : result.invalidImageReason === "no_body_visible"
                 ? "BODY NOT VISIBLE"
+                : result.invalidImageReason === "too_small" || result.invalidImageReason === "retake"
+                ? "GET CLOSER OR ZOOM IN"
                 : "POOR IMAGE QUALITY"}
             </Text>
 

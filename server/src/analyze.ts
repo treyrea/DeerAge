@@ -31,6 +31,7 @@ import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, saveProgress, type ScanJob } from "./jobs.js";
 import { ageProgress, initialProgress } from "./progress.js";
+import { prepareScanImages } from "./vignette-crop.js";
 import type { ModelCall } from "./gateway.js";
 interface HuntContext {
   state?: string;
@@ -145,10 +146,11 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   if (mode !== "quick" && mode !== "age" && mode !== "score") {
     return fail(400, "invalid_request", "mode must be quick, age, or score.");
   }
-  const images = imagesOf(body);
-  if (!images) {
+  const incoming = imagesOf(body);
+  if (!incoming) {
     return fail(400, "invalid_request", "Send 1 to 4 JPEG images as base64.");
   }
+  const images = await prepareScanImages(incoming);
   const appUserId = typeof body.appUserId === "string" ? body.appUserId.trim() : "";
   if (!appUserId || appUserId.length > 200) {
     return fail(400, "invalid_request", "appUserId is required.");
@@ -632,6 +634,12 @@ async function finishQuickHydrogen(
     await input.refund();
     await input.releaseFairUse();
     await saveJob({ ...input.job, status: "error", provisional: null, error: noDeerJobForMode("quick", noDeerCopy(remote.copy)) });
+    return true;
+  }
+  if (outcome.kind === "retake") {
+    await input.refund();
+    await input.releaseFairUse();
+    await saveJob({ ...input.job, status: "error", provisional: null, error: { code: "retake", message: outcome.message } });
     return true;
   }
   if (outcome.kind === "fail") {

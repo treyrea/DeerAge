@@ -6,6 +6,7 @@
 
 import { hydrogenAgeBody } from "./result.js";
 import type { WalkResult } from "./pipeline.js";
+import { RETAKE_MESSAGES } from "./rules.js";
 import { classStep } from "../field-call.js";
 
 const STEPS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
@@ -69,6 +70,11 @@ export async function resolveHydrogenAge(input: {
     await input.note(true);
     if (outcome.kind === "no_deer") return { kind: "no_deer" };
     if (outcome.kind === "retake") return { kind: "retake", message: outcome.message };
+    if (outcome.kind === "stop" && outcome.reason === "unparsed quality") {
+      // Do not send a photo we could not quality-check to the gateway backup;
+      // that path is what turned tiny long-range frames into "couldn't finish."
+      return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough };
+    }
     if (outcome.kind === "age") {
       return {
         kind: "age",

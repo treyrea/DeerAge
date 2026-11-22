@@ -30,6 +30,11 @@ export interface AgingConfig {
   parallelStart: boolean;
   /** Start every closer pair together once Step A is in (same answers, about 2 cents more). */
   parallelClosers: boolean;
+  /**
+   * Add one sentence to the quality prompt so a reticle is not treated as a "graphic box."
+   * Live switch: PATCH /api/admin/config { "aging": { "ignoreReticle": false } }. Default on.
+   */
+  ignoreReticle: boolean;
 }
 
 export function defaultAgingConfig(): AgingConfig {
@@ -43,6 +48,7 @@ export function defaultAgingConfig(): AgingConfig {
     bodyBoxes: true,
     parallelStart: true,
     parallelClosers: true,
+    ignoreReticle: true,
   };
 }
 
@@ -74,6 +80,7 @@ export function normalizeAging(stored: unknown): AgingConfig {
     bodyBoxes: typeof row.bodyBoxes === "boolean" ? row.bodyBoxes : base.bodyBoxes,
     parallelStart: typeof row.parallelStart === "boolean" ? row.parallelStart : base.parallelStart,
     parallelClosers: typeof row.parallelClosers === "boolean" ? row.parallelClosers : base.parallelClosers,
+    ignoreReticle: typeof row.ignoreReticle === "boolean" ? row.ignoreReticle : base.ignoreReticle,
   };
 }
 

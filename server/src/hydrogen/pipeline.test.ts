@@ -16,7 +16,7 @@ import { hydrogenAgeBody } from "./result.js";
 import { ScanBudget, ScanDeadlineError } from "./budget.js";
 import { CallCancelledError, generateGeminiText, geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
 import { walkHydrogen, type ModelCaller } from "./pipeline.js";
-import { activeCrossCheckPrompt, activePlainPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
+import { QUALITY_IGNORE_RETICLE_SENTENCE, QUALITY_MIN_SIZE_SENTENCE, activeCrossCheckPrompt, activePlainPrompt, activeQualityPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
 import { RETAKE_MESSAGE_DEFAULT, RETAKE_MESSAGES, decideQuality, parseCloser, parseQuality } from "./rules.js";
 
 const HASHES: Record<string, string> = {
@@ -516,4 +516,58 @@ test("a cancelled gemini call stops at once and is never retried", async () => {
   already.abort();
   await assert.rejects(() => generateGeminiText({ ...geminiInput(unused.fetchImpl, 30), signal: already.signal }), (error: unknown) => error instanceof CallCancelledError);
   assert.equal(unused.calls(), 0);
+});
+
+test("size and blur retakes tell the hunter to get closer or zoom in", () => {
+  assert.equal(decideQuality(parseQuality(quality({ deer_large_enough: "NO" }))!).retake_message, RETAKE_MESSAGES.deer_large_enough);
+  assert.match(RETAKE_MESSAGES.deer_large_enough, /Get closer or zoom in/);
+  assert.match(RETAKE_MESSAGES.contour_readable, /Get closer or zoom in/);
+  const tiny = decideQuality(parseQuality(quality({ deer_large_enough: "CANT_TELL", contour_readable: "CANT_TELL" }))!);
+  assert.equal(tiny.decision, "RETAKE");
+  assert.equal(tiny.retake_message, RETAKE_MESSAGES.deer_large_enough);
+  const softButLarge = decideQuality(parseQuality(quality({ deer_large_enough: "CANT_TELL", contour_readable: "YES" }))!);
+  assert.equal(softButLarge.decision, "AGEABLE");
+});
+
+test("activeQualityPrompt keeps the quality_v4 file hash and appends size and reticle sentences", () => {
+  assert.equal(sha("quality_v4.txt"), HASHES["quality_v4.txt"]);
+  assert.equal(activeQualityPrompt(false).includes(QUALITY_MIN_SIZE_SENTENCE), true);
+  assert.equal(activeQualityPrompt(false).includes(QUALITY_IGNORE_RETICLE_SENTENCE), false);
+  const on = activeQualityPrompt(true);
+  assert.equal(on.includes(QUALITY_MIN_SIZE_SENTENCE), true);
+  assert.equal(on.split(QUALITY_MIN_SIZE_SENTENCE).length, 2);
+  assert.equal(on.includes(QUALITY_IGNORE_RETICLE_SENTENCE), true);
+  assert.equal(on.split(QUALITY_IGNORE_RETICLE_SENTENCE).length, 2);
+});
+
+test("an unparsed quality check is a get-closer retake, not a stop", async () => {
+  const script = scripted(["sorry, I cannot make that out"]);
+  const result = await walkHydrogen(script.call);
+  assert.equal(result.kind, "retake");
+  if (result.kind === "retake") {
+    assert.equal(result.message, RETAKE_MESSAGES.deer_large_enough);
+    assert.deepEqual(result.fails, ["deer_large_enough"]);
+  }
+  assert.equal(script.prompts.length, 1);
+});
+
+test("an unparsed baby gate is a size retake when the deer was not clearly large enough", async () => {
+  const script = scripted([quality({ deer_large_enough: "CANT_TELL", contour_readable: "YES" }), "not a gate"]);
+  const result = await walkHydrogen(script.call);
+  assert.equal(result.kind, "retake");
+  if (result.kind === "retake") assert.equal(result.message, RETAKE_MESSAGES.deer_large_enough);
+});
+
+test("an unparsed baby gate still stops when the deer is large enough", async () => {
+  const script = scripted([quality(), "not a gate"]);
+  const result = await walkHydrogen(script.call);
+  assert.deepEqual(result, { kind: "stop", reason: "unparsed baby gate" });
+});
+
+test("a size failure uses the get-closer tip even when other checks also fail", () => {
+  const many = decideQuality(parseQuality(quality({ deer_large_enough: "NO", neck_chest_visible: "NO", belly_waist_visible: "NO" }))!);
+  assert.equal(many.decision, "RETAKE");
+  assert.equal(many.retake_message, RETAKE_MESSAGES.deer_large_enough);
+  const soft = decideQuality(parseQuality(quality({ contour_readable: "NO", view_angle: "HEAD_ON" }))!);
+  assert.equal(soft.retake_message, RETAKE_MESSAGES.contour_readable);
 });
