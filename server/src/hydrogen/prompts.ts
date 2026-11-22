@@ -20,6 +20,7 @@ export interface HydrogenPromptSet {
   chart: ChartPack;
   plain: string;
   crossCheck: string;
+  plainDeer: string;
 }
 
 let cachedDir: string | null = null;
@@ -59,6 +60,7 @@ export function hydrogenPrompts(): HydrogenPromptSet {
     chart: JSON.parse(readPrompt("chart.json")) as ChartPack,
     plain: readPrompt("plain_v1.txt"),
     crossCheck: readPrompt("crosscheck_v1.txt"),
+    plainDeer: readPrompt("plain_deer_v1.txt"),
   };
   return cached;
 }
@@ -110,4 +112,11 @@ export function buildCloserPrompt(younger: number, older: number, description: s
     + `\nOLDER description (${olderName}):\n`
     + olderText
   );
+}
+
+/** Quick Check's one read: the plain question plus a last DEER_PRESENT line. A non-empty override wins. */
+export function activeQuickPrompt(override?: string): string {
+  const custom = override?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim() ?? "";
+  if (custom) return custom;
+  return hydrogenPrompts().plainDeer;
 }

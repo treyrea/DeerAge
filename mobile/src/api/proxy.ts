@@ -185,6 +185,8 @@ export async function analyzeImages(input: {
         appVersion: installedAppVersion(),
         images,
         minimumShooterAge: input.minimumShooterAge,
+        // The server hands lease users' older reads to the full age check. Off means a quick one-read age.
+        leaseRules: profile.leaseRules === true,
         context: {
           state: hunt.stateCode,
           ecoregion: hunt.ecoregion,

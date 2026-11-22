@@ -104,6 +104,9 @@ export async function callModel(options: {
         body: JSON.stringify(body),
       });
       if (!response.ok) {
+        // The gateway's own error text (for example why a 402 happened). It never holds the key.
+        const detail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 200);
+        console.log(JSON.stringify({ event: "gateway_error", model, status: response.status, detail }));
         throw new GatewayError(`Gateway ${response.status}`, response.status, false);
       }
       const payload = (await response.json()) as {
