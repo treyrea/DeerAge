@@ -109,3 +109,13 @@ describe("frame hint copy", () => {
     expect(frameBodyGoodHintFromCopy("Nice — stay still")).toBe("Nice — stay still");
   });
 });
+
+describe("body guide box size", () => {
+  it("is about 90% of screen width with a 3:2 wide shape", () => {
+    const { BODY_BOX_WIDTH, BODY_BOX_ASPECT, BODY_BOX_LIFT } = require("./frame-fill");
+    expect(BODY_BOX_WIDTH).toBeCloseTo(0.9);
+    expect(BODY_BOX_ASPECT).toBeCloseTo(1.5);
+    expect(BODY_BOX_LIFT).toBeGreaterThan(0);
+    expect(BODY_BOX_LIFT).toBeLessThan(0.15);
+  });
+});
