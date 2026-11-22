@@ -417,7 +417,7 @@ export const DeerCameraScreen = () => {
                       <View className="flex-row items-start mb-2">
                         <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 2 }} />
                         <Text className="text-white text-sm ml-2 flex-1">
-                          Zoom in until the body fills the frame - neck, chest, belly, and legs visible
+                          Frame the FULL BODY from side view - neck, chest, belly, legs visible
                         </Text>
                       </View>
                       <View className="flex-row items-start mb-2">
