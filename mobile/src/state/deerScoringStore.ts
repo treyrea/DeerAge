@@ -4,6 +4,7 @@
  */
 
 import { create } from "zustand";
+import { useScanProgress } from "./scanProgress";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from 'expo-file-system/legacy';
@@ -194,6 +195,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
     set({ isProcessing: true, error: null, errorCode: null, errorTip: null });
 
     const { capturedFrames, analysisMode, propertyRules } = get();
+    useScanProgress.getState().start(analysisMode === "age" ? "age" : "score");
 
     console.log("[Store] Frame count:", capturedFrames.length, "Mode:", analysisMode);
 

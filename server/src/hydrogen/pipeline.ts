@@ -11,6 +11,7 @@
  */
 
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
+import type { WalkStep } from "../progress.js";
 import { PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
 
 export interface ModelReply {
@@ -36,9 +37,20 @@ export type WalkResult =
     }
   | { kind: "stop"; reason: string };
 
-export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
-  const prompts = hydrogenPrompts();
+/** Told before each walk call starts, for the waiting screen's progress bar. */
+export type WalkStepListener = (step: WalkStep) => void;
 
+export async function walkHydrogen(call: ModelCaller, onStep?: WalkStepListener): Promise<WalkResult> {
+  const prompts = hydrogenPrompts();
+  const step = (next: WalkStep) => {
+    try {
+      onStep?.(next);
+    } catch {
+      // Progress is display only; it never stops a scan.
+    }
+  };
+
+  step({ step: "quality" });
   const qualityText = (await call(prompts.quality, (text) => deerAnswer(text) === "absent" || parseQuality(text) != null)).text;
   if (deerAnswer(qualityText) === "absent") return { kind: "no_deer" };
   const quality = parseQuality(qualityText);
@@ -48,12 +60,14 @@ export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
     return { kind: "retake", message: photo.retake_message, fails: photo.fails };
   }
 
+  step({ step: "gate" });
   const gate = parseGate((await call(prompts.babyGate, (text) => parseGate(text) != null)).text);
   if (!gate) return { kind: "stop", reason: "unparsed baby gate" };
   if (gate === "BABY") {
     return { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true };
   }
 
+  step({ step: "stepA" });
   const description = (await call(prompts.stepA, (text) => text.trim().length > 0)).text.trim();
   if (!description) return { kind: "stop", reason: "empty step A" };
 
@@ -62,7 +76,8 @@ export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
   let hunterCue = "";
   let reason = "";
 
-  for (const [older, younger] of PAIRS) {
+  for (const [index, [older, younger]] of PAIRS.entries()) {
+    step({ step: "closer", index });
     const rangeOk = allowRange(younger, older);
     const closerText = (await call(buildCloserPrompt(younger, older, description), (text) => {
       const named = parseCloser(text, true).closer;

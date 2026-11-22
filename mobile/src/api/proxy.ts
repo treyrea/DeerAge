@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
+import { useScanProgress } from "../state/scanProgress";
 import { POLL_DEADLINE_MS, statusPollContinues, statusPollDelayMs } from "./poll-schedule";
 import { resolveApiBaseUrl } from "./endpoint";
 import { ciApiBaseUrl } from "../e2e/ci-endpoint";
@@ -128,6 +129,9 @@ async function pollJob(jobId: string, mode: string): Promise<{
       final?: { result?: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
       error?: { code?: string; message?: string; kind?: string; tip?: string };
     } | null;
+    if (job && (job as { progress?: unknown }).progress) {
+      useScanProgress.getState().report((job as { progress?: unknown }).progress, (job as { serverNow?: unknown }).serverNow);
+    }
     if (job?.provisional?.note) {
       const { useDeerScoringStore } = await import("../state/deerScoringStore");
       const next = {
@@ -172,6 +176,7 @@ export async function analyzeImages(input: {
 
   const max = input.mode === "quick" ? 1 : 4;
   lastShotReceipt = null;
+  useScanProgress.getState().start(input.mode);
   const images = await Promise.all(sampleFrames(input.imageUris, max).map((uri) => jpegBase64(uri)));
   const profile = useHunterProfile.getState();
   const hunt = activeHunt(profile);
@@ -241,6 +246,7 @@ export async function analyzeImages(input: {
     const quotedCredits = typeof (payload as { scanCredits?: unknown }).scanCredits === "number"
       ? (payload as { scanCredits: number }).scanCredits
       : undefined;
+    useScanProgress.getState().report((payload as { progress?: unknown }).progress, (payload as { serverNow?: unknown }).serverNow);
     let done: Awaited<ReturnType<typeof pollJob>>;
     try {
       done = await pollJob((payload as { jobId: string }).jobId, input.mode);
