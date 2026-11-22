@@ -35,7 +35,12 @@ export const CommunityPrompts = ({ routeName = "" }: { routeName?: string }) => 
   const [thanks, setThanks] = useState(false);
   const [pushNote, setPushNote] = useState("");
 
-  if (e2eEnabled || !activePrompt || routeName === "TierPaywall") return null;
+  const quietRoute = routeName === "TierPaywall"
+    || routeName === "AgeResults"
+    || routeName === "Processing"
+    || routeName === "QuickCheckResult"
+    || routeName === "Results";
+  if (e2eEnabled || !activePrompt || quietRoute) return null;
 
   const closeEmail = () => {
     setEmailText("");

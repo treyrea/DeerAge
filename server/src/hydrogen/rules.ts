@@ -85,6 +85,22 @@ function tryParse(text: string): Record<string, unknown> | null {
   }
 }
 
+export type DeerAnswer = "present" | "absent" | "unknown";
+
+/**
+ * Only an explicit NO means no deer. A missing field, YES, or CANT_TELL
+ * stays "present" or "unknown", and both keep the normal age path.
+ * A false "no deer" on a real deer is the miss we refuse to make.
+ */
+export function deerAnswer(text: string): DeerAnswer {
+  const json = extractJsonObject(text);
+  if (!json) return "unknown";
+  const value = String(json.deer_present ?? "").trim().toUpperCase();
+  if (value === "NO") return "absent";
+  if (value === "YES" || value === "CANT_TELL") return "present";
+  return "unknown";
+}
+
 export function parseQuality(text: string): QualityFields | null {
   const json = extractJsonObject(text);
   if (!json) return null;

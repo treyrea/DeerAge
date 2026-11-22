@@ -12,7 +12,7 @@ export interface ScanJob {
   mode: "quick" | "age" | "score";
   provisional: unknown;
   final: unknown;
-  error: { code: string; message: string } | null;
+  error: { code: string; message: string; kind?: string; tip?: string } | null;
 }
 
 const memory = new Map<string, ScanJob>();

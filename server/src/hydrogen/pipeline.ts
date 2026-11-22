@@ -11,7 +11,7 @@
  */
 
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
-import { PAIRS, allowRange, decideQuality, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
+import { PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
 
 export interface ModelReply {
   text: string;
@@ -21,6 +21,7 @@ export interface ModelReply {
 export type ModelCaller = (prompt: string, accept?: (text: string) => boolean) => Promise<ModelReply>;
 
 export type WalkResult =
+  | { kind: "no_deer" }
   | { kind: "retake"; message: string; fails: string[] }
   | {
       kind: "age";
@@ -38,7 +39,9 @@ export type WalkResult =
 export async function walkHydrogen(call: ModelCaller): Promise<WalkResult> {
   const prompts = hydrogenPrompts();
 
-  const quality = parseQuality((await call(prompts.quality, (text) => parseQuality(text) != null)).text);
+  const qualityText = (await call(prompts.quality, (text) => deerAnswer(text) === "absent" || parseQuality(text) != null)).text;
+  if (deerAnswer(qualityText) === "absent") return { kind: "no_deer" };
+  const quality = parseQuality(qualityText);
   if (!quality) return { kind: "stop", reason: "unparsed quality" };
   const photo = decideQuality(quality);
   if (photo.decision === "RETAKE") {

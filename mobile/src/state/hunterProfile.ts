@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { migrateLeaseRules } from "../lib/lease-rules";
 import type { Place } from "../lib/regions";
 
 export type LandType = "private" | "public" | "lease" | "high_fence";
@@ -22,6 +23,9 @@ export interface HunterProfileState {
   huntDay: string;
   leaseManagerName: string;
   leaseManagerPhone: string;
+  /** Off until he asks. Existing managers and records migrate to on. */
+  leaseRules: boolean;
+  leaseRulesChosen: boolean;
   goodResultCount: number;
   hasRequestedReview: boolean;
   sessionCount: number;
@@ -44,6 +48,7 @@ export interface HunterProfileState {
   dismissUpdate: (version: string) => void;
   confirmHunt: (place: Place) => void;
   setLeaseManager: (name: string, phone: string) => void;
+  setLeaseRules: (enabled: boolean) => void;
 }
 
 export function goalToMinimumAge(goal: HuntGoal): number {
@@ -90,6 +95,19 @@ export function huntConfirmedToday(state: Pick<HunterProfileState, "huntDay" | "
   return state.huntDay === localDay() && Boolean(state.huntStateCode);
 }
 
+export function settleLeaseRules(savedRecords: number): void {
+  const profile = useHunterProfile.getState();
+  if (profile.leaseRulesChosen) return;
+  const next = migrateLeaseRules({
+    chosen: false,
+    enabled: profile.leaseRules,
+    managerName: profile.leaseManagerName,
+    managerPhone: profile.leaseManagerPhone,
+    savedRecords,
+  });
+  useHunterProfile.setState({ leaseRules: next.enabled, leaseRulesChosen: next.chosen });
+}
+
 export function speciesForEcoregion(ecoregion: string): "whitetail" | "mule_deer" {
   return ecoregion.toLowerCase().includes("mule") ? "mule_deer" : "whitetail";
 }
@@ -112,6 +130,8 @@ export const useHunterProfile = create<HunterProfileState>()(
       huntDay: "",
       leaseManagerName: "",
       leaseManagerPhone: "",
+      leaseRules: false,
+      leaseRulesChosen: false,
       goodResultCount: 0,
       hasRequestedReview: false,
       sessionCount: 0,
@@ -151,6 +171,7 @@ export const useHunterProfile = create<HunterProfileState>()(
         leaseManagerName: name.trim().slice(0, 80),
         leaseManagerPhone: phone.trim().slice(0, 40),
       }),
+      setLeaseRules: (enabled) => set({ leaseRules: enabled, leaseRulesChosen: true }),
     }),
     {
       name: "deerage-hunter-profile",
@@ -170,6 +191,8 @@ export const useHunterProfile = create<HunterProfileState>()(
         huntDay: state.huntDay,
         leaseManagerName: state.leaseManagerName,
         leaseManagerPhone: state.leaseManagerPhone,
+        leaseRules: state.leaseRules,
+        leaseRulesChosen: state.leaseRulesChosen,
         goodResultCount: state.goodResultCount,
         hasRequestedReview: state.hasRequestedReview,
         sessionCount: state.sessionCount,

@@ -14,7 +14,8 @@ import { addCustomerInfoUpdateListener } from "./src/lib/revenuecatClient";
 import { CommunityPrompts, leafRouteName } from "./src/components/CommunityPrompts";
 import { UpdateGate } from "./src/components/UpdateGate";
 import { refreshRemoteConfig } from "./src/state/remoteConfig";
-import { useHunterProfile } from "./src/state/hunterProfile";
+import { settleLeaseRules, useHunterProfile } from "./src/state/hunterProfile";
+import { useShotRecordStore } from "./src/state/shotRecordStore";
 import { useHarvestStore } from "./src/state/harvestStore";
 import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefresh } from "./src/lib/push";
 import { useCommunityStore } from "./src/state/communityStore";
@@ -69,10 +70,21 @@ function MainApp() {
     };
     if (useHunterProfile.persist.hasHydrated()) note();
     const unsub = useHunterProfile.persist.onFinishHydration(note);
+    const settle = () => {
+      if (!useHunterProfile.persist.hasHydrated() || !useShotRecordStore.persist.hasHydrated()) return;
+      settleLeaseRules(Object.keys(useShotRecordStore.getState().records).length);
+    };
+    if (useHunterProfile.persist.hasHydrated() && useShotRecordStore.persist.hasHydrated()) settle();
+    const unsubProfile = useHunterProfile.persist.onFinishHydration(settle);
+    const unsubRecords = useShotRecordStore.persist.onFinishHydration(settle);
     Object.values(useHarvestStore.getState().entries).filter((entry) => !entry.synced).forEach((entry) => {
       useHarvestStore.getState().save(entry);
     });
-    return () => unsub();
+    return () => {
+      unsub();
+      unsubProfile();
+      unsubRecords();
+    };
   }, []);
 
   useEffect(() => {

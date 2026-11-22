@@ -21,6 +21,7 @@ import { geminiCaller } from "./hydrogen/gemini.js";
 import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { ageWithRouter } from "./hydrogen/age-with-router.js";
+import { hydrogenFinishPlan, noDeerCopy, noDeerJobError } from "./hydrogen/no-deer.js";
 import { createScanBudget } from "./hydrogen/budget.js";
 import { loadRemoteConfig } from "./remote-config.js";
 import { runScoreCall } from "./score-pipeline.js";
@@ -360,7 +361,8 @@ async function finishJob(input: {
         provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
       });
       const started = Date.now();
-      const aging = (await loadRemoteConfig()).aging;
+      const remote = await loadRemoteConfig();
+      const aging = remote.aging;
       const budget = createScanBudget(aging.callTimeoutMs);
       const caller = geminiCaller(input.images[0], input.usage, { timeoutMs: aging.callTimeoutMs, budget });
       const resolved = await resolveHydrogenAge({
@@ -382,15 +384,21 @@ async function finishJob(input: {
         backup: resolved.kind === "age" && resolved.backup,
       }));
       if (resolved.kind !== "age") {
-        await input.refund();
-        await input.releaseFairUse();
-        const retake = resolved.kind === "retake";
+        const plan = hydrogenFinishPlan(resolved.kind);
+        if (!plan.charge) {
+          await input.refund();
+          await input.releaseFairUse();
+        }
+        const error = resolved.kind === "no_deer"
+          ? noDeerJobError(noDeerCopy(remote.copy))
+          : resolved.kind === "retake"
+            ? { code: "retake", message: resolved.message }
+            : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." };
         await saveJob({
           ...input.job,
           status: "error",
-          error: retake
-            ? { code: "retake", message: resolved.message }
-            : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." },
+          provisional: resolved.kind === "no_deer" ? null : input.job.provisional,
+          error,
         });
         return;
       }

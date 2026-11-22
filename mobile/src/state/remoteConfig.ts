@@ -28,6 +28,8 @@ export interface AppCopy {
   verdictLook: string;
   verdictNote: string;
   setMinimumPrompt: string;
+  noDeerTitle: string;
+  noDeerTip: string;
 }
 
 export interface ProductConfig {
@@ -82,7 +84,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
     (set) => ({
       flags: FLAGS,
       products: DEFAULT_PRODUCTS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "", noDeerTitle: "", noDeerTip: "" },
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
       minVersion: "",
@@ -113,6 +115,8 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             verdictLook: typeof copy.verdictLook === "string" ? copy.verdictLook : "",
             verdictNote: typeof copy.verdictNote === "string" ? copy.verdictNote : "",
             setMinimumPrompt: typeof copy.setMinimumPrompt === "string" ? copy.setMinimumPrompt : "",
+            noDeerTitle: typeof copy.noDeerTitle === "string" ? copy.noDeerTitle : "",
+            noDeerTip: typeof copy.noDeerTip === "string" ? copy.noDeerTip : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });

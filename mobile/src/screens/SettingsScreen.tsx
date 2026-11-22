@@ -193,35 +193,6 @@ export const SettingsScreen = () => {
               <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Edit home region</Text>
             </Pressable>
 
-            <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>LEASE MANAGER</Text>
-            <Text className="text-sm mb-3" style={{ color: "#E5D4B8" }}>
-              Optional. Saved on this phone only. DeerAge does not read your contacts and does not send the text.
-            </Text>
-            <TextInput
-              value={managerName}
-              onChangeText={setManagerName}
-              placeholder="Name"
-              placeholderTextColor="#8B7355"
-              className="rounded-lg p-4 mb-2"
-              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
-            />
-            <TextInput
-              value={managerPhone}
-              onChangeText={setManagerPhone}
-              placeholder="Phone number"
-              placeholderTextColor="#8B7355"
-              keyboardType="phone-pad"
-              className="rounded-lg p-4 mb-3"
-              style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
-            />
-            <Pressable
-              onPress={() => useHunterProfile.getState().setLeaseManager(managerName, managerPhone)}
-              className="rounded-xl py-3 items-center mb-3"
-              style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-            >
-              <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Save lease manager</Text>
-            </Pressable>
-
             <Pressable
               onPress={() => {
                 void restore();
@@ -272,6 +243,58 @@ export const SettingsScreen = () => {
           {/* Property Rules Section */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-lg font-bold text-white mb-4">Property Management Goals</Text>
+
+            <View className="flex-row items-center mb-5">
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text className="text-sm font-semibold" style={{ color: "#D4AF37" }}>
+                  Lease rules (minimum age and pre-shot record)
+                </Text>
+                <Text className="text-sm mt-1" style={{ color: "#E5D4B8" }}>
+                  On adds a save line after a scan, and the lease manager from that result.
+                </Text>
+              </View>
+              <Switch
+                value={profile.leaseRules}
+                onValueChange={(value) => {
+                  useHunterProfile.getState().setLeaseRules(value);
+                }}
+                trackColor={{ false: "#5A6447", true: "#7EBF93" }}
+                thumbColor="#F5F5DC"
+              />
+            </View>
+
+            {profile.leaseRules ? (
+              <View className="mb-6">
+                <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>LEASE MANAGER</Text>
+                <Text className="text-sm mb-3" style={{ color: "#E5D4B8" }}>
+                  Saved on this phone only. DeerAge does not read your contacts and does not send the text.
+                </Text>
+                <TextInput
+                  value={managerName}
+                  onChangeText={setManagerName}
+                  placeholder="Name"
+                  placeholderTextColor="#8B7355"
+                  className="rounded-lg p-4 mb-2"
+                  style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+                />
+                <TextInput
+                  value={managerPhone}
+                  onChangeText={setManagerPhone}
+                  placeholder="Phone number"
+                  placeholderTextColor="#8B7355"
+                  keyboardType="phone-pad"
+                  className="rounded-lg p-4 mb-3"
+                  style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
+                />
+                <Pressable
+                  onPress={() => useHunterProfile.getState().setLeaseManager(managerName, managerPhone)}
+                  className="rounded-xl py-3 items-center"
+                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
+                >
+                  <Text className="text-sm font-semibold" style={{ color: "#F5F5DC" }}>Save lease manager</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             {/* Minimum Shooter Age */}
             <View className="mb-6">

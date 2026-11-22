@@ -65,6 +65,10 @@ export interface RemoteConfig {
     verdictLook: string;
     verdictNote: string;
     setMinimumPrompt: string;
+    /** Empty means the built-in "No deer found" line. */
+    noDeerTitle: string;
+    /** Empty means the built-in retake tip. */
+    noDeerTip: string;
   };
   products: {
     offeringId: string;
@@ -116,6 +120,8 @@ export function defaultRemoteConfig(): RemoteConfig {
       verdictLook: "",
       verdictNote: "",
       setMinimumPrompt: "",
+      noDeerTitle: "",
+      noDeerTip: "",
     },
     products: defaultProducts(),
     aging: defaultAgingConfig(),
@@ -147,6 +153,8 @@ function mergeConfig(stored: unknown): RemoteConfig {
     if (typeof incoming.verdictLook === "string") copy.verdictLook = incoming.verdictLook.slice(0, 32);
     if (typeof incoming.verdictNote === "string") copy.verdictNote = incoming.verdictNote.slice(0, 160);
     if (typeof incoming.setMinimumPrompt === "string") copy.setMinimumPrompt = incoming.setMinimumPrompt.slice(0, 120);
+    if (typeof incoming.noDeerTitle === "string") copy.noDeerTitle = incoming.noDeerTitle.slice(0, 40);
+    if (typeof incoming.noDeerTip === "string") copy.noDeerTip = incoming.noDeerTip.slice(0, 160);
     if (Array.isArray(incoming.homeTips)) {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
@@ -273,6 +281,8 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (body.verdictLook != null) current.copy.verdictLook = body.verdictLook === "" ? "" : cleanText(body.verdictLook, 32);
     if (body.verdictNote != null) current.copy.verdictNote = body.verdictNote === "" ? "" : cleanText(body.verdictNote, 160);
     if (body.setMinimumPrompt != null) current.copy.setMinimumPrompt = body.setMinimumPrompt === "" ? "" : cleanText(body.setMinimumPrompt, 120);
+    if (body.noDeerTitle != null) current.copy.noDeerTitle = body.noDeerTitle === "" ? "" : cleanText(body.noDeerTitle, 40);
+    if (body.noDeerTip != null) current.copy.noDeerTip = body.noDeerTip === "" ? "" : cleanText(body.noDeerTip, 160);
     if (body.products && typeof body.products === "object") {
       const incoming = body.products as Record<string, unknown>;
       for (const name of ["offeringId", "seasonPassId", "monthlyId", "winBackOfferId"] as const) {

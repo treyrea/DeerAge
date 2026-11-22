@@ -17,6 +17,9 @@ import { WrongCallCard } from "../components/WrongCallCard";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
 import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { useShotRecordStore } from "../state/shotRecordStore";
+import { useHunterProfile } from "../state/hunterProfile";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 
@@ -32,6 +35,8 @@ export const HistoryDetailScreen = () => {
   const savedMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   const linkedId = result?.analysisId ?? params.shotId ?? "";
   const linked = useShotRecordStore((s) => (linkedId ? s.records[linkedId] : undefined));
+  const leaseRules = useHunterProfile((s) => s.leaseRules);
+  const recordsOn = showPreShotRecord(leaseRules, useRemoteConfig((s) => s.flags.preShotRecord));
 
   if (!result) {
     if (!params.shotId) {
@@ -113,8 +118,9 @@ export const HistoryDetailScreen = () => {
               leaseMinimum: explainableAge?.minimumAgeThreshold ?? savedMinimum,
             }}
           />
-          {result.shotReceipt || linked ? (
+          {recordsOn && (result.shotReceipt || linked) ? (
             <PreShotBar
+              compact
               draft={{
                 localId: result.analysisId,
                 mode: result.analysisMode,
@@ -132,6 +138,7 @@ export const HistoryDetailScreen = () => {
               onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
             />
           ) : null}
+          {leaseRules ? (
           <LeaseManagerButton
             ageClass={shownAge(explainableAge?.ageLabel, explainableAge?.estimatedAge || age.estimatedAge)}
             call={linked?.fieldCall || result.shotReceipt?.summary.fieldCall || explainableAge?.fieldCall || explainableAge?.shooterPassLabel || ""}
@@ -141,6 +148,7 @@ export const HistoryDetailScreen = () => {
             receiptId={linked?.receiptId || result.shotReceipt?.id}
             photoUri={capturedFrames[0]?.imageUri}
           />
+          ) : null}
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
             <View className="mb-6 rounded-xl overflow-hidden">

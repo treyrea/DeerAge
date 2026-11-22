@@ -19,6 +19,8 @@ import { LeaseManagerButton, type LeaseNote } from "../components/LeaseManagerBu
 import { activeHunt, huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { showPreShotRecord } from "../lib/lease-rules";
+import { useSubscriptionStore } from "../state/subscriptionStore";
 import { shownAge } from "../utils/age-class";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { ErrorModal } from "../components/ErrorModal";
@@ -60,13 +62,12 @@ export const AgeResultScreen = () => {
   const explainable = currentResult?.explainableAge;
   const ageClassLabel = shownAge(explainable?.ageLabel, explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const copy = useRemoteConfig((s) => s.copy);
-  const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
-    imageUri: currentResult?.capturedFrames[0]?.imageUri,
-    headline: ageClassLabel,
-    call: explainable?.fieldCall ?? (explainable?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
-    confidence: explainable.overallConfidence > 0 ? explainable.overallConfidence : undefined,
-  } : null);
+  const leaseRules = useHunterProfile((s) => s.leaseRules);
+  const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
+  const recordsOn = showPreShotRecord(leaseRules, recordFlag);
+  const followUp = useResultFollowUp(Boolean(explainable));
 
   useEffect(() => {
     if (currentResult && !hasSaved) {
@@ -249,6 +250,8 @@ export const AgeResultScreen = () => {
           </Text>
         ) : null}
 
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap" }}>
+          {recordsOn ? (
         <PreShotBar
           compact
           draft={{
@@ -270,6 +273,16 @@ export const AgeResultScreen = () => {
           }}
           onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
         />
+          ) : null}
+          {pendingPaywall ? (
+            <Pressable
+              onPress={() => navigation.navigate("TierPaywall", { reason: "free_limit" })}
+              style={{ minHeight: 44, justifyContent: "center", marginTop: 14, marginLeft: recordsOn ? 16 : 0 }}
+            >
+              <Text style={{ color: BLIND.muted, fontSize: 15 }}>See plans</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         <Pressable
           testID="age-why"
@@ -313,9 +326,11 @@ export const AgeResultScreen = () => {
           <View style={{ paddingBottom: 12 }}>
             <MoreRow label="Rack score" onPress={() => { void runRack(); }} />
             <MoreRow label={manualNotes ? "Notes" : "Add notes"} onPress={() => setShowNotesModal(true)} />
+            {leaseRules ? (
             <View style={{ marginTop: 8 }}>
               <LeaseManagerButton {...readNote} />
             </View>
+            ) : null}
             <MoreRow label="How this works" onPress={() => setShowModelCard(true)} />
             <View style={{ marginTop: 8 }}>
               <WrongCallCard

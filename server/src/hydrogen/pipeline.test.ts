@@ -20,7 +20,7 @@ import { activeCrossCheckPrompt, activePlainPrompt, buildCloserPrompt, hydrogenP
 import { RETAKE_MESSAGE_DEFAULT, RETAKE_MESSAGES, decideQuality, parseCloser, parseQuality } from "./rules.js";
 
 const HASHES: Record<string, string> = {
-  "quality_v4.txt": "7c16307eccfd0554e0327f31f90e99b8511bca66800e28b6521d38cc9c5b7223",
+  "quality_v4.txt": "001aaa080530b4cf7299af997e77eb18c223d9e120210b7c2d2f91702d45657e",
   "baby_gate.txt": "2bd846f8788edec7f99577652f5f2bff5910c9547bbf99d9a73bead99d4b70a1",
   "step_a.txt": "9edaf7fd58ffd9754ec963415326bbc1d0ef96eb9d7f96ac92cc4417eaae7e3d",
   "closer.txt": "d811bd60ee6c15bce26329d73ac6300f25dc3065ca000862705b69b91a35f31a",
