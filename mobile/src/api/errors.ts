@@ -20,7 +20,7 @@ export type AnalysisErrorCode =
 
 const FALLBACK: Record<AnalysisErrorCode, string> = {
   invalid_request: "That photo couldn't be sent. Try again.",
-  not_configured: "DeerAge isn't connected to the analysis service yet.",
+  not_configured: "This copy of DeerAge can't find its server. Close DeerAge fully and reopen it to load the latest update.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   quota: "You've used your 3 free analyses.",
   fair_use: "You've used today's analyses. The cap resets tomorrow.",

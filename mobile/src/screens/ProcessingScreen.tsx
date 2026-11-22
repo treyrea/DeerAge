@@ -41,8 +41,11 @@ const getErrorDisplayInfo = (category: ErrorCategory, analysisMode: "age" | "sco
   if (category === "retake") {
     return base("Try another photo", messageForCode("retake"), [], "camera", "#D4AF37", ["#2B3420", "#1a1f16", "#1a1a1a"]);
   }
-  if (category === "network" || category === "not_configured") {
-    return base(analysisMode === "age" ? "AGE MODE IS OFFLINE" : "YOU'RE OFFLINE", messageForCode(category === "not_configured" ? "not_configured" : "network"), ["DeerAge needs a connection to estimate age", "The field guide on Home works without a signal"], "cloud-offline", "#f87171", ["#7f1d1d", "#450a0a", "#1a1a1a"]);
+  if (category === "not_configured") {
+    return base("CAN'T REACH DEERAGE", messageForCode("not_configured"), ["Your signal is fine; this is an app setup problem", "Close DeerAge fully, reopen it, and try again"], "construct", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
+  }
+  if (category === "network") {
+    return base(analysisMode === "age" ? "AGE MODE IS OFFLINE" : "YOU'RE OFFLINE", messageForCode("network"), ["DeerAge needs a connection to estimate age", "The field guide on Home works without a signal"], "cloud-offline", "#f87171", ["#7f1d1d", "#450a0a", "#1a1a1a"]);
   }
   if (category === "timeout") {
     return base("TOOK TOO LONG", messageForCode("timeout"), ["Try one clearer photo"], "time", "#f59e0b", ["#78350f", "#451a03", "#1a1a1a"]);
