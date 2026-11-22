@@ -50,3 +50,10 @@ test("cue bullets keep the body part that explains the class", () => {
   assert.equal(bundle.cueBullets[0]?.area, "Neck");
   assert.equal(bundle.fieldCall, "SHOOTER");
 });
+
+test("cue bullets keep a full sentence instead of cutting it off", () => {
+  const sentence = "Age it up toward 4.5 if the chest looks deep and heavy with the belly nearly matching the chest line.";
+  const bundle = fieldBundle(4.5, 80, [{ area: "Chest", text: sentence }], [], 4.5);
+  assert.equal(bundle.cueBullets[0]?.text, sentence);
+  assert.ok(sentence.length > 90);
+});

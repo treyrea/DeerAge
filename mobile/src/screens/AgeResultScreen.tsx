@@ -1,37 +1,38 @@
 /**
- * Age Result Screen - Explainable AI age estimation with visual overlays
- * Shows detailed body feature analysis with interactive overlays and cue explanations
+ * Age result for a blind. The verdict is the whole decision.
+ * Why and More stay collapsed until he asks.
  */
 
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  Modal,
-  TextInput,
-} from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Modal, Pressable, ScrollView, StatusBar, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
-import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
-import { LeaseManagerButton, shareRead, type LeaseNote } from "../components/LeaseManagerButton";
-import { activeHunt, useHunterProfile } from "../state/hunterProfile";
+import { LeaseManagerButton, type LeaseNote } from "../components/LeaseManagerButton";
+import { activeHunt, huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
-import { normalizeFieldCall } from "../utils/field-call";
 import { shownAge } from "../utils/age-class";
-import { ShareableResultCard } from "../components/ShareableResultCard";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
 import { ErrorModal } from "../components/ErrorModal";
-import * as Haptics from "expo-haptics";
+import {
+  BLIND,
+  FIELD_READ_NOTE,
+  SET_MINIMUM_PROMPT,
+  bodyRead,
+  formatMinimum,
+  minimumIsSet,
+  verdictColor,
+  verdictKind,
+  verdictWord,
+} from "../utils/blind-verdict";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -49,16 +50,17 @@ export const AgeResultScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const [hasSaved, setHasSaved] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
-  const [showWhyThisAge, setShowWhyThisAge] = useState(true);
+  const [showWhy, setShowWhy] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [showModelCard, setShowModelCard] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showShareSheet, setShowShareSheet] = useState(false);
   const [manualNotes, setManualNotes] = useState("");
   const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const explainable = currentResult?.explainableAge;
   const ageClassLabel = shownAge(explainable?.ageLabel, explainable?.estimatedAge ?? explainable?.estimatedAgeYears);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const copy = useRemoteConfig((s) => s.copy);
   const followUp = useResultFollowUp(Boolean(explainable), explainable ? {
     imageUri: currentResult?.capturedFrames[0]?.imageUri,
     headline: ageClassLabel,
@@ -66,7 +68,6 @@ export const AgeResultScreen = () => {
     confidence: explainable.overallConfidence > 0 ? explainable.overallConfidence : undefined,
   } : null);
 
-  // Auto-save to history when result is available
   useEffect(() => {
     if (currentResult && !hasSaved) {
       const timer = setTimeout(async () => {
@@ -74,10 +75,7 @@ export const AgeResultScreen = () => {
           const location = await optionalStandLocation();
           if (location) {
             setGpsLocation(location);
-            await saveToHistory({
-              ...currentResult,
-              gpsLocation: location,
-            });
+            await saveToHistory({ ...currentResult, gpsLocation: location });
           } else {
             await saveToHistory(currentResult);
           }
@@ -90,12 +88,18 @@ export const AgeResultScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
-  // Handle missing result
+  // Leave only while this screen is on top. A retake clears the result and
+  // opens Processing. Replacing the route from a covered screen sends that
+  // Processing screen home.
   useEffect(() => {
-    if (!currentResult) {
-      navigation.replace("HomeMain");
-    }
+    if (currentResult || !navigation.isFocused()) return;
+    navigation.replace("HomeMain");
   }, [currentResult, navigation]);
+
+  useEffect(() => {
+    if (!currentResult?.analysisId) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  }, [currentResult?.analysisId]);
 
   if (!currentResult || !currentResult.explainableAge) {
     return null;
@@ -103,777 +107,327 @@ export const AgeResultScreen = () => {
 
   const explainableAge = currentResult.explainableAge;
   const imageUri = currentResult.capturedFrames[0]?.imageUri;
+  const read = bodyRead({
+    lookFor: explainableAge.lookFor,
+    hunterCue: explainableAge.hunterCue,
+    reasons: explainableAge.reasons,
+    cueBullets: explainableAge.cueBullets,
+    detectedCues: explainableAge.detectedCues,
+  });
+  const kind = verdictKind({
+    fieldCall: explainableAge.fieldCall,
+    meetsMinimum: explainableAge.meetsMinimumAge,
+    imageQuality: explainableAge.imageQuality,
+    minimum: explainableAge.minimumAgeThreshold,
+    shootOrPass,
+  });
+  const word = verdictWord(kind, {
+    take: copy?.verdictTake,
+    walk: copy?.verdictWalk,
+    look: copy?.verdictLook,
+  });
+  const photoTip = explainableAge.photoTips?.find((tip) => tip.trim())?.trim()
+    || explainableAge.betterAngle?.trim()
+    || "";
+  const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
+  const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
+  const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
+  const note = copy?.verdictNote?.trim() || FIELD_READ_NOTE;
+  const minimumPrompt = copy?.setMinimumPrompt?.trim() || SET_MINIMUM_PROMPT;
+  const hunt = activeHunt(useHunterProfile.getState());
 
-  const handleNewAnalysis = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  const leave = (next: "home" | "scan") => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     setHasSaved(false);
+    if (next === "scan") {
+      setAnalysisMode("age");
+      if (huntConfirmedToday(useHunterProfile.getState())) navigation.navigate("Camera");
+      else navigation.navigate("ModeSelect", { mode: "age" });
+    } else {
+      navigation.navigate("HomeMain");
+    }
     clearCurrentResult();
-    navigation.navigate("HomeMain");
   };
 
   const readNote: LeaseNote = {
     ageClass: ageClassLabel,
     call: explainableAge.fieldCall || explainableAge.shooterPassLabel,
     minimum: explainableAge.minimumAgeThreshold,
-    region: activeHunt(useHunterProfile.getState()).label,
+    region: hunt.label,
     time: new Date(currentResult.timestamp).toLocaleString(),
     receiptId: currentResult.shotReceipt?.id,
     photoUri: imageUri,
   };
 
-  const handleShare = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowShareSheet(false);
+  const openSettings = () => {
+    const parent = navigation.getParent();
+    if (parent) parent.navigate("Settings");
+    else navigation.navigate("Settings");
+  };
+
+  const runRack = async () => {
+    followUp.markRescan();
+    setAnalysisMode("score");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    startCapture();
+    currentResult.capturedFrames.forEach((frame) => {
+      addFrame(frame);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const processPromise = processFrames();
+    navigation.navigate("Processing");
     try {
-      await shareRead(readNote, "anyone");
+      await processPromise;
     } catch {
-      // He closed the sheet.
+      // The processing screen shows the failure.
     }
   };
 
-  const handleSaveNotes = () => {
-    if (currentResult) {
-      const updatedResult = {
-        ...currentResult,
-        manualNotes,
-        gpsLocation: gpsLocation || undefined,
-      };
-      updateHistory(updatedResult);
-      setShowNotesModal(false);
-      setShowSuccessModal(true);
-    }
+  const saveNotes = () => {
+    updateHistory({
+      ...currentResult,
+      manualNotes,
+      gpsLocation: gpsLocation || undefined,
+    });
+    setShowNotesModal(false);
+    setShowSuccessModal(true);
   };
-
-  const confidenceColor =
-    explainableAge.overallConfidence >= 75
-      ? "#22c55e"
-      : explainableAge.overallConfidence >= 50
-      ? "#3b82f6"
-      : "#f59e0b";
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
-      {/* Header */}
-      <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
-        <View className="flex-row items-center justify-between">
-          <Pressable
-            testID="age-close"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("HomeMain");
-            }}
-            className="w-11 h-11 items-center justify-center"
-          >
-            <Ionicons name="close" size={24} color="#F5F5DC" />
-          </Pressable>
-          <View className="flex-1 items-center">
-            <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
-              Age My Deer
-            </Text>
-            <Text className="text-xs mt-0.5" style={{ color: "#D4AF37" }}>
-              Know before you pull the trigger
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowShareSheet(true);
-            }}
-            className="w-11 h-11 items-center justify-center"
-          >
-            <Ionicons name="share-outline" size={24} color="#F5F5DC" />
-          </Pressable>
-        </View>
+    <View style={{ flex: 1, backgroundColor: BLIND.bg, paddingTop: insets.top }}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ paddingHorizontal: 8 }}>
+        <Pressable
+          testID="age-close"
+          onPress={() => leave("home")}
+          hitSlop={8}
+          style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+        >
+          <Ionicons name="close" size={26} color={BLIND.muted} />
+        </Pressable>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
-        <View className="px-6 py-6">
-          {shootOrPass && explainable ? (
-            <FieldCallCard
-              ageYears={explainable.estimatedAgeYears}
-              confidence={explainable.overallConfidence}
-              minimum={explainable.minimumAgeThreshold}
-              cueBullets={explainable.cueBullets ?? explainable.detectedCues}
-              fieldCall={normalizeFieldCall(explainable.fieldCall)}
-              note={explainable.fieldCallNote}
-              bodyOnlyAge={explainable.bodyOnlyAge}
-              betterAngle={explainable.betterAngle}
-              ageLabel={explainable.ageLabel}
-              hunterCue={explainable.hunterCue}
-            />
-          ) : null}
-          <WrongCallCard
-            scanId={currentResult.analysisId}
-            fieldCall={explainableAge.fieldCall || ""}
-            photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
-            snapshot={{
-              fieldCall: explainableAge.fieldCall,
-              ageYears: explainableAge.estimatedAgeYears,
-              fastAge: explainableAge.fastAge,
-              mainAge: explainableAge.mainAge,
-              bodyOnlyAge: explainableAge.bodyOnlyAge,
-              leaseMinimum: explainableAge.minimumAgeThreshold,
-            }}
-          />
-          <PreShotBar
-            draft={{
-              localId: currentResult.analysisId,
-              mode: "age",
-              photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
-              receipt: currentResult.shotReceipt ?? null,
-              ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
-              ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
-              confidence: explainableAge.overallConfidence,
-              leaseMinimum: explainableAge.minimumAgeThreshold,
-              fieldCall: explainableAge.fieldCall || "",
-              fieldCallNote: explainableAge.fieldCallNote || "",
-              cues: (explainableAge.cueBullets ?? []).map((cue) => `${cue.area}: ${cue.text}`),
-              huntLabel: activeHunt(useHunterProfile.getState()).label,
-              fastAge: explainableAge.fastAge,
-              mainAge: explainableAge.mainAge,
-              bodyOnlyAge: explainableAge.bodyOnlyAge,
-            }}
-            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
-          />
-          <RegionHeadsUp />
-          <LeaseManagerButton {...readNote} />
-          {/* Primary Result Card */}
-          <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
-            {/* TPWD Disclaimer Banner */}
-            <View className="rounded-lg p-3 mb-4" style={{ backgroundColor: "#5A6447" }}>
-              <Text className="text-xs text-center" style={{ color: "#E5D4B8" }}>
-                Age estimates are based on proportional body characteristics and represent age classes, not exact age.
-              </Text>
-            </View>
-
-            {/* Image Quality Warning - Show prominently if poor */}
-            {explainableAge.imageQuality === "poor" && explainableAge.overallConfidence < 40 && (
-              <View className="rounded-lg p-4 mb-4" style={{ backgroundColor: "#dc2626" }}>
-                <View className="flex-row items-center mb-2">
-                  <Ionicons name="warning" size={24} color="white" />
-                  <Text className="text-white font-bold text-lg ml-2">
-                    Unsuitable Image
-                  </Text>
-                </View>
-                <Text className="text-white text-sm mb-2">
-                  This image cannot be reliably analyzed for age estimation. The analysis below may not be accurate.
-                </Text>
-                {explainableAge.photoTips && explainableAge.photoTips.length > 0 && (
-                  <View className="mt-2">
-                    {explainableAge.photoTips.map((tip, index) => (
-                      <View key={index} className="flex-row items-start mb-1">
-                        <Text className="text-white mr-2">•</Text>
-                        <Text className="text-white text-sm flex-1">{tip}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-
-            <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>
-              ESTIMATED AGE
-            </Text>
-
-            <View className="mb-4">
-              <Text className="text-4xl font-bold text-white mb-2">
-                {ageClassLabel}
-              </Text>
-              <Text className="text-lg" style={{ color: "#E5D4B8" }}>
-                {explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK")}
-              </Text>
-              <Text style={{ color: "#8B7355", marginTop: 4 }}>
-                Your lease minimum: {explainableAge.minimumAgeThreshold}
-              </Text>
-            </View>
-
-            {/* Hydrogen does not return a confidence. A hardcoded 0 is not a read. */}
-            {explainableAge.overallConfidence > 0 ? (
-            <View className="mb-4">
-              <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>
-                Overall Confidence
-              </Text>
-              <View className="flex-row items-center">
-                <View className="flex-1 h-3 rounded-full mr-3" style={{ backgroundColor: "#5A6447" }}>
-                  <View
-                    className="h-3 rounded-full"
-                    style={{
-                      width: `${explainableAge.overallConfidence}%`,
-                      backgroundColor: confidenceColor,
-                    }}
-                  />
-                </View>
-                <Text className="text-white font-bold text-lg">
-                  {explainableAge.overallConfidence}%
-                </Text>
-              </View>
-            </View>
-            ) : null}
-
-            {shootOrPass ? null : (
-            <View
-              className="rounded-lg p-4 mt-2"
-              style={{
-                backgroundColor:
-                  explainableAge.shooterPassLabel === "SHOOTER"
-                    ? "#22c55e"
-                    : explainableAge.shooterPassLabel === "NICE HARVEST"
-                    ? "#3b82f6"
-                    : explainableAge.shooterPassLabel === "NICE MOUNT"
-                    ? "#8b5cf6"
-                    : "#f59e0b",
-              }}
-            >
-              <View className="flex-row items-center mb-2">
-                <Ionicons
-                  name={
-                    explainableAge.shooterPassLabel === "SHOOTER"
-                      ? "checkmark-circle"
-                      : explainableAge.shooterPassLabel === "NICE HARVEST"
-                      ? "trophy"
-                      : explainableAge.shooterPassLabel === "NICE MOUNT"
-                      ? "medal"
-                      : "hand-left"
-                  }
-                  size={28}
-                  color="white"
-                />
-                <Text className="text-white font-bold text-xl ml-3">
-                  {explainableAge.shooterPassLabel}
-                </Text>
-                {explainableAge.shooterPassLabel !== "NICE HARVEST" &&
-                 explainableAge.shooterPassLabel !== "NICE MOUNT" && (
-                  <Text className="text-white text-sm ml-2">
-                    ({explainableAge.meetsMinimumAge ? "Meets" : "Below"} {explainableAge.minimumAgeThreshold}+ yrs)
-                  </Text>
-                )}
-              </View>
-              <Text className="text-white text-sm leading-5">
-                {explainableAge.shooterPassReason}
-              </Text>
-            </View>
-            )}
-          </View>
-
-          {/* Image with Overlays */}
-          {imageUri && (
-            <View className="mb-6">
-              <BodyFeatureOverlayComponent
-                imageUri={imageUri}
-                overlays={explainableAge.bodyFeatureOverlays}
-                showOverlays={showOverlays}
-                onToggleOverlays={() => setShowOverlays(!showOverlays)}
-              />
-            </View>
-          )}
-
-          {/* WHY THIS AGE? Section */}
-          <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
-            <Pressable
-              onPress={() => setShowWhyThisAge(!showWhyThisAge)}
-              className="flex-row items-center justify-between mb-4"
-            >
-              <Text className="text-lg font-bold text-white">WHY THIS AGE?</Text>
-              <Ionicons
-                name={showWhyThisAge ? "chevron-up" : "chevron-down"}
-                size={24}
-                color="#D4AF37"
-              />
-            </Pressable>
-
-            {showWhyThisAge && (
-              <>
-                {/* No Cues Detected Warning */}
-                {explainableAge.detectedCues.length === 0 && (
-                  <View className="rounded-lg p-4 mb-4" style={{ backgroundColor: "#dc2626" }}>
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="alert-circle" size={20} color="white" />
-                      <Text className="text-white font-semibold ml-2">
-                        No Body Features Analyzed
-                      </Text>
-                    </View>
-                    <Text className="text-white text-sm">
-                      The image did not show enough body features for analysis. Try taking a photo that shows the full deer body from a side view.
-                    </Text>
-                  </View>
-                )}
-
-                {/* Primary Features (4) */}
-                {explainableAge.detectedCues.length > 0 && (
-                  <View className="mb-4">
-                    <Text className="text-sm font-semibold mb-3" style={{ color: "#D4AF37" }}>
-                      PRIMARY BODY FEATURES (High Weight)
-                    </Text>
-
-                    {explainableAge.detectedCues.slice(0, 4).map((cue, index) => (
-                      <View
-                        key={index}
-                        className="flex-row items-start mb-3 p-3 rounded-lg"
-                        style={{ backgroundColor: "#5A6447" }}
-                      >
-                        <Ionicons
-                          name={cue.ageWeight >= 2 ? "checkmark-circle" : cue.ageWeight <= -1 ? "close-circle" : "ellipse-outline"}
-                          size={20}
-                          color={cue.ageWeight >= 2 ? "#22c55e" : cue.ageWeight <= -1 ? "#f59e0b" : "#9ca3af"}
-                        />
-                        <View className="flex-1 ml-3">
-                          <View className="flex-row items-center justify-between mb-1">
-                            <Text className="text-white font-semibold flex-1">
-                              {cue.displayName}
-                            </Text>
-                            <View
-                              className="rounded px-2 py-0.5 ml-2"
-                              style={{
-                                backgroundColor:
-                                  cue.ageWeight >= 2 ? "#22c55e" : cue.ageWeight <= -1 ? "#f59e0b" : "#6b7280",
-                              }}
-                            >
-                              <Text className="text-white text-xs font-bold">
-                                {cue.ageWeight >= 2 ? "MATURE" : cue.ageWeight <= -1 ? "IMMATURE" : "TRANSITIONAL"}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>
-                            {cue.detectedPattern}
-                          </Text>
-                          <Text className="text-xs" style={{ color: "#9ca3af" }}>
-                            {cue.explanation}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Secondary Features (3) */}
-                {explainableAge.detectedCues.length > 4 && (
-                  <View className="mb-4">
-                    <Text className="text-sm font-semibold mb-3" style={{ color: "#D4AF37" }}>
-                      SECONDARY FEATURES (Supporting Evidence)
-                    </Text>
-
-                    {explainableAge.detectedCues.slice(4).map((cue, index) => (
-                      <View
-                        key={index}
-                        className="flex-row items-start mb-3 p-3 rounded-lg"
-                        style={{ backgroundColor: "#4A5640" }}
-                      >
-                        <Ionicons
-                          name={cue.ageWeight >= 2 ? "checkmark-circle" : cue.ageWeight <= -1 ? "close-circle" : "ellipse-outline"}
-                          size={18}
-                          color={cue.ageWeight >= 2 ? "#22c55e" : cue.ageWeight <= -1 ? "#f59e0b" : "#9ca3af"}
-                        />
-                        <View className="flex-1 ml-3">
-                          <View className="flex-row items-center justify-between mb-1">
-                            <Text className="text-white font-medium flex-1 text-sm">
-                              {cue.displayName}
-                            </Text>
-                            <View
-                              className="rounded px-2 py-0.5 ml-2"
-                              style={{
-                                backgroundColor:
-                                  cue.ageWeight >= 2 ? "#22c55e" : cue.ageWeight <= -1 ? "#f59e0b" : "#6b7280",
-                              }}
-                            >
-                              <Text className="text-white text-xs">
-                                {cue.ageWeight >= 2 ? "MATURE" : cue.ageWeight <= -1 ? "IMMATURE" : "TRANS"}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text className="text-xs" style={{ color: "#E5D4B8" }}>
-                            {cue.detectedPattern}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Net Age Push Bar */}
-                {explainableAge.detectedCues.length > 0 && (
-                <View className="p-4 rounded-lg" style={{ backgroundColor: "#5A6447" }}>
-                  <Text className="text-sm font-semibold mb-3 text-center" style={{ color: "#D4AF37" }}>
-                    NET AGE ASSESSMENT
-                  </Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-xs" style={{ color: "#E5D4B8" }}>
-                      Younger
-                    </Text>
-                    <View className="flex-1 h-4 rounded-full mx-3" style={{ backgroundColor: "#2B3420" }}>
-                      <View
-                        className="h-4 rounded-full"
-                        style={{
-                          width: `${((explainableAge.netAgePush + 12) / 24) * 100}%`,
-                          backgroundColor:
-                            explainableAge.netAgePush < 0
-                              ? "#f59e0b"
-                              : explainableAge.netAgePush > 0
-                              ? "#22c55e"
-                              : "#9ca3af",
-                        }}
-                      />
-                    </View>
-                    <Text className="text-xs" style={{ color: "#E5D4B8" }}>
-                      Older
-                    </Text>
-                  </View>
-                  <Text className="text-center text-white text-sm mt-2">
-                    Combined push: {explainableAge.netAgePush > 0 ? "+" : ""}
-                    {explainableAge.netAgePush}
-                    {explainableAge.netAgePush > 3
-                      ? " (Strong older indicators)"
-                      : explainableAge.netAgePush < -3
-                      ? " (Strong younger indicators)"
-                      : " (Moderate indicators)"}
-                  </Text>
-                </View>
-                )}
-              </>
-            )}
-          </View>
-
-          {/* Image Quality & Tips */}
-          {explainableAge.photoTips && explainableAge.photoTips.length > 0 && (
-            <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#5A6447" }}>
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="information-circle" size={24} color="#f59e0b" />
-                <Text className="text-lg font-bold text-white ml-2">
-                  Photo Quality Notice
-                </Text>
-              </View>
-              <Text className="text-sm mb-3" style={{ color: "#E5D4B8" }}>
-                For better accuracy next time, try these tips:
-              </Text>
-              {explainableAge.photoTips.map((tip, index) => (
-                <View key={index} className="flex-row items-start mb-2">
-                  <Text className="text-white mr-2">•</Text>
-                  <Text className="text-sm flex-1" style={{ color: "#E5D4B8" }}>
-                    {tip}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Model Card */}
-          <Pressable
-            onPress={() => setShowModelCard(true)}
-            className="rounded-lg p-4 mb-6 flex-row items-center justify-between"
-            style={{ backgroundColor: "#3D4A2F" }}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+      >
+        {word ? (
+          <Text
+            testID="age-verdict"
+            adjustsFontSizeToFit
+            minimumFontScale={0.65}
+            numberOfLines={1}
+            style={{ color: verdictColor(kind), fontSize: 42, fontWeight: "800", letterSpacing: 0.3, textAlign: "center" }}
           >
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="analytics" size={20} color="#D4AF37" />
-              <Text className="text-white font-semibold ml-2">How does this work?</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
-          </Pressable>
-
-          {/* Add Notes Button */}
-          <Pressable
-            onPress={() => setShowNotesModal(true)}
-            className="rounded-lg p-4 mb-6 flex-row items-center justify-between"
-            style={{ backgroundColor: "#5A6447" }}
-          >
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="create-outline" size={20} color="#D4AF37" />
-              <Text className="text-white font-semibold ml-2">
-                {manualNotes ? "Edit Notes" : "Add Notes"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
-          </Pressable>
-
-          {/* Run Rack Analysis Button */}
-          <Pressable
-            onPress={async () => {
-              if (!currentResult) return;
-              followUp.markRescan();
-
-              // Switch to rack scoring mode FIRST
-              setAnalysisMode("score");
-
-              // Small delay to ensure state updates
-              await new Promise(resolve => setTimeout(resolve, 100));
-
-              // Reset capture state and add existing frames
-              startCapture();
-
-              console.log("[AgeResult] Adding frames:", currentResult.capturedFrames.length);
-              currentResult.capturedFrames.forEach((frame) => {
-                addFrame(frame);
-              });
-
-              // Small delay to ensure frames are added
-              await new Promise(resolve => setTimeout(resolve, 100));
-
-              // Start processing BEFORE navigation
-              console.log("[AgeResult] Starting processFrames");
-              const processPromise = processFrames();
-
-              // Navigate to processing screen immediately (processing will continue)
-              navigation.navigate("Processing");
-
-              // Wait for processing to complete
-              try {
-                await processPromise;
-                console.log("[AgeResult] processFrames completed successfully");
-              } catch (error) {
-                console.error("[AgeResult] processFrames failed:", error);
-              }
-            }}
-            className="rounded-lg p-4 mb-6"
-            style={{ backgroundColor: "#d97706" }}
-          >
-            <View className="flex-row items-center justify-center mb-1">
-              <Ionicons name="ribbon" size={20} color="white" />
-              <Text className="text-white font-bold text-base ml-2">
-                Run Full Rack Score Analysis
-              </Text>
-            </View>
-            <Text className="text-white/80 text-xs text-center">
-              Get detailed B&C measurements and point breakdown
-            </Text>
-          </Pressable>
-
-          {/* Footer */}
-          <Text className="text-center text-xs mb-6" style={{ color: "#8B7355" }}>
-            Scoring powered by RackScore™ AI
+            {word}
           </Text>
+        ) : null}
+
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: word ? 12 : 0 }}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={{ color: BLIND.ink, fontSize: word ? 28 : 40, fontWeight: "800" }}>{ageClassLabel}</Text>
+            {hasMinimum ? (
+              <Text style={{ color: BLIND.muted, fontSize: 17, marginTop: 4 }}>
+                {`your minimum is ${formatMinimum(explainableAge.minimumAgeThreshold)}`}
+              </Text>
+            ) : (
+              <Pressable testID="age-set-minimum" onPress={openSettings} style={{ marginTop: 8, minHeight: 44, justifyContent: "center" }}>
+                <Text style={{ color: BLIND.walk, fontSize: 16, lineHeight: 22 }}>{minimumPrompt}</Text>
+              </Pressable>
+            )}
+          </View>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: "#1C1B17" }} />
+          ) : null}
         </View>
+
+        <Text style={{ color: BLIND.muted, fontSize: 13, lineHeight: 18, marginTop: 10 }}>{note}</Text>
+
+        {surface ? (
+          <Text testID="age-look-for" style={{ color: BLIND.ink, fontSize: 17, lineHeight: 24, marginTop: 14 }}>
+            {surface}
+          </Text>
+        ) : null}
+
+        <PreShotBar
+          compact
+          draft={{
+            localId: currentResult.analysisId,
+            mode: "age",
+            photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+            receipt: currentResult.shotReceipt ?? null,
+            ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
+            ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
+            confidence: explainableAge.overallConfidence,
+            leaseMinimum: explainableAge.minimumAgeThreshold,
+            fieldCall: explainableAge.fieldCall || "",
+            fieldCallNote: explainableAge.fieldCallNote || "",
+            cues: clues,
+            huntLabel: hunt.label,
+            fastAge: explainableAge.fastAge,
+            mainAge: explainableAge.mainAge,
+            bodyOnlyAge: explainableAge.bodyOnlyAge,
+          }}
+          onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+        />
+
+        <Pressable
+          testID="age-why"
+          onPress={() => setShowWhy((open) => !open)}
+          style={{ minHeight: 52, marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: BLIND.line }}
+        >
+          <Text style={{ color: BLIND.ink, fontSize: 17, fontWeight: "700" }}>Why this age</Text>
+          <Ionicons name={showWhy ? "chevron-up" : "chevron-down"} size={22} color={BLIND.muted} />
+        </Pressable>
+        {showWhy ? (
+          <View style={{ paddingBottom: 8 }}>
+            {imageUri ? (
+              <View style={{ marginTop: 8 }}>
+                <BodyFeatureOverlayComponent
+                  imageUri={imageUri}
+                  overlays={explainableAge.bodyFeatureOverlays}
+                  showOverlays={showOverlays}
+                  onToggleOverlays={() => setShowOverlays((shown) => !shown)}
+                />
+              </View>
+            ) : null}
+            {clues.length > 0 ? clues.map((line) => (
+              <Text key={line} style={{ color: BLIND.ink, fontSize: 16, lineHeight: 23, marginTop: 12 }}>{line}</Text>
+            )) : (
+              <Text style={{ color: BLIND.muted, fontSize: 16, lineHeight: 23, marginTop: 12 }}>
+                No other body note on this photo.
+              </Text>
+            )}
+          </View>
+        ) : null}
+
+        <Pressable
+          testID="age-more"
+          onPress={() => setShowMore((open) => !open)}
+          style={{ minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: BLIND.line }}
+        >
+          <Text style={{ color: BLIND.ink, fontSize: 17, fontWeight: "700" }}>More</Text>
+          <Ionicons name={showMore ? "chevron-up" : "chevron-down"} size={22} color={BLIND.muted} />
+        </Pressable>
+        {showMore ? (
+          <View style={{ paddingBottom: 12 }}>
+            <MoreRow label="Rack score" onPress={() => { void runRack(); }} />
+            <MoreRow label={manualNotes ? "Notes" : "Add notes"} onPress={() => setShowNotesModal(true)} />
+            <View style={{ marginTop: 8 }}>
+              <LeaseManagerButton {...readNote} />
+            </View>
+            <MoreRow label="How this works" onPress={() => setShowModelCard(true)} />
+            <View style={{ marginTop: 8 }}>
+              <WrongCallCard
+                scanId={currentResult.analysisId}
+                fieldCall={explainableAge.fieldCall || ""}
+                minimum={explainableAge.minimumAgeThreshold}
+                photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+                snapshot={{
+                  fieldCall: explainableAge.fieldCall,
+                  ageYears: explainableAge.estimatedAgeYears,
+                  fastAge: explainableAge.fastAge,
+                  mainAge: explainableAge.mainAge,
+                  bodyOnlyAge: explainableAge.bodyOnlyAge,
+                  leaseMinimum: explainableAge.minimumAgeThreshold,
+                }}
+              />
+            </View>
+            <RegionHeadsUp />
+          </View>
+        ) : null}
       </ScrollView>
 
-      {/* Model Card Modal */}
-      <Modal
-        visible={showModelCard}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowModelCard(false)}
-      >
-        <View className="flex-1 justify-end" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
-          <View
-            className="rounded-t-3xl p-6"
-            style={{ backgroundColor: "#3D4A2F", maxHeight: "80%" }}
-          >
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-xl font-bold text-white flex-1">AI Model Card</Text>
+      <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, backgroundColor: BLIND.bg }}>
+        <Pressable
+          testID="age-scan-again"
+          onPress={() => leave("scan")}
+          style={{ flex: 1, minHeight: 60, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", backgroundColor: "#1C1B17", alignItems: "center", justifyContent: "center" }}
+        >
+          <Text style={{ color: BLIND.ink, fontSize: 18, fontWeight: "700" }}>Scan again</Text>
+        </Pressable>
+        <Pressable
+          testID="age-done"
+          onPress={() => leave("home")}
+          style={{ flex: 1, minHeight: 60, borderRadius: 14, backgroundColor: BLIND.button, alignItems: "center", justifyContent: "center" }}
+        >
+          <Text style={{ color: BLIND.buttonInk, fontSize: 18, fontWeight: "700" }}>Done</Text>
+        </Pressable>
+      </View>
+
+      <Modal visible={showModelCard} transparent animationType="slide" onRequestClose={() => setShowModelCard(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.7)" }}>
+          <View style={{ backgroundColor: "#1C1B17", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "80%" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={{ color: BLIND.ink, fontSize: 20, fontWeight: "700", flex: 1 }}>How this works</Text>
               <Pressable onPress={() => setShowModelCard(false)}>
-                <Ionicons name="close-circle" size={32} color="#E5D4B8" />
+                <Ionicons name="close-circle" size={32} color={BLIND.muted} />
               </Pressable>
             </View>
-
             <ScrollView>
-              <View className="mb-4">
-                <Text className="text-base font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  How It Works
-                </Text>
-                <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                  This analysis uses advanced computer vision AI trained on millions of
-                  images. It identifies key body features (neck, chest, legs, etc.) and compares them
-                  to expert criteria used by wildlife biologists and experienced hunters.
-                </Text>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-base font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  Data Sources
-                </Text>
-                <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                  Age criteria based on peer-reviewed research and field observations from wildlife
-                  management agencies. The AI learns visual patterns from thousands of tagged deer with
-                  known ages.
-                </Text>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-base font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  Known Limitations
-                </Text>
-                <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                  • Best with broadside views showing full body{"\n"}
-                  • Accuracy decreases with brush occlusion{"\n"}
-                  • Poor lighting reduces confidence{"\n"}
-                  • Individual deer genetics can vary{"\n"}
-                  • Regional nutrition affects body development
-                </Text>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-base font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  Best Practices
-                </Text>
-                <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                  ✓ Take broadside (side view) photos{"\n"}
-                  ✓ Ensure good natural lighting{"\n"}
-                  ✓ Minimize brush/tree occlusion{"\n"}
-                  ✓ Fill frame with deer body{"\n"}
-                  ✓ Capture in good focus
-                </Text>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-base font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  Disclaimer
-                </Text>
-                <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                  This tool provides age estimates to guide hunting decisions. Always follow local
-                  regulations, landowner rules, and MLDP requirements. Final harvest decisions remain
-                  the hunter&apos;s responsibility.
-                </Text>
-              </View>
+              <ModelBlock title="How it works" body="The read compares the buck's body in the photo with age cues hunters and biologists use: chest, neck, belly, and legs. It is a field read from that photo." />
+              <ModelBlock title="What it is not" body="It is not a jawbone age, and it is not a finding about a lease rule or a fine. The harvest decision stays with the hunter." />
+              <ModelBlock title="A better photo" body={"A side view, in daylight, with the whole body in the frame.\nBrush, darkness, and a head-down buck make the read weaker."} />
             </ScrollView>
-
-            <Pressable
-              onPress={() => setShowModelCard(false)}
-              className="rounded-xl py-4 items-center mt-4"
-              style={{ backgroundColor: "#5A6447" }}
-            >
-              <Text className="text-white font-bold">Close</Text>
+            <Pressable onPress={() => setShowModelCard(false)} style={{ borderRadius: 14, minHeight: 52, alignItems: "center", justifyContent: "center", backgroundColor: "#2C2A24", marginTop: 12 }}>
+              <Text style={{ color: BLIND.ink, fontWeight: "700" }}>Close</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* Notes Modal */}
-      <Modal
-        visible={showNotesModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowNotesModal(false)}
-      >
-        <View className="flex-1 justify-end" style={{ backgroundColor: "rgba(0,0,0,0.7)" }}>
-          <View
-            className="rounded-t-3xl p-6"
-            style={{ backgroundColor: "#3D4A2F" }}
-          >
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-xl font-bold text-white">Add Notes</Text>
+      <Modal visible={showNotesModal} transparent animationType="slide" onRequestClose={() => setShowNotesModal(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.7)" }}>
+          <View style={{ backgroundColor: "#1C1B17", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={{ color: BLIND.ink, fontSize: 20, fontWeight: "700" }}>Notes</Text>
               <Pressable onPress={() => setShowNotesModal(false)}>
-                <Ionicons name="close-circle" size={32} color="#E5D4B8" />
+                <Ionicons name="close-circle" size={32} color={BLIND.muted} />
               </Pressable>
             </View>
-
-            <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>
-              Location: {gpsLocation ? `${gpsLocation.latitude.toFixed(6)}, ${gpsLocation.longitude.toFixed(6)}` : "Not available"}
+            <Text style={{ color: BLIND.muted, marginBottom: 8 }}>
+              {gpsLocation ? `${gpsLocation.latitude.toFixed(5)}, ${gpsLocation.longitude.toFixed(5)}` : "No stand location on this read"}
             </Text>
-
-            <Text className="text-sm mb-2" style={{ color: "#D4AF37" }}>
-              Add details (wind, distance, behavior, etc.)
-            </Text>
-
             <TextInput
               value={manualNotes}
               onChangeText={setManualNotes}
-              placeholder="e.g., Wind 10 mph N, at feeder 120 yds, feeding calmly"
-              placeholderTextColor="#8B7355"
+              placeholder="Wind, distance, what he was doing"
+              placeholderTextColor="#6F6A60"
               multiline
-              numberOfLines={4}
-              className="rounded-lg p-4 mb-4"
-              style={{
-                backgroundColor: "#5A6447",
-                color: "#F5F5DC",
-                textAlignVertical: "top",
-                minHeight: 100,
-              }}
+              style={{ backgroundColor: "#2C2A24", color: BLIND.ink, borderRadius: 12, padding: 14, minHeight: 100, textAlignVertical: "top" }}
             />
-
-            <Pressable
-              onPress={handleSaveNotes}
-              className="rounded-xl py-4 items-center"
-              style={{ backgroundColor: "#D4AF37" }}
-            >
-              <Text className="text-white font-bold">Save Notes</Text>
+            <Pressable onPress={saveNotes} style={{ marginTop: 14, minHeight: 52, borderRadius: 14, backgroundColor: BLIND.button, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: BLIND.buttonInk, fontWeight: "700" }}>Save notes</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* Success Modal */}
       <ErrorModal
         visible={showSuccessModal}
-        title="Notes Saved"
-        message="Your notes have been saved to this analysis."
+        title="Notes saved"
+        message="Your notes are on this analysis."
         type="success"
         onDismiss={() => setShowSuccessModal(false)}
         confirmText="OK"
       />
-
-      {/* Share Bottom Sheet */}
-      <Modal
-        visible={showShareSheet}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowShareSheet(false)}
-      >
-        <View className="flex-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <Pressable className="flex-1" onPress={() => setShowShareSheet(false)} />
-          <View
-            className="rounded-t-3xl p-6"
-            style={{ backgroundColor: "#3D4A2F" }}
-          >
-            <View className="w-10 h-1 bg-gray-500 rounded-full self-center mb-6" />
-            <Text className="text-white text-xl font-bold mb-6 text-center">Share Results</Text>
-            {imageUri ? (
-              <ShareableResultCard
-                compact
-                data={{
-                  type: "age",
-                  imageUri,
-                  ageEstimate: ageClassLabel,
-                  ageRange: ageClassLabel,
-                  confidence: explainableAge.overallConfidence,
-                  decision: explainableAge.meetsMinimumAge ? "SHOOT" : "LET WALK",
-                  call: explainableAge.fieldCall ?? (explainableAge.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
-                  leaseMinimum: explainableAge.minimumAgeThreshold,
-                  topCues: explainableAge.detectedCues.slice(0, 3).map((cue) => `${cue.displayName}: ${cue.detectedPattern}`),
-                }}
-              />
-            ) : null}
-
-            <Pressable
-              onPress={handleShare}
-              className="flex-row items-center p-4 rounded-xl mb-3"
-              style={{ backgroundColor: "#5A6447" }}
-            >
-              <View className="w-12 h-12 rounded-full items-center justify-center mr-4" style={{ backgroundColor: "#D4AF37" }}>
-                <Ionicons name="share-social" size={24} color="white" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-base">Share...</Text>
-                <Text className="text-sm" style={{ color: "#E5D4B8" }}>Any recipient, same read</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#E5D4B8" />
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShowShareSheet(false)}
-              className="py-4 items-center mt-2"
-            >
-              <Text className="text-white/60 font-semibold">Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Sticky Bottom Action Bar - Easy one-handed access */}
-      <View
-        className="absolute bottom-0 left-0 right-0 px-4 py-3"
-        style={{
-          backgroundColor: "#2B3420",
-          borderTopWidth: 1,
-          borderTopColor: "#3D4A2F",
-          paddingBottom: insets.bottom + 8,
-        }}
-      >
-        <View className="flex-row gap-3">
-          <Pressable
-            onPress={handleNewAnalysis}
-            className="flex-1 rounded-xl py-3 items-center justify-center"
-            style={{ backgroundColor: "#D4AF37" }}
-          >
-            <Text style={{ color: "#1a1f16", fontWeight: "700" }}>New Analysis</Text>
-          </Pressable>
-        </View>
-      </View>
     </View>
   );
 };
+
+function MoreRow({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={{ minHeight: 52, justifyContent: "center" }}>
+      <Text style={{ color: BLIND.ink, fontSize: 17 }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function ModelBlock({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={{ color: BLIND.walk, fontSize: 16, fontWeight: "700", marginBottom: 6 }}>{title}</Text>
+      <Text style={{ color: BLIND.ink, fontSize: 15, lineHeight: 22 }}>{body}</Text>
+    </View>
+  );
+}

@@ -71,13 +71,13 @@ export function cueBulletsFrom(rawCues: unknown, topCues: unknown): CueBullet[] 
           : "";
       const trimmed = text.trim();
       if (!trimmed) continue;
-      bullets.push({ area: areaOf(item.area ?? item.name ?? item.displayName), text: trimmed.slice(0, 90) });
+      bullets.push({ area: areaOf(item.area ?? item.name ?? item.displayName), text: trimmed });
     }
   }
   if (bullets.length === 0 && Array.isArray(topCues)) {
     for (const cue of topCues) {
       if (typeof cue !== "string" || !cue.trim()) continue;
-      bullets.push({ area: "Body", text: cue.trim().slice(0, 90) });
+      bullets.push({ area: "Body", text: cue.trim() });
     }
   }
   return bullets.slice(0, 6);

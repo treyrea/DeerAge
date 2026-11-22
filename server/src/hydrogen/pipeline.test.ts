@@ -268,6 +268,53 @@ test("an unparsed range closer stops instead of inventing an age", async () => {
   assert.deepEqual(result, { kind: "stop", reason: "unparsed 4.5 vs 5.5" });
 });
 
+test("a hydrogen age sends one full look-for line and does not repeat or cut it", () => {
+  const cue = "Age it up toward 4.5 if the chest looks deep and heavy with the belly nearly matching the chest line, or down toward 3.5 if the upward flank tuck and trimmer waist stand out more clearly.";
+  const reason = "The chest and the belly are close. The flank tuck is still there.";
+  const body = hydrogenAgeBody({
+    low: 3.5,
+    high: 4.5,
+    label: "3.5–4.5",
+    isRange: true,
+    hunterCue: `  ${cue}  `,
+    reason: `${reason} ${reason}`,
+    minimum: 4.5,
+  });
+  assert.equal(body.lookFor, cue);
+  assert.equal(body.hunterCue, cue);
+  assert.ok(cue.length > 90);
+  const bullets = body.cueBullets as { area: string; text: string }[];
+  assert.deepEqual(bullets.map((bullet) => bullet.text), [
+    "The chest and the belly are close.",
+    "The flank tuck is still there.",
+  ]);
+  assert.equal(bullets.some((bullet) => bullet.text.includes(cue.slice(0, 40))), false);
+  assert.deepEqual(body.reasons, bullets.map((bullet) => bullet.text));
+  const same = hydrogenAgeBody({
+    low: 3.5,
+    high: 4.5,
+    label: "3.5–4.5",
+    isRange: true,
+    hunterCue: cue,
+    reason: cue,
+    minimum: 4.5,
+  });
+  assert.deepEqual(same.reasons, []);
+  assert.deepEqual(same.cueBullets, []);
+  assert.equal(same.hunterCue, cue);
+  const cut = hydrogenAgeBody({
+    low: 3.5,
+    high: 4.5,
+    label: "3.5–4.5",
+    isRange: true,
+    hunterCue: cue.slice(0, 90),
+    reason: cue,
+    minimum: 4.5,
+  });
+  assert.equal(cut.lookFor, cue);
+  assert.deepEqual(cut.reasons, []);
+});
+
 test("a Hydrogen age becomes the 1.0.9 field call, and a straddling range stays borderline", () => {
   const shooter = hydrogenAgeBody({ low: 4.5, high: 4.5, label: "4.5", isRange: false, hunterCue: "", reason: "Chest is deep.", minimum: 4.5 });
   assert.equal(shooter.fieldCall, "SHOOTER");

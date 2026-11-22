@@ -12,7 +12,7 @@ import { recordExportAllowed, saveShotRecord, useShotRecordStore } from "../stat
 import { sharePreShotRecord } from "../lib/preShotPdf";
 import type { ShotDraft } from "../types/shot-record";
 
-export const PreShotBar = ({ draft, onNeedPlan }: { draft: ShotDraft | null; onNeedPlan: () => void }) => {
+export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: ShotDraft | null; onNeedPlan: () => void; compact?: boolean }) => {
   const enabled = useRemoteConfig((s) => s.flags.preShotRecord);
   const localId = draft?.localId ?? "";
   const record = useShotRecordStore((s) => (localId ? s.records[localId] : undefined));
@@ -42,6 +42,21 @@ export const PreShotBar = ({ draft, onNeedPlan }: { draft: ShotDraft | null; onN
       setNote("The record couldn't be shared. It is still saved on this phone.");
     }
   };
+
+  if (compact) {
+    return (
+      <View style={{ marginTop: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ color: "#9C9486", fontSize: 15 }}>{record ? "Saved ✓" : "Saving"}</Text>
+          <Text style={{ color: "#9C9486", fontSize: 15 }}>{"  ·  "}</Text>
+          <Pressable testID="record-share" onPress={() => { void share(); }} hitSlop={14} style={{ minHeight: 44, justifyContent: "center" }}>
+            <Text style={{ color: "#E6E0D4", fontSize: 15, fontWeight: "700" }}>Share</Text>
+          </Pressable>
+        </View>
+        {note ? <Text style={{ color: "#9C9486", marginTop: 4 }}>{note}</Text> : null}
+      </View>
+    );
+  }
 
   return (
     <View style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 16, marginBottom: 16 }}>
