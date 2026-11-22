@@ -117,7 +117,7 @@ export const HomeScreen = () => {
                   </View>
                   <View className="flex-1">
                     <Text className="text-white text-lg font-bold">No Signal</Text>
-                    <Text className="text-white/80 text-sm">Tap for Manual Aging Guide</Text>
+                    <Text className="text-white/80 text-sm">Tap for Offline Aging Guide</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={24} color="white" />
                 </View>
@@ -254,7 +254,7 @@ export const HomeScreen = () => {
             </LinearGradient>
           </Pressable>
 
-          {/* Aging Guide - Subtle, highlighted when offline */}
+          {/* Offline Aging Guide - Subtle, highlighted when offline */}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -270,7 +270,12 @@ export const HomeScreen = () => {
               }}
             >
               <Ionicons name="book-outline" size={22} color={!isOnline ? "#22c55e" : "#D4AF37"} />
-              <Text className="text-white font-semibold ml-3 flex-1">Aging Guide</Text>
+              <View className="flex-1 ml-3">
+                <Text className="text-white font-semibold">Offline Aging Guide</Text>
+                <Text className="text-xs mt-0.5" style={{ color: "#E5D4B8" }}>
+                  For when you have no signal
+                </Text>
+              </View>
               {!isOnline && (
                 <View className="px-2 py-0.5 rounded-full mr-2" style={{ backgroundColor: "#22c55e" }}>
                   <Text className="text-white text-xs font-bold">OFFLINE</Text>

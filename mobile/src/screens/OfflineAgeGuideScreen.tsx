@@ -1,5 +1,5 @@
 /**
- * Offline Age Guide
+ * Offline Aging Guide
  * Interactive field guide for estimating deer age when you can't run a scan.
  * Scoring follows the same body-cue rules as the aging engine.
  */
@@ -76,7 +76,7 @@ export const OfflineAgeGuideScreen = () => {
           </Pressable>
           <View className="flex-1 items-center">
             <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
-              Offline Age Guide
+              Offline Aging Guide
             </Text>
             <Text className="text-xs mt-0.5" style={{ color: "#D4AF37" }}>
               Manual Field Estimation
