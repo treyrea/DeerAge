@@ -65,6 +65,24 @@ export function hydrogenPrompts(): HydrogenPromptSet {
   return cached;
 }
 
+/** Appended to the quality prompt when aging.ignoreReticle is on (the default). */
+export const QUALITY_IGNORE_RETICLE_SENTENCE =
+  "Thin reticle or crosshair lines, including a scope or rangefinder overlay, are not a graphic box and do not make this NO.";
+
+/**
+ * Bundled quality_v4 text, plus one isolated sentence when ignoreReticle is true.
+ * The file itself is unchanged so its tested hash still matches.
+ */
+export function activeQualityPrompt(ignoreReticle = true): string {
+  const base = hydrogenPrompts().quality;
+  if (!ignoreReticle) return base;
+  const needle = "a graphic box, or another deer?";
+  if (!base.includes(needle)) return `${base.trim()}
+${QUALITY_IGNORE_RETICLE_SENTENCE}
+`;
+  return base.replace(needle, `${needle} ${QUALITY_IGNORE_RETICLE_SENTENCE}`);
+}
+
 /** A non-empty override replaces the bundled file for this scan. The file text is not trimmed. */
 export function activePlainPrompt(override?: string): string {
   const custom = override?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim() ?? "";

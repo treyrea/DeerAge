@@ -439,6 +439,10 @@ test("aging config defaults on, and the admin route can turn the router and the 
   assert.equal(defaultAgingConfig().router, "c4nr");
   assert.equal(defaultAgingConfig().crossCheck, true);
   assert.equal(defaultAgingConfig().callTimeoutMs, 120_000);
+  assert.equal(defaultAgingConfig().ignoreReticle, true);
+  assert.equal(patchAging(defaultAgingConfig(), { ignoreReticle: false }).ignoreReticle, false);
+  assert.throws(() => patchAging(defaultAgingConfig(), { ignoreReticle: "maybe" }), /ignoreReticle/);
+
   assert.match(defaultAgingConfig().rangeNote, /\{label\}/);
   assert.equal(normalizeAging(undefined).router, "c4nr");
   assert.equal(normalizeAging({ router: "off", crossCheck: false, callTimeoutMs: 5000 }).callTimeoutMs, 20_000);

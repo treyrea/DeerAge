@@ -216,10 +216,10 @@ export const QuickCheckCameraScreen = () => {
 
               <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">
                 <Text className="text-amber-400 text-center font-bold text-base">
-                  Frame the FULL BODY
+                  Zoom in until the body fills the frame
                 </Text>
                 <Text className="text-white/70 text-center text-sm mt-1">
-                  Neck, chest, belly & legs visible
+                  Side view: neck, chest, belly & legs
                 </Text>
               </View>
             </>

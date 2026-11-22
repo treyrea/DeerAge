@@ -12,7 +12,7 @@ import { normalizeFieldCall } from "../utils/field-call";
 export interface QuickAgeResult {
   decision: "SHOOT" | "LET WALK";
   isValidImage: boolean;
-  invalidImageReason?: "head_mount" | "not_deer" | "no_body_visible" | "poor_quality";
+  invalidImageReason?: "head_mount" | "not_deer" | "no_body_visible" | "poor_quality" | "too_small" | "retake";
   invalidImageMessage?: string;
   estimatedAgeClass: AgeClass;
   confidence: number;
@@ -84,8 +84,8 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
       species: profile.species,
     });
   } catch (error) {
-    if (error instanceof AnalysisError && (error.code === "not_deer" || error.code === "no_body" || error.code === "poor_quality")) {
-      const reason = error.code === "no_body" ? "no_body_visible" : error.code === "poor_quality" ? "poor_quality" : "not_deer";
+    if (error instanceof AnalysisError && (error.code === "not_deer" || error.code === "no_body" || error.code === "poor_quality" || error.code === "retake")) {
+      const reason = error.code === "no_body" ? "no_body_visible" : error.code === "poor_quality" ? "poor_quality" : error.code === "retake" ? "too_small" : "not_deer";
       return {
         decision: "LET WALK",
         isValidImage: false,

@@ -10,7 +10,7 @@ import { ScanDeadlineError } from "./budget.js";
 import { applyRules, parseCc, type CrossCheck, type RuleDecision } from "./crosscheck.js";
 import { parseAge } from "./plain.js";
 import { walkHydrogen, type ModelCaller, type WalkResult, type WalkSchedule, type WalkStepListener } from "./pipeline.js";
-import { activeCrossCheckPrompt, activePlainPrompt } from "./prompts.js";
+import { activeCrossCheckPrompt, activePlainPrompt, activeQualityPrompt } from "./prompts.js";
 import { cls, formatAgeLabel, route, type Ours, type RouteResult } from "./router.js";
 
 export interface AgeRouterLog {
@@ -117,7 +117,7 @@ export async function ageWithRouter(input: {
   const wantCrossCheck = input.settings.crossCheck;
   const plainPrompt = routerOn ? activePlainPrompt(input.settings.plainPrompt) : "";
   const crossPrompt = wantCrossCheck ? activeCrossCheckPrompt(input.settings.crossCheckPrompt) : "";
-  const walk = input.walk ?? walkHydrogen;
+  const walk = input.walk ?? ((call, onStep, schedule) => walkHydrogen(call, onStep, schedule, activeQualityPrompt(input.settings.ignoreReticle)));
 
   const progress = input.progress;
   const safely = (fn: (() => void) | undefined) => {

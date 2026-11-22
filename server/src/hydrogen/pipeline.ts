@@ -76,6 +76,7 @@ export async function walkHydrogen(
   call: ModelCaller,
   onStep?: WalkStepListener,
   schedule: WalkSchedule = SEQUENTIAL_WALK,
+  qualityPrompt?: string,
 ): Promise<WalkResult> {
   const prompts = hydrogenPrompts();
   const step = (next: WalkStep) => {
@@ -94,7 +95,7 @@ export async function walkHydrogen(
   };
 
   step({ step: "quality", parallel: schedule.parallelStart });
-  const quality$ = launch(call, prompts.quality, acceptQuality);
+  const quality$ = launch(call, qualityPrompt ?? prompts.quality, acceptQuality);
   let gate$: Pending | null = schedule.parallelStart ? launch(call, prompts.babyGate, acceptGate) : null;
   let stepA$: Pending | null = schedule.parallelStart ? launch(call, prompts.stepA, acceptStepA) : null;
   const cancelRest = () => {

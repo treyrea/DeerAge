@@ -13,8 +13,8 @@ export const RETAKE_MESSAGES: Record<string, string> = {
   belly_waist_visible: "Try a side-on shot with the belly and waist clear of grass, trees, or other deer.",
   neck_chest_visible: "Try a side-on shot with the neck and chest clear of trees, brush, or other deer.",
   subject_separable: "Try a photo of just one deer, with no other deer overlapping its body.",
-  deer_large_enough: "Try a closer photo where the whole deer fills more of the frame.",
-  contour_readable: "Try a sharper photo where the belly, neck, and back are easy to see.",
+  deer_large_enough: "Get closer or zoom in until the body fills the frame.",
+  contour_readable: "Get closer or zoom in, and hold still, so the belly, neck, and back are sharp.",
 };
 
 /**

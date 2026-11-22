@@ -1,6 +1,5 @@
 /**
  * Photo Select Screen - Upload photo from gallery
- * Now includes distance capture for improved accuracy
  */
 
 import React, { useState } from "react";
@@ -12,11 +11,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { useDeerScoringStore } from "../state/deerScoringStore";
-import { useDistanceStore } from "../state/distanceStore";
 import { DeerAnalysisFrame } from "../types/deer-scoring";
-import type { DistanceMeasurement } from "../types/distance";
-import { DistancePicker } from "../components/DistancePicker";
-import { DistanceChip } from "../components/DistanceDisplay";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { e2eEnabled } from "../e2e/flags";
@@ -29,8 +24,6 @@ export const PhotoSelectScreen = () => {
   const insets = useSafeAreaInsets();
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [showDistancePicker, setShowDistancePicker] = useState(false);
-  const [capturedDistance, setCapturedDistance] = useState<DistanceMeasurement | null>(null);
 
   // Use individual selectors to avoid unnecessary re-renders
   const startCapture = useDeerScoringStore((s) => s.startCapture);
@@ -39,12 +32,6 @@ export const PhotoSelectScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
-  // Distance store
-  const distanceSettings = useDistanceStore((s) => s.settings);
-  const getSuggestedDistance = useDistanceStore((s) => s.getSuggestedDistance);
-  const setPendingDistance = useDistanceStore((s) => s.setPendingDistance);
-  const setLastDistance = useDistanceStore((s) => s.setLastDistance);
-  const enableRangefinder = useDistanceStore((s) => s.enableBluetoothRangefinder);
 
   const handlePickImage = async () => {
     // Request permissions
@@ -64,36 +51,12 @@ export const PhotoSelectScreen = () => {
 
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
-      setCapturedDistance(null); // Reset distance when new image selected
     }
   };
 
-  // Handle distance save
-  const handleDistanceSave = (distance: DistanceMeasurement) => {
-    setCapturedDistance(distance);
-    setLastDistance(distance);
-    setPendingDistance(distance);
-    setShowDistancePicker(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  // Handle distance skip
-  const handleDistanceSkip = () => {
-    setPendingDistance(null);
-    setShowDistancePicker(false);
-  };
-
-  // Start analysis - may prompt for distance first
   const handleAnalyzePress = () => {
     if (!selectedImage) return;
-
-    // If distance prompting is enabled and no distance captured, show picker
-    if (distanceSettings.promptOnEveryAnalysis && !capturedDistance) {
-      setShowDistancePicker(true);
-    } else {
-      // Proceed directly to analysis
-      runAnalysis();
-    }
+    void runAnalysis();
   };
 
   // Run the actual analysis
@@ -102,12 +65,6 @@ export const PhotoSelectScreen = () => {
 
     try {
       console.log("[PhotoSelect] Starting analysis for image:", imageUri);
-
-      // Store pending distance if captured
-      if (capturedDistance) {
-        setPendingDistance(capturedDistance);
-        console.log("[PhotoSelect] Distance captured:", capturedDistance.distanceYards, "yards");
-      }
 
       // Start capture and prepare frame
       startCapture();
@@ -145,9 +102,6 @@ export const PhotoSelectScreen = () => {
     }
   };
 
-  // Get suggested distance for picker
-  const suggested = getSuggestedDistance();
-
   if (!huntReady) return <HuntRegionSheet />;
 
   return (
@@ -175,45 +129,6 @@ export const PhotoSelectScreen = () => {
                 resizeMode="contain"
               />
             </View>
-
-            {/* Distance Info Banner */}
-            <Pressable
-              onPress={() => setShowDistancePicker(true)}
-              className="rounded-xl p-4 mb-4 flex-row items-center"
-              style={{ backgroundColor: capturedDistance ? "#22c55e20" : "#3b82f620" }}
-            >
-              <Ionicons
-                name={capturedDistance ? "checkmark-circle" : "locate"}
-                size={24}
-                color={capturedDistance ? "#22c55e" : "#3b82f6"}
-              />
-              <View className="flex-1 ml-3">
-                {capturedDistance ? (
-                  <>
-                    <View className="flex-row items-center">
-                      <Text className="text-white font-semibold">Distance: </Text>
-                      <DistanceChip
-                        distanceYards={capturedDistance.distanceYards}
-                        confidence={capturedDistance.confidence}
-                        source={capturedDistance.source}
-                        size="medium"
-                      />
-                    </View>
-                    <Text className="text-xs mt-1" style={{ color: "#9ca3af" }}>
-                      Tap to change
-                    </Text>
-                  </>
-                ) : (
-                  <>
-                    <Text className="text-white font-semibold">Add distance for better accuracy</Text>
-                    <Text className="text-xs mt-0.5" style={{ color: "#9ca3af" }}>
-                      Tap to add distance (optional)
-                    </Text>
-                  </>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-            </Pressable>
 
             {/* Action Buttons */}
             <View className="space-y-3">
@@ -282,24 +197,6 @@ export const PhotoSelectScreen = () => {
         )}
       </View>
 
-      {/* Distance Picker Modal */}
-      <DistancePicker
-        visible={showDistancePicker}
-        onSave={(distance) => {
-          handleDistanceSave(distance);
-          // After saving distance, proceed to analysis
-          runAnalysis();
-        }}
-        onSkip={() => {
-          handleDistanceSkip();
-          // After skipping, proceed to analysis
-          runAnalysis();
-        }}
-        suggestedDistance={suggested?.distance}
-        suggestedDistanceTimestamp={suggested?.timestamp}
-        showBanner={true}
-        enableRangefinderButton={enableRangefinder}
-      />
     </View>
   );
 };

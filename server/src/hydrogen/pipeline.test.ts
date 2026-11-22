@@ -16,7 +16,7 @@ import { hydrogenAgeBody } from "./result.js";
 import { ScanBudget, ScanDeadlineError } from "./budget.js";
 import { CallCancelledError, generateGeminiText, geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
 import { walkHydrogen, type ModelCaller } from "./pipeline.js";
-import { activeCrossCheckPrompt, activePlainPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
+import { QUALITY_IGNORE_RETICLE_SENTENCE, activeCrossCheckPrompt, activePlainPrompt, activeQualityPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
 import { RETAKE_MESSAGE_DEFAULT, RETAKE_MESSAGES, decideQuality, parseCloser, parseQuality } from "./rules.js";
 
 const HASHES: Record<string, string> = {
@@ -516,4 +516,17 @@ test("a cancelled gemini call stops at once and is never retried", async () => {
   already.abort();
   await assert.rejects(() => generateGeminiText({ ...geminiInput(unused.fetchImpl, 30), signal: already.signal }), (error: unknown) => error instanceof CallCancelledError);
   assert.equal(unused.calls(), 0);
+});
+
+test("size and blur retakes tell the hunter to get closer or zoom in", () => {
+  assert.equal(decideQuality(parseQuality(quality({ deer_large_enough: "NO" }))!).retake_message, RETAKE_MESSAGES.deer_large_enough);
+  assert.match(RETAKE_MESSAGES.deer_large_enough, /Get closer or zoom in/);
+  assert.match(RETAKE_MESSAGES.contour_readable, /Get closer or zoom in/);
+});
+
+test("activeQualityPrompt keeps the quality_v4 hash and appends one reticle sentence when on", () => {
+  assert.equal(createHash("sha256").update(activeQualityPrompt(false)).digest("hex"), HASHES["quality_v4.txt"]);
+  const on = activeQualityPrompt(true);
+  assert.equal(on.includes(QUALITY_IGNORE_RETICLE_SENTENCE), true);
+  assert.equal(on.split(QUALITY_IGNORE_RETICLE_SENTENCE).length, 2);
 });

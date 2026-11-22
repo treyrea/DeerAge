@@ -1,6 +1,9 @@
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { decode as decodeJpeg } from "jpeg-js";
+import { Image } from "react-native";
+import { findCircularVignetteCrop, scaleCropRect } from "../lib/vignette-crop";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
 import { useScanProgress } from "../state/scanProgress";
 import { POLL_DEADLINE_MS, statusPollContinues, statusPollDelayMs } from "./poll-schedule";
@@ -102,8 +105,48 @@ export function sampleFrames<T>(frames: T[], max: number): T[] {
   return picked;
 }
 
+function bytesFromBase64(b64: string): Uint8Array {
+  const atobFn = (globalThis as { atob?: (value: string) => string }).atob;
+  if (!atobFn) throw new Error("no atob");
+  const binary = atobFn(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function imageSize(uri: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+  });
+}
+
+/** Crop a circular dark vignette on the original photo, then shrink to 768. */
+async function vignetteCropOnOriginal(uri: string): Promise<{ originX: number; originY: number; width: number; height: number } | null> {
+  try {
+    const original = await imageSize(uri);
+    if (original.width < 32 || original.height < 32) return null;
+    const probeWidth = Math.min(512, original.width);
+    const probe = await manipulateAsync(uri, [{ resize: { width: probeWidth } }], {
+      compress: 0.7,
+      format: SaveFormat.JPEG,
+    });
+    const b64 = await FileSystem.readAsStringAsync(probe.uri, { encoding: FileSystem.EncodingType.Base64 });
+    const jpeg = decodeJpeg(bytesFromBase64(b64), { useTArray: true });
+    const rect = findCircularVignetteCrop(jpeg.width, jpeg.height, jpeg.data, 4);
+    if (!rect) return null;
+    const scaled = scaleCropRect(rect, jpeg.width, original.width, original.height);
+    return { originX: scaled.left, originY: scaled.top, width: scaled.width, height: scaled.height };
+  } catch {
+    return null;
+  }
+}
+
 async function jpegBase64(uri: string): Promise<string> {
-  const compressed = await manipulateAsync(uri, [{ resize: { width: 768 } }], {
+  const crop = await vignetteCropOnOriginal(uri);
+  const actions = crop
+    ? [{ crop }, { resize: { width: 768 } }]
+    : [{ resize: { width: 768 } }];
+  const compressed = await manipulateAsync(uri, actions, {
     compress: 0.55,
     format: SaveFormat.JPEG,
   });
