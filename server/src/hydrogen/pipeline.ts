@@ -12,7 +12,7 @@
 
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
 import type { WalkStep } from "../progress.js";
-import { PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
+import { RETAKE_MESSAGES, PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
 
 export interface ModelReply {
   text: string;
@@ -117,7 +117,10 @@ export async function walkHydrogen(
   const quality = parseQuality(qualityText);
   if (!quality) {
     cancelRest();
-    return { kind: "stop", reason: "unparsed quality" };
+    // A speck or unreadable frame often comes back as unstructured text.
+    // Retake instead of stopping and falling through to a gateway backup
+    // that then fails as "couldn't finish this photo."
+    return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough, fails: ["deer_large_enough"] };
   }
   const photo = decideQuality(quality);
   if (photo.decision === "RETAKE") {
@@ -137,6 +140,9 @@ export async function walkHydrogen(
   const gate = parseGate(gateText);
   if (!gate) {
     stepA$?.cancel();
+    if (quality.deer_large_enough !== "YES") {
+      return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough, fails: ["deer_large_enough"] };
+    }
     return { kind: "stop", reason: "unparsed baby gate" };
   }
   if (gate === "BABY") {
@@ -149,7 +155,12 @@ export async function walkHydrogen(
   const description = (await stepA$.promise).text.trim();
   gate$ = null;
   stepA$ = null;
-  if (!description) return { kind: "stop", reason: "empty step A" };
+  if (!description) {
+    if (quality.deer_large_enough !== "YES") {
+      return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough, fails: ["deer_large_enough"] };
+    }
+    return { kind: "stop", reason: "empty step A" };
+  }
 
   const closers: Array<Pending | null> = PAIRS.map(([older, younger]) =>
     schedule.parallelClosers ? launch(call, buildCloserPrompt(younger, older, description), acceptCloser) : null,

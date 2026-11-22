@@ -69,18 +69,32 @@ export function hydrogenPrompts(): HydrogenPromptSet {
 export const QUALITY_IGNORE_RETICLE_SENTENCE =
   "Thin reticle or crosshair lines, including a scope or rangefinder overlay, are not a graphic box and do not make this NO.";
 
+/** Appended to the quality prompt so a distant speck is DEER_LARGE_ENOUGH: NO. */
+export const QUALITY_MIN_SIZE_SENTENCE =
+  "Write DEER_LARGE_ENOUGH: NO unless the neck, chest, and belly are large enough in the frame to read as body shapes, not only a distant silhouette or a small mark in a wide field.";
+
 /**
- * Bundled quality_v4 text, plus one isolated sentence when ignoreReticle is true.
- * The file itself is unchanged so its tested hash still matches.
+ * Bundled quality_v4 text, plus the minimum-size sentence, and one isolated
+ * reticle sentence when ignoreReticle is true. The file itself is unchanged
+ * so its tested hash still matches.
  */
 export function activeQualityPrompt(ignoreReticle = true): string {
-  const base = hydrogenPrompts().quality;
+  const base = withMinSizeSentence(hydrogenPrompts().quality);
   if (!ignoreReticle) return base;
   const needle = "a graphic box, or another deer?";
   if (!base.includes(needle)) return `${base.trim()}
 ${QUALITY_IGNORE_RETICLE_SENTENCE}
 `;
   return base.replace(needle, `${needle} ${QUALITY_IGNORE_RETICLE_SENTENCE}`);
+}
+
+function withMinSizeSentence(base: string): string {
+  const needle = "NO if the deer is a tiny thumbnail, a small collage tile, or a distant speck.";
+  if (base.includes(QUALITY_MIN_SIZE_SENTENCE)) return base;
+  if (!base.includes(needle)) return `${base.trim()}
+${QUALITY_MIN_SIZE_SENTENCE}
+`;
+  return base.replace(needle, `${needle} ${QUALITY_MIN_SIZE_SENTENCE}`);
 }
 
 /** A non-empty override replaces the bundled file for this scan. The file text is not trimmed. */

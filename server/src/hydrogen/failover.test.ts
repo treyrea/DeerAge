@@ -67,14 +67,14 @@ test("three failures open the circuit and a later success closes it", async () =
   assert.equal(await circuitOpen("gemini", 2_000), false);
 });
 
-test("an unparsed walk uses the gateway range when the router is on", async () => {
+test("an unparsed closer uses the gateway range when the router is on", async () => {
   let backups = 0;
   const resolved = await resolveHydrogenAge({
     minimum: 4.5,
     backupOnStop: true,
     circuitOpen: async () => false,
     note: async () => undefined,
-    primary: async (): Promise<WalkResult> => ({ kind: "stop", reason: "unparsed quality" }),
+    primary: async (): Promise<WalkResult> => ({ kind: "stop", reason: "unparsed 3.5 vs 4.5" }),
     backup: async () => {
       backups += 1;
       return { estimatedAgeYears: 3.5 };
@@ -96,7 +96,7 @@ test("an unparsed walk stays a finished error when the router is off", async () 
     backupOnStop: false,
     circuitOpen: async () => false,
     note: async () => undefined,
-    primary: async (): Promise<WalkResult> => ({ kind: "stop", reason: "unparsed quality" }),
+    primary: async (): Promise<WalkResult> => ({ kind: "stop", reason: "unparsed 3.5 vs 4.5" }),
     backup: async () => {
       backups += 1;
       return { estimatedAgeYears: 3.5 };
@@ -104,6 +104,26 @@ test("an unparsed walk stays a finished error when the router is off", async () 
   });
   assert.equal(resolved.kind, "stop");
   assert.equal(backups, 0);
+});
+
+test("an unparsed quality check is a get-closer retake and skips the gateway", async () => {
+  let backups = 0;
+  const resolved = await resolveHydrogenAge({
+    minimum: 4.5,
+    backupOnStop: true,
+    circuitOpen: async () => false,
+    note: async () => undefined,
+    primary: async (): Promise<WalkResult> => ({ kind: "stop", reason: "unparsed quality" }),
+    backup: async () => {
+      backups += 1;
+      return { estimatedAgeYears: 3.5 };
+    },
+  });
+  assert.equal(backups, 0);
+  assert.equal(resolved.kind, "retake");
+  if (resolved.kind === "retake") {
+    assert.match(resolved.message, /Get closer or zoom in/);
+  }
 });
 
 test("a walk failure with a plain age shows that age and skips the gateway", async () => {

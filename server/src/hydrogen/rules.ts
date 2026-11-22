@@ -121,6 +121,11 @@ export function decideQuality(fields: QualityFields): QualityDecision {
   for (const key of ["belly_waist_visible", "neck_chest_visible", "subject_separable", "deer_large_enough", "contour_readable"] as const) {
     if (fields[key] === "NO") fails.push(key);
   }
+  // Minimum size: CANT_TELL never retakes on its own, but if we also cannot
+  // clearly read the body contour, do not age a distant speck.
+  if (fields.deer_large_enough !== "YES" && fields.deer_large_enough !== "NO" && fields.contour_readable !== "YES") {
+    fails.push("deer_large_enough");
+  }
   if (fails.length === 0) {
     return { decision: "AGEABLE", fails: [], retake_message: "" };
   }
