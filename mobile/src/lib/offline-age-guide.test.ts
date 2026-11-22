@@ -95,12 +95,12 @@ describe("offline age guide scoring", () => {
     expect(result.cuesAgree).toBe(false);
   });
 
-  it("treats a slight dip as 5.5+ and a deeply swayed back as 6.5+", () => {
+  it("treats a sagging back as 5.5+ and a swayed back as 6.5+", () => {
     expect(scoreGuide(pick({ backline: 2, belly: 5, chest: 5 })).ageLabel).toBe("5.5+");
     expect(scoreGuide(pick({ backline: 3, belly: 5, chest: 5 })).ageLabel).toBe("5.5–6.5+");
     expect(scoreGuide(pick({ backline: 3, belly: 5, build: 5, chest: 5 })).low).toBe(5.5);
     const old = scoreGuide(pick({ backline: 3, belly: 5, build: 5, chest: 5 }));
-    // Deeply swayed pulls the high to 6.5+; belly/chest/build vote 5.5.
+    // A swayed back pulls the high to 6.5+; belly/chest/build vote 5.5.
     expect(old.high).toBe(6.5);
     expect(old.ageLabel).toBe("5.5–6.5+");
   });
@@ -140,12 +140,48 @@ describe("offline age guide scoring", () => {
     expect(build.name).toBe("Overall build");
     const labels = build.scores.map((row) => row.label);
     expect(labels).toEqual([
-      "Doe-like, sleek",
-      "Lean",
-      "Athletic racehorse",
+      "Doe with antlers",
+      "Sleek, lanky",
+      "Racehorse look",
       "Full-bodied",
       "Rounded, “small cow”",
     ]);
+  });
+
+  it("keeps the standard on-the-hoof labels without changing which value votes which age", () => {
+    const labels = Object.fromEntries(TRAITS.map((trait) => [trait.id, trait.scores.map((row) => row.label)]));
+    expect(labels).toEqual({
+      neck: [
+        "Thin, no swelling",
+        "Slight swelling",
+        "Swollen, still distinct from shoulders",
+        "Blends into shoulders",
+        "Neck and brisket appear as one",
+      ],
+      chest: [
+        "Slim",
+        "Some shoulder muscle",
+        "Deep chest, lean waist",
+        "Waist as deep as chest",
+        "Front half one large mass",
+      ],
+      backline: ["Straight and taut", "Sagging back", "Swayed back"],
+      belly: ["Belly tucked up", "Thin waist", "Lean waist", "Full belly, not sagging", "Sagging belly / potbelly"],
+      legs: [
+        "Long and thin",
+        "Long and lanky",
+        "Right length for body",
+        "Look slightly short",
+        "Look short for body",
+        "Skip",
+      ],
+      face: ["Baby face", "Not a baby face"],
+      build: ["Doe with antlers", "Sleek, lanky", "Racehorse look", "Full-bodied", "Rounded, “small cow”"],
+    });
+    expect(TRAITS.find((trait) => trait.id === "face")?.scores[0].description).toBe(
+      "Dainty, doe-like face. Likely a yearling.",
+    );
+    expect(TRAITS.find((trait) => trait.id === "face")?.scores[0].description).not.toMatch(/short/i);
   });
 
   it("never invents a percent confidence", () => {

@@ -14,24 +14,36 @@ import { useNetworkStore } from "../state/networkStore";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import {
-  TRAITS,
-  scoreGuide,
-  type ScoreValue,
-  type TraitId,
-} from "../lib/offline-age-guide";
+import { TraitPictureCard } from "../components/TraitPictureCard";
+import { TRAITS, scoreGuide, type ScoreValue, type TraitId } from "../lib/offline-age-guide";
+import { GUIDE_PALETTE } from "../lib/trait-drawings";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
 const TIPS: { title: string; text: string }[] = [
-  { title: "Standing broadside only", text: "Score a deer that is standing and broadside. Quartering, head-on, or bedded deer are hard to judge." },
-  { title: "Neck is a rut cue", text: "A thick neck is a strong rut cue, but it can't set the age alone. Out of the rut it can mislead." },
+  {
+    title: "Standing broadside only",
+    text: "Score a deer that is standing and broadside. Quartering, head-on, or bedded deer are hard to judge.",
+  },
+  {
+    title: "Neck swells in the rut",
+    text: "A thick neck is a strong rut cue, but it can't set the age alone. Out of the rut it can mislead.",
+  },
   { title: "Hidden legs", text: "Skip the legs if the lower legs are hidden. Don't guess." },
-  { title: "Taper isn't a tuck", text: "A gentle taper toward the hind legs is not a tuck." },
-  { title: "Front vs rear mass", text: "A heavier front half than the hindquarters is a mature sign." },
+  {
+    title: "Slope isn't a tucked belly",
+    text: "A slight upward slope toward the hind legs is normal, not a tucked-up belly.",
+  },
+  {
+    title: "Front vs rear mass",
+    text: "A front half heavier than the hindquarters points to 3.5+, and strongly so at 5.5+.",
+  },
   { title: "3.5 vs 4.5", text: "A 3.5 is the athletic racehorse. Bucks are mature at 4.5." },
   { title: "Old deer", text: "A pot belly is a 5.5+ sign. A deeply swayed back is 6.5+ / old." },
-  { title: "Antlers last", text: "Don't rely on antler size alone. Nutrition varies by region. Use antlers only as a tie-breaker." },
+  {
+    title: "Antlers last",
+    text: "Don't rely on antler size alone. Nutrition varies by region. Use antlers only as a tie-breaker.",
+  },
 ];
 
 export const OfflineAgeGuideScreen = () => {
@@ -86,8 +98,13 @@ export const OfflineAgeGuideScreen = () => {
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 140 }}>
-        <View className="px-6 py-6">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 140 }}
+        stickyHeaderIndices={TRAITS.map((_, index) => 1 + index * 2)}
+        removeClippedSubviews={false}
+      >
+        <View className="px-6 pt-6">
           {isOnline && (
             <View className="bg-blue-600/20 border-2 border-blue-500 rounded-xl p-4 mb-4">
               <View className="flex-row items-center justify-center">
@@ -106,9 +123,7 @@ export const OfflineAgeGuideScreen = () => {
                 <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
                 <Text className="text-green-300 font-bold text-base ml-2">Field Mode — Offline</Text>
               </View>
-              <Text className="text-green-200 text-xs text-center mt-1">
-                This guide works without internet.
-              </Text>
+              <Text className="text-green-200 text-xs text-center mt-1">This guide works without internet.</Text>
             </View>
           )}
 
@@ -118,7 +133,8 @@ export const OfflineAgeGuideScreen = () => {
               <View className="flex-1 ml-3">
                 <Text className="text-blue-300 font-bold text-base mb-2">How to use this guide</Text>
                 <Text className="text-blue-200 text-sm leading-5 mb-2">
-                  Score what you can clearly see on a standing, broadside deer. You need about 3 body traits, or the neck plus 2, before an age is shown. The neck or face alone cannot set it.
+                  Score what you can clearly see on a standing, broadside deer. You need about 3 body traits, or the
+                  neck plus 2, before an age is shown. The neck or face alone cannot set it.
                 </Text>
                 <Text className="text-blue-200 text-sm leading-5">
                   The harvest call uses your lease minimum in Settings (currently {leaseMinimum}).
@@ -126,49 +142,42 @@ export const OfflineAgeGuideScreen = () => {
               </View>
             </View>
           </View>
+        </View>
 
-          {TRAITS.map((trait) => {
-            const selected = scores[trait.id];
-            const selectedChoice = trait.scores.find((row) => row.value === selected);
-            return (
-              <View
-                key={trait.id}
-                className="rounded-2xl p-5 mb-4"
-                style={{ backgroundColor: "#3D4A2F" }}
-              >
-                <View className="flex-row items-center mb-3">
-                  <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: "#5A6447" }}>
-                    <Ionicons name={trait.icon as keyof typeof Ionicons.glyphMap} size={20} color="#D4AF37" />
-                  </View>
-                  <View className="flex-1 ml-3">
-                    <Text className="text-white font-bold text-base">{trait.name}</Text>
-                    <Text className="text-gray-400 text-xs mt-0.5">{trait.description}</Text>
-                  </View>
-                  {selected != null && (
-                    <Pressable
-                      onPress={() => clearScore(trait.id)}
-                      className="w-12 h-12 rounded-full items-center justify-center"
-                      style={{ backgroundColor: "#D4AF37" }}
-                    >
-                      <Text className="text-black font-bold text-base">
-                        {selected === "skip" ? "—" : String(selected)}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-
+        {TRAITS.flatMap((trait) => {
+          const selected = scores[trait.id];
+          const selectedChoice = trait.scores.find((row) => row.value === selected);
+          return [
+            <View
+              key={`${trait.id}-art`}
+              style={{ backgroundColor: GUIDE_PALETTE.screen, paddingHorizontal: 24, paddingBottom: 8 }}
+            >
+              <TraitPictureCard
+                traitId={trait.id}
+                name={trait.name}
+                icon={trait.icon}
+                selected={selected}
+                caption={selectedChoice?.label ?? "Select the closest match"}
+                onClear={() => clearScore(trait.id)}
+              />
+            </View>,
+            <View key={`${trait.id}-opts`} className="px-6 mb-4">
+              <View className="rounded-2xl p-4" style={{ backgroundColor: GUIDE_PALETTE.card }}>
+                <Text className="text-xs leading-4 mb-3" style={{ color: GUIDE_PALETTE.creamMuted }}>
+                  {trait.description}
+                </Text>
                 <View className="space-y-2">
                   {trait.scores.map((score) => {
                     const on = selected === score.value;
-                    const ink = on ? "#2B3420" : "#F5F5DC";
-                    const gold = on ? "#2B3420" : "#D4AF37";
-                    const body = on ? "#2B3420" : "#E5D4B8";
+                    const ink = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.cream;
+                    const gold = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.gold;
+                    const body = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.creamMuted;
                     return (
                       <Pressable
                         key={String(score.value)}
                         onPress={() => handleScore(trait.id, score.value)}
                         className="rounded-lg p-3"
-                        style={{ backgroundColor: on ? "#D4AF37" : "#5A6447" }}
+                        style={{ backgroundColor: on ? GUIDE_PALETTE.gold : GUIDE_PALETTE.button }}
                       >
                         <View className="flex-row items-center justify-between mb-1">
                           <Text className="font-bold text-sm flex-1 pr-2" style={{ color: ink }}>
@@ -186,14 +195,16 @@ export const OfflineAgeGuideScreen = () => {
                   })}
                 </View>
                 {selectedChoice?.value === "skip" && (
-                  <Text className="text-xs mt-2" style={{ color: "#D4AF37" }}>
+                  <Text className="text-xs mt-2" style={{ color: GUIDE_PALETTE.gold }}>
                     Legs skipped — they will not count toward the age.
                   </Text>
                 )}
               </View>
-            );
-          })}
+            </View>,
+          ];
+        })}
 
+        <View className="px-6">
           <View className="rounded-2xl p-5 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <View className="flex-row items-center mb-3">
               <Ionicons name="bulb" size={24} color="#D4AF37" />
@@ -211,8 +222,9 @@ export const OfflineAgeGuideScreen = () => {
           <View className="rounded-xl p-4 mb-6" style={{ backgroundColor: "#5A6447" }}>
             <View className="flex-row items-start">
               <Ionicons name="alert-circle" size={20} color="#f59e0b" />
-              <Text className="text-gray-300 text-xs flex-1 ml-2 leading-5">
-                This is a field guide for when a scan is not available. It is a guideline, not a jawbone age. Follow local regulations, landowner rules, and your lease minimum.
+              <Text className="text-xs flex-1 ml-2 leading-5" style={{ color: GUIDE_PALETTE.creamMuted }}>
+                This is a field guide for when a scan is not available. It is a guideline, not a jawbone age. Follow
+                local regulations, landowner rules, and your lease minimum.
               </Text>
             </View>
           </View>
@@ -224,7 +236,8 @@ export const OfflineAgeGuideScreen = () => {
           entering={FadeIn.duration(300)}
           className="absolute bottom-0 left-0 right-0"
           style={{
-            backgroundColor: result.fieldCall === "SHOOTER" ? "#166534" : result.fieldCall === "BORDERLINE" ? "#854d0e" : "#92400e",
+            backgroundColor:
+              result.fieldCall === "SHOOTER" ? "#166534" : result.fieldCall === "BORDERLINE" ? "#854d0e" : "#92400e",
             borderTopWidth: 2,
             borderTopColor: result.fieldCall === "SHOOTER" ? "#22c55e" : "#f59e0b",
             paddingBottom: insets.bottom + 8,
