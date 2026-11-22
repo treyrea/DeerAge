@@ -282,13 +282,13 @@ export const ProcessingScreen = () => {
               {/* Image Thumbnail (if available) */}
               {imageUri && (
                 <View
-                  className="rounded-xl overflow-hidden mb-5"
+                  className="rounded-xl overflow-hidden mb-5 bg-black"
                   style={{ width: SCREEN_WIDTH * 0.35, height: SCREEN_WIDTH * 0.35 }}
                 >
                   <Image
                     source={{ uri: imageUri }}
                     style={{ width: "100%", height: "100%" }}
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
                 </View>
               )}

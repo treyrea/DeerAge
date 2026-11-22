@@ -128,7 +128,7 @@ export const ShotRecordPage = ({
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           {record.photoUris.map((uri) => (
-            <Image key={uri} source={{ uri }} style={{ width: 160, height: 160, borderRadius: 12, marginRight: 8 }} />
+            <Image key={uri} source={{ uri }} style={{ width: 160, height: 160, borderRadius: 12, marginRight: 8, backgroundColor: "#000" }} resizeMode="contain" />
           ))}
         </ScrollView>
         <Text style={{ color: "#8B7355", fontWeight: "700" }}>Your lease minimum: {record.leaseMinimum}</Text>

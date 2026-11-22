@@ -135,15 +135,22 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
   compact,
 }) => {
   const isShoot = data.decision === "SHOOT";
+  // Show the whole photo so the full deer is visible (cover cut it off).
+  const aspect = usePhotoAspect(data.imageUri);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const photoHeight = fittedPhotoHeight(frameWidth, aspect, compact ? 360 : 440, compact ? 200 : 280);
 
   return (
     <View className="overflow-hidden rounded-2xl" style={{ backgroundColor: "#1a1f16" }}>
       {/* Image with overlay */}
-      <View style={{ height: compact ? 200 : 280 }}>
+      <View
+        style={{ height: photoHeight, backgroundColor: "#000" }}
+        onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+      >
         <Image
           source={{ uri: data.imageUri }}
           style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
+          contentFit="contain"
         />
         {/* Gradient overlay */}
         <LinearGradient

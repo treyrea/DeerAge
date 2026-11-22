@@ -4,11 +4,13 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Image, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Image, Text, useWindowDimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BLIND } from "../utils/blind-verdict";
 import { MODE_TITLE, progressView, secondsLeftText, type ScanMode } from "../lib/scan-progress";
 import { useScanProgress } from "../state/scanProgress";
+import { usePhotoAspect } from "../hooks/usePhotoAspect";
+import { fittedPhotoHeight } from "../lib/photo-fit";
 
 const TICK_MS = 250;
 
@@ -96,12 +98,16 @@ export function ScanProgressBar({ fraction, track = "#2C2C2E", fill = BLIND.ink 
 /** Full waiting screen body. */
 export function ScanProgressView({ imageUri, fallbackMode, photoWidth }: { imageUri?: string; fallbackMode: ScanMode; photoWidth: number }) {
   const { mode, fraction, label, secondsLeft } = useScanProgressView(fallbackMode);
-  const photoHeight = Math.round(photoWidth * 0.75);
+  // Whole photo (no cover crop) so the rack or body is never cut off.
+  const aspect = usePhotoAspect(imageUri);
+  const { height: screenHeight } = useWindowDimensions();
+  const maxPhotoHeight = Math.round(Math.min(photoWidth * 1.25, screenHeight * 0.5));
+  const photoHeight = fittedPhotoHeight(photoWidth, aspect, maxPhotoHeight, Math.round(photoWidth * 0.75));
   return (
     <View style={{ width: photoWidth, alignSelf: "center" }}>
       {imageUri ? (
         <View style={{ width: photoWidth, height: photoHeight, borderRadius: 20, overflow: "hidden", backgroundColor: "#1C1C1E" }}>
-          <Image source={{ uri: imageUri }} style={{ width: photoWidth, height: photoHeight }} resizeMode="cover" />
+          <Image source={{ uri: imageUri }} style={{ width: photoWidth, height: photoHeight }} resizeMode="contain" />
           <PhotoSweep width={photoWidth} height={photoHeight} />
         </View>
       ) : null}
