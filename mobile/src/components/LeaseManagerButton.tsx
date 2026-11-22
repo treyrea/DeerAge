@@ -119,14 +119,14 @@ export const LeaseManagerButton = (note: LeaseNote) => {
               value={name}
               onChangeText={setName}
               placeholder="Name"
-              placeholderTextColor="#8B7355"
+              placeholderTextColor="#F5F5DC"
               style={{ backgroundColor: "#3D4A2F", color: "#F5F5DC", borderRadius: 10, padding: 12, marginBottom: 8 }}
             />
             <TextInput
               value={phone}
               onChangeText={setPhone}
               placeholder="Phone number"
-              placeholderTextColor="#8B7355"
+              placeholderTextColor="#F5F5DC"
               keyboardType="phone-pad"
               style={{ backgroundColor: "#3D4A2F", color: "#F5F5DC", borderRadius: 10, padding: 12 }}
             />

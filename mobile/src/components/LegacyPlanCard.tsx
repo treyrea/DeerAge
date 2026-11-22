@@ -3,12 +3,14 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
 import { getOfferings } from "../lib/revenuecatClient";
 import { DEFAULT_OFFERING_ID, isLegacyProduct, SEASON_PASS_PRODUCT_ID } from "../lib/products";
 import { useCommunityStore } from "../state/communityStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { HOME_BANNER_PRIORITY } from "../lib/home-banners";
+import { useBannerShown, useHomeBanner } from "./HomeBannerStack";
+import { softPulse } from "../lib/haptics";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -36,7 +38,10 @@ export const LegacyPlanCard = () => {
     };
   }, [dismissed, legacyOn, onLegacyPlan]);
 
-  if (!legacyOn || !onLegacyPlan || dismissed) return null;
+  const wants = Boolean(legacyOn && onLegacyPlan && !dismissed);
+  useHomeBanner("legacy", HOME_BANNER_PRIORITY.legacy, wants);
+  const shown = useBannerShown("legacy");
+  if (!wants || !shown) return null;
 
   return (
     <View style={{
@@ -58,7 +63,7 @@ export const LegacyPlanCard = () => {
         </View>
         <Pressable
           onPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            softPulse();
             dismiss();
           }}
           hitSlop={10}
@@ -69,7 +74,7 @@ export const LegacyPlanCard = () => {
       </View>
       <Pressable
         onPress={() => {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          softPulse();
           navigation.navigate("TierPaywall", { reason: "season" });
         }}
         style={{

@@ -210,7 +210,7 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
       case "right":
         return "#3b82f6"; // Blue
       case "left":
-        return "#22c55e"; // Green
+        return "#14532D"; // Hunter green, readable with cream or white text
       case "review":
         return "#D4AF37"; // Gold
     }
@@ -502,28 +502,29 @@ export const ManualPointCounter: React.FC<ManualPointCounterProps> = ({
           {step !== "review" ? (
             <Pressable
               onPress={handleNextStep}
-              style={{ backgroundColor: getStepColor() }}
+              style={{ backgroundColor: step === "right" ? "#1E3A8A" : "#14532D", minHeight: 44 }}
               className="flex-1 rounded-lg py-3 items-center"
             >
               <View className="flex-row items-center">
-                <Text className="text-white font-semibold mr-2">
+                <Text className="font-semibold mr-2" style={{ color: "#F5F5DC" }}>
                   {step === "right" ? `Next: Left Side (${rightPoints.length} marked)` : `Review (${leftPoints.length} marked)`}
                 </Text>
-                <Ionicons name="arrow-forward" size={18} color="white" />
+                <Ionicons name="arrow-forward" size={18} color="#F5F5DC" />
               </View>
             </Pressable>
           ) : (
             <Pressable
               onPress={handleConfirmPress}
-              className="flex-1 rounded-lg py-4 items-center bg-green-600"
+              className="flex-1 rounded-lg py-4 items-center"
+              style={{ backgroundColor: "#14532D", minHeight: 52 }}
             >
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={20} color="white" />
-                <Text className="text-white font-bold ml-2">
+                <Ionicons name="checkmark-circle" size={20} color="#F5F5DC" />
+                <Text className="font-bold ml-2" style={{ color: "#F5F5DC" }}>
                   Confirm: {rightPoints.length + leftPoints.length} Points
                 </Text>
               </View>
-              <Text className="text-white/80 text-xs mt-1">
+              <Text className="text-xs mt-1" style={{ color: "#E5D4B8" }}>
                 {rightPoints.length} right + {leftPoints.length} left
               </Text>
             </Pressable>

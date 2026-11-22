@@ -21,6 +21,7 @@ import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { ErrorModal } from "../components/ErrorModal";
 import { DistanceChip } from "../components/DistanceDisplay";
 import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from "react-native-reanimated";
 
@@ -75,7 +76,7 @@ export const HistoryScreen = () => {
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center">
-            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center mr-2">
+            <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 8 }}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </Pressable>
             <Text className="text-white text-lg font-bold">History</Text>
@@ -91,25 +92,25 @@ export const HistoryScreen = () => {
         <View className="flex-row bg-neutral-800 rounded-lg p-1">
           <Pressable
             onPress={() => setActiveTab("all")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "all" ? "bg-green-600" : ""}`}
+            style={{ flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: 6, justifyContent: "center", backgroundColor: activeTab === "all" ? "#14532D" : "transparent" }}
           >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "all" ? "text-white" : "text-gray-400"}`}>
+            <Text className="text-center text-sm font-semibold" style={{ color: activeTab === "all" ? "#F5F5DC" : "#9CA3AF" }}>
               All ({history.length + quickRecords.length})
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setActiveTab("age")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "age" ? "bg-blue-600" : ""}`}
+            style={{ flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: 6, justifyContent: "center", backgroundColor: activeTab === "age" ? "#1E3A8A" : "transparent" }}
           >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "age" ? "text-white" : "text-gray-400"}`}>
+            <Text className="text-center text-sm font-semibold" style={{ color: activeTab === "age" ? "#F5F5DC" : "#9CA3AF" }}>
               Age ({ageCount})
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setActiveTab("score")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "score" ? "bg-orange-600" : ""}`}
+            style={{ flex: 1, minHeight: 44, paddingHorizontal: 12, borderRadius: 6, justifyContent: "center", backgroundColor: activeTab === "score" ? "#6B5640" : "transparent" }}
           >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "score" ? "text-white" : "text-gray-400"}`}>
+            <Text className="text-center text-sm font-semibold" style={{ color: activeTab === "score" ? "#F5F5DC" : "#9CA3AF" }}>
               Rack ({scoreCount})
             </Text>
           </Pressable>
@@ -132,9 +133,9 @@ export const HistoryScreen = () => {
           </Text>
           <Pressable
             onPress={() => navigation.navigate("Home", { screen: "HomeMain" })}
-            className="bg-green-600 rounded-xl py-3 px-6"
+            style={{ backgroundColor: "#14532D", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24, minHeight: 44, justifyContent: "center" }}
           >
-            <Text className="text-white text-base font-bold">Score a Deer</Text>
+            <Text className="text-base font-bold" style={{ color: "#F5F5DC" }}>Score a Deer</Text>
           </Pressable>
         </View>
       ) : (
@@ -213,7 +214,7 @@ const QuickRecordCard = ({ record, onPress }: { record: ShotRecord; onPress: () 
       {record.ageClass || "Age class"} · {record.fieldCall}
     </Text>
     <Text style={{ color: "#E5D4B8", marginTop: 4 }}>Your lease minimum: {record.leaseMinimum}</Text>
-    <Text style={{ color: "#8B7355", marginTop: 6 }}>{format(new Date(record.deviceTime), "MMM d, yyyy h:mm a")}</Text>
+    <Text style={{ color: "#C9B48F", marginTop: 6 }}>{format(new Date(record.deviceTime), "MMM d, yyyy h:mm a")}</Text>
     <Text style={{ color: "#D4AF37", marginTop: 8, fontWeight: "700" }}>Mark as harvested</Text>
   </Pressable>
 );
@@ -226,7 +227,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
   const DELETE_THRESHOLD = -80;
 
   const triggerHapticAndDelete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    softPulse();
     onDelete();
   };
 
@@ -368,11 +369,11 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) 
                   <Pressable
                     onPress={(e) => {
                       e.stopPropagation();
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      softPulse();
                       onDelete();
                     }}
-                    className="w-11 h-11 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
+                    hitSlop={4}
+                    style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "rgba(239, 68, 68, 0.1)" }}
                   >
                     <Ionicons name="trash-outline" size={22} color="#ef4444" />
                   </Pressable>

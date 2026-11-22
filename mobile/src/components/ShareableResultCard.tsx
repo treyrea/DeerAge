@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { DeerMark } from "./DeerMark";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import ViewShot from "react-native-view-shot";
 import * as MediaLibrary from "expo-media-library";
 import { formatAgeClass } from "../utils/age-class";
@@ -73,7 +74,7 @@ export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
   const viewShotRef = useRef<ViewShot>(null);
 
   const handleSaveToGallery = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
 
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -84,7 +85,7 @@ export const ShareableResultCard: React.FC<ShareableResultCardProps> = ({
       if (viewShotRef.current?.capture) {
         const uri = await viewShotRef.current.capture();
         await MediaLibrary.saveToLibraryAsync(uri);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        softPulse();
       }
     } catch (error) {
       console.log("[Share] Error saving to gallery:", error);
@@ -181,14 +182,14 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
             <Text className="text-2xl font-bold" style={{ color: "#F5F5DC" }}>
               {formatAgeClass(data.ageRange || data.ageEstimate)}
             </Text>
-            <Text className="text-sm" style={{ color: "#8B7355" }}>
+            <Text className="text-sm" style={{ color: "#C9B48F" }}>
               {/[–-]/.test(formatAgeClass(data.ageRange || data.ageEstimate)) ? "Age range" : "Age class"}
             </Text>
             {data.call ? (
               <Text className="text-base font-bold mt-1" style={{ color: "#D4AF37" }}>{data.call}</Text>
             ) : null}
             {typeof data.leaseMinimum === "number" ? (
-              <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>Lease minimum {data.leaseMinimum}</Text>
+              <Text className="text-xs mt-1" style={{ color: "#C9B48F" }}>Lease minimum {data.leaseMinimum}</Text>
             ) : null}
           </View>
           {data.confidence > 0 ? (
@@ -196,7 +197,7 @@ const AgeResultCardContent: React.FC<AgeResultCardContentProps> = ({
             <Text className="text-xl font-bold" style={{ color: "#D4AF37" }}>
               {data.confidence}%
             </Text>
-            <Text className="text-sm" style={{ color: "#8B7355" }}>
+            <Text className="text-sm" style={{ color: "#C9B48F" }}>
               Confidence
             </Text>
           </View>
@@ -277,7 +278,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
             <Text className="text-3xl font-bold" style={{ color: "#D4AF37" }}>
               {data.netScore.toFixed(1)}&quot;
             </Text>
-            <Text className="text-sm" style={{ color: "#8B7355" }}>
+            <Text className="text-sm" style={{ color: "#C9B48F" }}>
               B&C Net {data.category}
             </Text>
           </View>
@@ -285,7 +286,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
             <Text className="text-xl" style={{ color: "#F5F5DC" }}>
               {data.grossScore.toFixed(1)}&quot; Gross
             </Text>
-            <Text className="text-sm" style={{ color: "#8B7355" }}>
+            <Text className="text-sm" style={{ color: "#C9B48F" }}>
               {data.confidence}% confidence
             </Text>
           </View>
@@ -319,7 +320,7 @@ const BrandingWatermark: React.FC = () => {
   return (
     <View className="flex-row items-center justify-center pt-2 border-t border-white/10">
       <DeerMark size={22} />
-      <Text className="text-xs ml-1" style={{ color: "#8B7355" }}>
+      <Text className="text-xs ml-1" style={{ color: "#C9B48F" }}>
         Aged with DeerAge
       </Text>
     </View>

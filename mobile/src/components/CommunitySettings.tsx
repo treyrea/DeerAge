@@ -97,7 +97,7 @@ export const CommunitySettings = () => {
           <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>What&apos;s new</Text>
           <Text style={{ color: "#E5D4B8", fontSize: 13, marginTop: 2 }}>Updates and votes</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#8B7355" />
+        <Ionicons name="chevron-forward" size={18} color="#C9B48F" />
       </Pressable> : null}
 
       {pushOn ? <View style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 16, marginBottom: 16 }}>
@@ -140,7 +140,7 @@ export const CommunitySettings = () => {
               value={draft}
               onChangeText={setDraft}
               placeholder={localEmail ?? "you@email.com"}
-              placeholderTextColor="#8B7355"
+              placeholderTextColor="#F5F5DC"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -156,7 +156,7 @@ export const CommunitySettings = () => {
             </Pressable>
           </>
         )}
-        <Text style={{ color: "#8B7355", fontSize: 12, marginTop: 10, lineHeight: 17 }}>{EMAIL_PRIVACY_NOTE}</Text>
+        <Text style={{ color: "#C9B48F", fontSize: 12, marginTop: 10, lineHeight: 17 }}>{EMAIL_PRIVACY_NOTE}</Text>
         {note ? <Text style={{ color: "#F5F5DC", marginTop: 10, lineHeight: 18 }}>{note}</Text> : null}
       </View> : null}
     </>

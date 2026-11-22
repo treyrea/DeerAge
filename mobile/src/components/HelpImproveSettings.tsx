@@ -44,7 +44,7 @@ export function HelpImproveSettings() {
         <Ionicons name="sparkles-outline" size={22} color="#D4AF37" />
         <View className="flex-1 ml-3 mr-3">
           <Text className="text-white font-semibold">{HELP_IMPROVE_TITLE}</Text>
-          <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>{HELP_IMPROVE_SUBTITLE}</Text>
+          <Text className="text-xs mt-1" style={{ color: "#C9B48F" }}>{HELP_IMPROVE_SUBTITLE}</Text>
         </View>
         <Switch
           value={helpImprove}
@@ -58,7 +58,7 @@ export function HelpImproveSettings() {
       <Pressable onPress={onInvite} className="flex-row items-center p-4" accessibilityRole="button">
         <Ionicons name="share-outline" size={22} color="#D4AF37" />
         <Text className="text-white font-semibold ml-3 flex-1">Invite a Hunting Buddy</Text>
-        <Ionicons name="chevron-forward" size={18} color="#8B7355" />
+        <Ionicons name="chevron-forward" size={18} color="#C9B48F" />
       </Pressable>
     </View>
   );

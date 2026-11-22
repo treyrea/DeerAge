@@ -171,7 +171,7 @@ export const CommunityPrompts = ({ routeName = "" }: { routeName?: string }) => 
                   value={email}
                   onChangeText={setEmailText}
                   placeholder="you@email.com"
-                  placeholderTextColor="#8B7355"
+                  placeholderTextColor="#F5F5DC"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -179,7 +179,7 @@ export const CommunityPrompts = ({ routeName = "" }: { routeName?: string }) => 
                   style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginTop: 14 }}
                 />
                 {error ? <Text style={{ color: "#F5F5DC", marginTop: 8 }}>{error}</Text> : null}
-                <Text style={{ color: "#8B7355", fontSize: 12, marginTop: 10, lineHeight: 17 }}>{EMAIL_PRIVACY_NOTE}</Text>
+                <Text style={{ color: "#C9B48F", fontSize: 12, marginTop: 10, lineHeight: 17 }}>{EMAIL_PRIVACY_NOTE}</Text>
                 <View style={{ flexDirection: "row", marginTop: 16 }}>
                   <Pressable onPress={closeEmail} style={{ flex: 1, paddingVertical: 12, alignItems: "center", marginRight: 8 }}>
                     <Text style={{ color: "#E5D4B8", fontWeight: "600" }}>Skip</Text>

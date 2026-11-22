@@ -67,7 +67,7 @@ export const SecondLookLink = ({
 
   return (
     <View style={{ marginTop: 8, marginBottom: 8 }}>
-      <Text style={{ color: "#8B7355", fontSize: 12, fontWeight: "700" }}>SECOND LOOK</Text>
+      <Text style={{ color: "#C9B48F", fontSize: 12, fontWeight: "700" }}>SECOND LOOK</Text>
       <View style={{ flexDirection: "row", marginTop: 6 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ color: "#F5F5DC", fontWeight: "800" }}>{look.originalCall || fieldCall || "First call"}</Text>

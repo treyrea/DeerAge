@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { fetchFeed, submitVote } from "../api/community";
 import { useCommunityStore } from "../state/communityStore";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -76,20 +76,20 @@ export const FeedScreen = () => {
       return;
     }
     noteVote(pollId, result.optionId);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void softPulse();
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#3D4A2F", flexDirection: "row", alignItems: "center" }}>
-        <Pressable testID="feed-back" onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable testID="feed-back" accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700" }}>What&apos;s new</Text>
           <Text style={{ color: "#D4AF37", fontSize: 12, marginTop: 2 }}>Vote on what&apos;s next</Text>
         </View>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 44 }} />
       </View>
       <ScrollView
         refreshControl={(
@@ -98,7 +98,7 @@ export const FeedScreen = () => {
       >
         <View style={{ padding: 24 }}>
           {stale ? (
-            <Text style={{ color: "#8B7355", fontSize: 13, marginBottom: 14 }}>
+            <Text style={{ color: "#C9B48F", fontSize: 13, marginBottom: 14 }}>
               {feed ? "Showing saved updates. Pull to refresh when you have a signal." : "Updates will load when you have a signal."}
             </Text>
           ) : null}
@@ -119,7 +119,7 @@ export const FeedScreen = () => {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: "#F5F5DC", fontWeight: "700", fontSize: 17 }}>{item.title}</Text>
                   {item.publishedAt ? (
-                    <Text style={{ color: "#8B7355", fontSize: 12, marginTop: 4 }}>
+                    <Text style={{ color: "#C9B48F", fontSize: 12, marginTop: 4 }}>
                       {new Date(item.publishedAt).toLocaleDateString()}
                     </Text>
                   ) : null}
@@ -165,7 +165,7 @@ export const FeedScreen = () => {
                   );
                 })}
               </View>
-              <Text style={{ color: "#8B7355", fontSize: 12, marginTop: 4 }}>
+              <Text style={{ color: "#C9B48F", fontSize: 12, marginTop: 4 }}>
                 {poll.myVote ? "Vote saved." : isOnline ? "One vote for this install." : "Connect to vote."}
               </Text>
             </View>

@@ -49,14 +49,14 @@ export const HarvestPanel = ({
         </Pressable>
       ) : (
         <View style={{ marginTop: 12 }}>
-          <Text style={{ color: "#8B7355", marginBottom: 8 }}>Your lease minimum: {leaseMinimum}</Text>
+          <Text style={{ color: "#C9B48F", marginBottom: 8 }}>Your lease minimum: {leaseMinimum}</Text>
           {comparison ? <Text style={{ color: "#F5F5DC", marginBottom: 8, lineHeight: 20 }}>{comparison}</Text> : null}
           <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>CONFIRMED AGE</Text>
           <TextInput
             value={age}
             onChangeText={setAge}
             placeholder="4.5"
-            placeholderTextColor="#8B7355"
+            placeholderTextColor="#F5F5DC"
             keyboardType="decimal-pad"
             style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 8 }}
           />
@@ -81,7 +81,7 @@ export const HarvestPanel = ({
             value={notes}
             onChangeText={setNotes}
             placeholder="Optional notes"
-            placeholderTextColor="#8B7355"
+            placeholderTextColor="#F5F5DC"
             style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 10 }}
           />
           <Pressable

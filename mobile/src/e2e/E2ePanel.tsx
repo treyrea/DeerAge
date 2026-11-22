@@ -64,7 +64,7 @@ export const E2ePanel = () => {
   };
   return (
     <View testID="e2e-panel" style={{ marginTop: 12, marginBottom: 12 }}>
-      <Text style={{ color: "#8B7355", fontSize: 12, marginBottom: 6 }}>Simulator checks</Text>
+      <Text style={{ color: "#C9B48F", fontSize: 12, marginBottom: 6 }}>Simulator checks</Text>
       <Pressable testID="e2e-age" onPress={() => openAge("4.5", "SHOOTER", false)} style={row}>
         <Text style={label}>Sample age</Text>
       </Pressable>
