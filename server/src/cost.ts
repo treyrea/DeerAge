@@ -57,6 +57,15 @@ export function hydrogenReserveUsd(): number {
   }), 0.000001);
 }
 
+/** Hold for one Quick Check plain read: one Hydrogen call (about 1¢ real, held high). */
+export function plainReserveUsd(): number {
+  const usage = { promptTokens: 4000, completionTokens: 6000 };
+  return Math.max(costUsd(usage, {
+    inputPerMillion: geminiInputUsdPerMillion(),
+    outputPerMillion: geminiOutputUsdPerMillion(),
+  }), 0.000001);
+}
+
 /** High estimate used to hold a slot against the daily cap before the call returns. */
 export function reserveUsd(calls: number, maxOutputTokens: number): number {
   const usage = {

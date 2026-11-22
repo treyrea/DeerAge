@@ -1,5 +1,5 @@
 import { agingEngineFor, HYDROGEN_MODEL, type AgingEngine } from "./aging-switch.js";
-import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, type TokenUsage } from "./cost.js";
+import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, plainReserveUsd, type TokenUsage } from "./cost.js";
 import { FREE_LIFETIME_ANALYSES, modelName } from "./config.js";
 import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } from "./entitlement.js";
 import {
@@ -24,6 +24,7 @@ import { ageWithRouter } from "./hydrogen/age-with-router.js";
 import { hydrogenFinishPlan, noDeerCopy, noDeerJobError, noDeerJobForMode } from "./hydrogen/no-deer.js";
 import { createScanBudget } from "./hydrogen/budget.js";
 import { loadRemoteConfig } from "./remote-config.js";
+import { leaseRulesOf, quickReserveUsd, runQuickHydrogen, toQuickShape, type QuickConfig, type QuickEngine } from "./quick-engine.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
 import { keepAlive, loadJob, newJobId, saveJob, type ScanJob } from "./jobs.js";
@@ -36,6 +37,8 @@ interface HuntContext {
   landType?: string;
   goal?: string;
   minimumShooterAge?: number;
+  /** The app's Lease rules switch (sent by builds after 18). */
+  leaseRules?: boolean;
   species?: string;
   month?: number;
   distanceYards?: number;
@@ -50,6 +53,8 @@ export interface AnalyzeBody {
   baseline?: boolean;
   minimumShooterAge?: number;
   appVersion?: string;
+  /** The app's Lease rules switch. Build 18 and older do not send it. */
+  leaseRules?: boolean;
 }
 
 interface Auth {
@@ -167,7 +172,13 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
 
   const appVersion = typeof body.appVersion === "string" ? body.appVersion.trim().slice(0, 32) : "";
   const engine: AgingEngine = mode === "age" && !body.baseline ? agingEngineFor(appVersion) : "current";
-  if (engine === "hydrogen") {
+  const quickConfig: QuickConfig | null = mode === "quick" && !body.baseline
+    ? (await loadRemoteConfig().catch(() => null))?.quick ?? null
+    : null;
+  const quickEngine: QuickEngine = quickConfig?.engine ?? "gateway";
+  const leaseRules = leaseRulesOf(body);
+  const quickHydrogen = mode === "quick" && quickEngine !== "gateway";
+  if (engine === "hydrogen" || quickHydrogen) {
     if (!process.env.GEMINI_API_KEY?.trim()) {
       return fail(503, "not_configured", "The analysis service is not configured.");
     }
@@ -244,7 +255,16 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       fairUseHeld = true;
     }
 
-    spendReserved = engine === "hydrogen" ? hydrogenReserveUsd() : mode === "score" ? 0.05 : 0.12;
+    spendReserved = engine === "hydrogen"
+      ? hydrogenReserveUsd()
+      : mode === "quick"
+        ? quickReserveUsd({
+          engine: quickEngine,
+          mayEscalate: leaseRules ?? quickConfig?.leaseUnknown === "escalate",
+          hydrogenReserve: hydrogenReserveUsd(),
+          plainReserve: plainReserveUsd(),
+        })
+        : mode === "score" ? 0.05 : 0.12;
     const underCap = await reserveSpend(spendReserved);
     if (!underCap) {
       if (fairUseHeld) await releaseFairUse(appUserId);
@@ -269,6 +289,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       reserved,
       usage,
       engine,
+      quick: quickHydrogen && quickConfig ? { config: quickConfig, engine: quickEngine as Exclude<QuickEngine, "gateway">, leaseRules } : null,
       refund,
       releaseFairUse: async () => {
         if (fairUseHeld) await releaseFairUse(appUserId);
@@ -334,10 +355,16 @@ async function finishJob(input: {
   reserved: number;
   usage: TokenUsage;
   engine: AgingEngine;
+  quick?: { config: QuickConfig; engine: Exclude<QuickEngine, "gateway">; leaseRules: boolean | undefined } | null;
   refund: () => Promise<void>;
   releaseFairUse: () => Promise<void>;
 }): Promise<void> {
   try {
+    if (input.mode === "quick" && input.quick) {
+      const handled = await finishQuickHydrogen(input, input.quick);
+      if (handled) return;
+      // The plain read never came back (provider down). Fall through to the gateway pipeline below.
+    }
     if (input.mode === "score") {
       const score = await runScoreCall(input.images);
       const usd = await settleCalls(score.costs, input.reserved, input.mode, input.appUserId, input.usage);
@@ -511,6 +538,96 @@ async function finishJob(input: {
       error: { code: "upstream", message: "Analysis failed. Try again in a moment." },
     });
   }
+}
+
+/** Hydrogen Quick Check. Returns false only when the plain call failed and the gateway should try. */
+async function finishQuickHydrogen(
+  input: Parameters<typeof finishJob>[0],
+  quick: { config: QuickConfig; engine: Exclude<QuickEngine, "gateway">; leaseRules: boolean | undefined },
+): Promise<boolean> {
+  await saveJob({
+    ...input.job,
+    provisional: { fieldCall: "HOLD", note: "Hold, checking his body.", ageClass: "" },
+  });
+  const remote = await loadRemoteConfig();
+  const aging = remote.aging;
+  const budget = createScanBudget(aging.callTimeoutMs);
+  const caller = geminiCaller(input.images[0], input.usage, { timeoutMs: aging.callTimeoutMs, budget });
+  const started = Date.now();
+  const outcome = await runQuickHydrogen({
+    engine: quick.engine,
+    call: caller,
+    minimum: input.minimum,
+    leaseRules: quick.leaseRules,
+    config: quick.config,
+    rangeNote: aging.rangeNote,
+    resolveFull: (plain) => resolveHydrogenAge({
+      minimum: input.minimum,
+      rangeNote: aging.rangeNote,
+      backupOnStop: aging.router === "c4nr",
+      circuitOpen: () => circuitOpen("gemini"),
+      note: (ok) => circuitNote("gemini", ok),
+      primary: () => ageWithRouter({ call: caller, settings: aging, plain }),
+      backup: async () => {
+        if (plain) return { ageYears: plain[0] };
+        const age = await runAgeCall(input.images[0], input.minimum);
+        if (age.stop === "not_deer") return { kind: "no_deer" };
+        return age.result;
+      },
+    }),
+  });
+  if (outcome.kind === "fail" && outcome.reason === "plain_call_failed") {
+    console.log(JSON.stringify({ event: "provider_fallback", provider: "gemini", mode: "quick", to: "gateway" }));
+    return false;
+  }
+  const usd = await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId);
+  console.log(JSON.stringify({
+    event: "quick_engine",
+    engine: quick.engine,
+    leaseRules: quick.leaseRules ?? null,
+    outcome: outcome.kind,
+    escalated: outcome.kind === "age" ? outcome.escalated : false,
+    backup: outcome.kind === "age" ? outcome.backup : false,
+    estimatedCostUsd: usd,
+    ms: Date.now() - started,
+  }));
+  if (outcome.kind === "no_deer") {
+    await input.refund();
+    await input.releaseFairUse();
+    await saveJob({ ...input.job, status: "error", provisional: null, error: noDeerJobForMode("quick", noDeerCopy(remote.copy)) });
+    return true;
+  }
+  if (outcome.kind === "fail") {
+    await input.refund();
+    await input.releaseFairUse();
+    console.log(JSON.stringify({ event: "analysis_failed", mode: input.mode, reason: outcome.reason }));
+    await saveJob({ ...input.job, status: "error", error: { code: "upstream", message: "Analysis failed. Try again in a moment." } });
+    return true;
+  }
+  const result = toQuickShape(outcome.result, { engine: quick.engine, escalated: outcome.escalated, plainAge: outcome.plainAge });
+  const record = await issueRecord({
+    appUserId: input.appUserId,
+    images: input.images,
+    mode: input.mode,
+    result,
+    minimum: input.minimum,
+  });
+  await saveJob({
+    ...input.job,
+    status: "done",
+    final: {
+      ok: true,
+      mode: input.mode,
+      model: HYDROGEN_MODEL,
+      quickEngine: quick.engine,
+      escalated: outcome.escalated,
+      estimatedCostUsd: usd,
+      record,
+      result,
+      backup: outcome.backup,
+    },
+  });
+  return true;
 }
 
 async function settleHydrogen(usage: TokenUsage, reserved: number, mode: string, appUserId: string): Promise<number> {

@@ -1,0 +1,3 @@
+How old is this whitetail buck? Give an age class.
+
+After your answer, end with one last line exactly like this: DEER_PRESENT: YES, DEER_PRESENT: NO, or DEER_PRESENT: CANT_TELL. Write NO only when no deer is visible at all, such as a car, a person, a dog, an empty field, or a building. If any deer is visible, even partly hidden, dark, blurry, or far away, write YES.

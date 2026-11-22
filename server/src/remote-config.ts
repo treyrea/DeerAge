@@ -15,6 +15,7 @@ import {
   clampCallTimeout,
   type AgingConfig,
 } from "./hydrogen/aging.js";
+import { defaultQuickConfig, normalizeQuick, patchQuick, QuickConfigError, type QuickConfig } from "./quick-engine.js";
 import {
   ApiError,
   type Incoming,
@@ -77,6 +78,8 @@ export interface RemoteConfig {
     winBackOfferId: string;
   };
   aging: AgingConfig;
+  /** Quick Check engine. Live: switch without a deploy. */
+  quick: QuickConfig;
 }
 
 function productId(name: string, fallback: string): string {
@@ -125,6 +128,7 @@ export function defaultRemoteConfig(): RemoteConfig {
     },
     products: defaultProducts(),
     aging: defaultAgingConfig(),
+    quick: defaultQuickConfig(),
   };
 }
 
@@ -174,6 +178,7 @@ function mergeConfig(stored: unknown): RemoteConfig {
     copy,
     products,
     aging: normalizeAging(row.aging),
+    quick: normalizeQuick((row as { quick?: unknown }).quick),
   };
 }
 
@@ -295,6 +300,14 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
       current.copy.homeTips = body.homeTips.filter((tip): tip is string => typeof tip === "string").map((tip) => tip.trim()).filter(Boolean).slice(0, 4);
     }
     if (body.aging != null) current.aging = patchAging(current.aging, body.aging);
+    if (body.quick != null) {
+      try {
+        current.quick = patchQuick(current.quick, body.quick);
+      } catch (error) {
+        if (error instanceof QuickConfigError) throw new ApiError(400, "invalid_request", error.message);
+        throw error;
+      }
+    }
     await redisSet(KEY, JSON.stringify(current));
     return ok({ config: current });
   } catch (error) {

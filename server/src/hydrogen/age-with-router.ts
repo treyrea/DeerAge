@@ -101,6 +101,8 @@ export async function ageWithRouter(input: {
   walk?: (call: ModelCaller) => Promise<WalkResult>;
   log?: (event: AgeRouterLog) => void;
   now?: () => number;
+  /** A plain answer this scan already paid for (Quick Check hand-off). Skips the second plain call. */
+  plain?: [number, number] | null;
 }): Promise<WalkResult> {
   const now = input.now ?? Date.now;
   const started = now();
@@ -116,7 +118,11 @@ export async function ageWithRouter(input: {
   const walkTask = walk(input.call)
     .then((result) => ({ ok: true as const, result, error: null }))
     .catch((error: unknown) => ({ ok: false as const, result: null, error }));
-  const plainTask = routerOn ? readPlain(input.call, plainPrompt) : Promise.resolve(null);
+  const plainTask = !routerOn
+    ? Promise.resolve(null)
+    : input.plain !== undefined
+      ? Promise.resolve(input.plain)
+      : readPlain(input.call, plainPrompt);
   const crossTask = wantCrossCheck ? readCrossCheck(input.call, crossPrompt) : Promise.resolve(null);
   const [walkBox, plain, crossCheck] = await Promise.all([walkTask, plainTask, crossTask]);
 
