@@ -11,6 +11,7 @@ import { applyRules, parseCc, type CrossCheck, type RuleDecision } from "./cross
 import { parseAge } from "./plain.js";
 import { walkHydrogen, type ModelCaller, type WalkResult, type WalkSchedule, type WalkStepListener } from "./pipeline.js";
 import { activeCrossCheckPrompt, activePlainPrompt, activeQualityPrompt } from "./prompts.js";
+import { isSizeRetake } from "./rules.js";
 import { cls, formatAgeLabel, route, type Ours, type RouteResult } from "./router.js";
 
 export interface AgeRouterLog {
@@ -147,6 +148,26 @@ export async function ageWithRouter(input: {
     : Promise.resolve(null);
   const walkBox = await walkTask;
   const walkResult = walkBox.ok ? walkBox.result : null;
+  if (walkResult?.kind === "retake" && isSizeRetake(walkResult)) {
+    // A too-small deer is a retake. Do not let C4nr replace it with a plain age
+    // (R1_ours_retake_use_plain), which is how a distant speck can still get a 4.5.
+    side.abort();
+    log({
+      event: "age_router",
+      branch: "size_retake",
+      plainLabel: "",
+      oursLabel: "RETAKE",
+      finalLabel: "RETAKE",
+      plainOk: false,
+      ccOk: false,
+      early: true,
+      ms: Math.max(0, now() - started),
+      ...(plainPrompt ? { plainPromptSha: sha256(plainPrompt) } : {}),
+      ...(crossPrompt ? { crossCheckPromptSha: sha256(crossPrompt) } : {}),
+      retakeReason: walkResult.message,
+    });
+    return walkResult;
+  }
   if (walkResult?.kind === "no_deer") {
     // No deer: answer now. The plain read and cross-check cannot change that, so stop them (no retries).
     side.abort();

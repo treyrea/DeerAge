@@ -113,6 +113,14 @@ export function parseQuality(text: string): QualityFields | null {
 }
 
 /** v5 rule: legs never retake, and CANT_TELL never retakes. */
+/** A photo-quality retake because the deer is too small or too soft to read body shape. */
+export function isSizeRetake(result: { kind?: string; fails?: string[]; message?: string }): boolean {
+  if (result.kind !== "retake") return false;
+  const fails = result.fails ?? [];
+  if (fails.includes("deer_large_enough") || fails.includes("contour_readable")) return true;
+  return typeof result.message === "string" && /Get closer or zoom in/i.test(result.message);
+}
+
 export function decideQuality(fields: QualityFields): QualityDecision {
   const fails: string[] = [];
   if (fields.view_angle === "HEAD_ON" || fields.view_angle === "REAR") fails.push("view_angle");

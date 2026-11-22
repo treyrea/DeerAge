@@ -295,6 +295,21 @@ test("the scan uses the plain age for a quality retake and for a rules retake", 
   assert.equal(ruled.log.retakeReason, RETAKE_CONFLICT_OLD);
 });
 
+test("a too-small deer stays a get-closer retake and does not show the plain age", async () => {
+  const size = await run({
+    walk: { kind: "retake", message: "Get closer or zoom in until the body fills the frame.", fails: ["deer_large_enough"] },
+    plain: "Best placed in the **4.5-year-old** age class.",
+    cross: "{\"spread_vs_ears\":\"OUTSIDE\"}",
+  });
+  assert.equal(size.result.kind, "retake");
+  if (size.result.kind === "retake") {
+    assert.match(size.result.message, /Get closer or zoom in/);
+  }
+  assert.equal(size.log.branch, "size_retake");
+  assert.equal(size.log.early, true);
+  assert.equal(size.log.finalLabel, "RETAKE");
+});
+
 test("router off keeps a retake, and cross-check off skips R1", async () => {
   const off = await run({
     walk: { kind: "retake", message: "head down", fails: ["head_position"] },
