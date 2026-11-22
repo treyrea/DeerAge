@@ -27,6 +27,8 @@ export interface AgeOutcome {
   readings: { fast: AgeReading | null; main: AgeReading | null; bodyOnly: AgeReading | null };
   costs: ModelCall[];
   result: Record<string, unknown> | null;
+  /** Set when the model calls failed or gave no usable age. The job must end as an error, never as an empty result. */
+  error?: "upstream";
 }
 
 const EMPTY: AgeReading = {
@@ -160,7 +162,13 @@ async function safeCall(role: "fast" | "age" | "ageFallback" | "boxes" | "masked
       allowStatusRetry: true,
       model,
     });
-  } catch {
+  } catch (error) {
+    console.log(JSON.stringify({
+      event: "model_call_failed",
+      role,
+      model: model ?? null,
+      message: error instanceof Error ? error.message.slice(0, 160) : String(error).slice(0, 160),
+    }));
     return null;
   }
 }
@@ -232,6 +240,16 @@ export async function runAgeCall(
   const bodyOnly = blind.readings.find((reading) => reading?.age != null && !readingIsNoDeer(reading.deerPresent, reading.stop)) ?? null;
   if (!main?.age && fast && readingIsNoDeer(fast.deerPresent, fast.stop) && !mains.some((reading) => reading.deerPresent === "present")) {
     return { stop: "not_deer", provisional, readings: { fast, main, bodyOnly: null }, costs, result: null };
+  }
+  if (!main?.age && fast?.age == null) {
+    // Nothing came back with an age: every call failed or none could be read. Never send an empty result.
+    console.log(JSON.stringify({
+      event: "age_no_reading",
+      calls: costs.length,
+      mains: mains.length,
+      fast: Boolean(fastCall),
+    }));
+    return { stop: null, provisional, readings: { fast, main, bodyOnly }, costs, result: null, error: "upstream" };
   }
   if (!main?.age) {
     const decision = finalCall({ mainYears: null, bodyYears: verdict.bodyYears, minimum, confirmed: false, bodyMissing: true });

@@ -443,6 +443,20 @@ async function finishJob(input: {
     const age = await runAgeCall(input.images[0], input.minimum, (provisional) => {
       void saveJob({ ...input.job, provisional });
     });
+    if (age.error === "upstream" || (!age.stop && !age.result)) {
+      if (age.costs.length > 0) {
+        await settleCalls(age.costs, input.reserved, input.mode, input.appUserId, input.usage);
+      }
+      await input.refund();
+      await input.releaseFairUse();
+      console.log(JSON.stringify({ event: "analysis_failed", mode: input.mode, reason: "no_reading", calls: age.costs.length }));
+      await saveJob({
+        ...input.job,
+        status: "error",
+        error: { code: "upstream", message: "Analysis failed. Try again in a moment." },
+      });
+      return;
+    }
     if (age.stop || !age.result) {
       if (age.costs.length > 0) {
         await settleCalls(age.costs, input.reserved, input.mode, input.appUserId, input.usage);
@@ -482,7 +496,13 @@ async function finishJob(input: {
         result: age.result,
       },
     });
-  } catch {
+  } catch (error) {
+    console.log(JSON.stringify({
+      event: "analysis_failed",
+      mode: input.mode,
+      reason: "exception",
+      message: error instanceof Error ? error.message.slice(0, 160) : String(error).slice(0, 160),
+    }));
     await input.refund().catch(() => undefined);
     await input.releaseFairUse().catch(() => undefined);
     await saveJob({

@@ -5,6 +5,7 @@
 import { AgeClass } from "../types/deer-scoring";
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
+import { quickConfidence, quickKeyFeature, requireQuickAge, type QuickKeyFeature } from "./quick-result";
 import { useHunterProfile } from "../state/hunterProfile";
 import { normalizeFieldCall } from "../utils/field-call";
 
@@ -21,7 +22,8 @@ export interface QuickAgeResult {
     chestHindquarterRatio: FeatureRead;
     legBodyProportion: FeatureRead;
   };
-  keyFeature: "neck_brisket" | "chest_hindquarter" | "leg_body";
+  /** Only when the server named one. */
+  keyFeature?: QuickKeyFeature;
   canAnalyzeFurther: boolean;
   imageQuality: "good" | "fair" | "poor";
   disclaimer: string;
@@ -97,7 +99,6 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
           chestHindquarterRatio: feature(null),
           legBodyProportion: feature(null),
         },
-        keyFeature: "neck_brisket",
         canAnalyzeFurther: false,
         imageQuality: "poor",
         disclaimer: DISCLAIMER,
@@ -108,8 +109,9 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
 
   const result = response.result;
   const featuresRaw = (result.features ?? {}) as Record<string, unknown>;
-  const years = Number(result.ageYears) || minimumShooterAge;
-  const key = result.keyFeature === "chest_hindquarter" || result.keyFeature === "leg_body" ? result.keyFeature : "neck_brisket";
+  // No age back means the read failed. Show an error, never the lease minimum as a stand-in.
+  const years = requireQuickAge(result.ageYears);
+  const key = quickKeyFeature(result.keyFeature);
   const quality = result.imageQuality === "good" || result.imageQuality === "poor" ? result.imageQuality : "fair";
   const topCues = Array.isArray(result.topCues) ? result.topCues.filter((cue): cue is string => typeof cue === "string") : [];
 
@@ -117,7 +119,7 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     decision: result.decision === "SHOOT" ? "SHOOT" : "LET WALK",
     isValidImage: result.isValidImage !== false,
     estimatedAgeClass: ageClass(result.estimatedAgeClass, years),
-    confidence: Math.max(0, Math.min(100, Math.round(Number(result.confidence) || 50))),
+    confidence: quickConfidence(result.confidence),
     explanation: typeof result.explanation === "string" ? result.explanation : "",
     features: {
       neckBrisketIntegration: feature(featuresRaw.neckBrisketIntegration),
