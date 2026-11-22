@@ -94,7 +94,7 @@ export const WrongCallCard = ({
       <View style={{ marginBottom: 12 }}>
         {message ? <Text style={{ color: "#D4AF37", marginBottom: 6 }}>{message}</Text> : null}
         <Pressable onPress={() => setOpen(true)}>
-          <Text style={{ color: "#8B7355", textDecorationLine: "underline" }}>Was this call wrong?</Text>
+          <Text style={{ color: "#C9B48F", textDecorationLine: "underline" }}>Was this call wrong?</Text>
         </Pressable>
       </View>
     );
@@ -107,7 +107,7 @@ export const WrongCallCard = ({
         value={age}
         onChangeText={setAge}
         placeholder="Actual age, if you know it"
-        placeholderTextColor="#8B7355"
+        placeholderTextColor="#F5F5DC"
         keyboardType="decimal-pad"
         style={{ backgroundColor: "#3D4A2F", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 10 }}
       />
@@ -122,7 +122,7 @@ export const WrongCallCard = ({
         value={note}
         onChangeText={setNote}
         placeholder="What did you see?"
-        placeholderTextColor="#8B7355"
+        placeholderTextColor="#F5F5DC"
         style={{ backgroundColor: "#3D4A2F", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 8 }}
       />
       <Text style={{ color: "#F5F5DC", marginTop: 12 }}>Want us to follow up? Leave your email (optional).</Text>
@@ -130,7 +130,7 @@ export const WrongCallCard = ({
         value={email}
         onChangeText={setEmail}
         placeholder="Email"
-        placeholderTextColor="#8B7355"
+        placeholderTextColor="#F5F5DC"
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -138,13 +138,13 @@ export const WrongCallCard = ({
       />
       <Text style={{ color: "#E5D4B8", marginTop: 6, lineHeight: 18 }}>{"We'll only use it to answer this report, never for marketing."}</Text>
       <Text style={{ color: "#E5D4B8", marginTop: 10, lineHeight: 20 }}>Reporting keeps this photo so we can study the miss.</Text>
-      <Text style={{ color: "#8B7355", marginTop: 8, lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
+      <Text style={{ color: "#C9B48F", marginTop: 8, lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
       {message ? <Text style={{ color: "#D4AF37", marginTop: 8 }}>{message}</Text> : null}
       <Pressable onPress={() => { void sendWrong(); }} disabled={busy} style={{ marginTop: 12 }}>
         {busy ? <ActivityIndicator color="#D4AF37" /> : <Text style={{ color: "#D4AF37", fontWeight: "700" }}>Send report</Text>}
       </Pressable>
       <Pressable onPress={() => { void sendRight(); }} style={{ marginTop: 10 }}>
-        <Text style={{ color: "#8B7355", textDecorationLine: "underline" }}>It was right</Text>
+        <Text style={{ color: "#C9B48F", textDecorationLine: "underline" }}>It was right</Text>
       </Pressable>
     </View>
   );

@@ -29,7 +29,9 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } fr
 import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
+import { BUTTON_BROWN, BUTTON_GREEN, CREAM } from "../theme/contrast";
+import { MIN_TAP, tapSquare } from "../theme/tap";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
 import { fittedPhotoHeight } from "../lib/photo-fit";
 
@@ -74,7 +76,7 @@ export const ResultsScreen = () => {
   });
 
   const toggleSection = (section: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    softPulse();
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
@@ -125,6 +127,11 @@ export const ResultsScreen = () => {
       updateHistory(updatedResult);
     }
   };
+
+  useEffect(() => {
+    if (!currentResult?.analysisId) return;
+    softPulse();
+  }, [currentResult?.analysisId]);
 
   // Handle missing result - redirect to home
   useEffect(() => {
@@ -201,14 +208,14 @@ export const ResultsScreen = () => {
   };
 
   const handleNewScore = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
     setHasSaved(false); // Reset for next analysis
     clearCurrentResult();
     navigation.navigate("HomeMain");
   };
 
   const handleExportPDF = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    softPulse();
     setShowShareSheet(false);
     try {
       await shareRead({
@@ -236,10 +243,11 @@ export const ResultsScreen = () => {
         <View className="flex-row items-center justify-between">
           <Pressable
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              softPulse();
               navigation.navigate("HomeMain");
             }}
-            className="w-11 h-11 items-center justify-center"
+            hitSlop={8}
+            style={tapSquare}
           >
             <Ionicons name="close" size={24} color="#F5F5DC" />
           </Pressable>
@@ -253,10 +261,11 @@ export const ResultsScreen = () => {
           </View>
           <Pressable
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              softPulse();
               setShowShareSheet(true);
             }}
-            className="w-11 h-11 items-center justify-center"
+            hitSlop={8}
+            style={tapSquare}
           >
             <Ionicons name="share-outline" size={24} color="#F5F5DC" />
           </Pressable>
@@ -301,7 +310,7 @@ export const ResultsScreen = () => {
           {!showManualCounter && !manualOverride && score.measurements.leftSidePoints === score.measurements.rightSidePoints && currentResult.capturedFrames && currentResult.capturedFrames.length > 0 && (
             <Pressable
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                softPulse();
                 setShowManualCounter(true);
                 scrollViewRef.current?.scrollTo({ y: 0, animated: true });
               }}
@@ -1269,24 +1278,24 @@ export const ResultsScreen = () => {
           {!showManualCounter && currentResult.capturedFrames && currentResult.capturedFrames.length > 0 && (
             <Pressable
               onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                softPulse();
                 setShowManualCounter(true);
                 // Scroll to top so user can see the manual counter
                 scrollViewRef.current?.scrollTo({ y: 0, animated: true });
               }}
-              className="h-12 px-4 rounded-xl items-center justify-center flex-row"
-              style={{ backgroundColor: "#8B7355" }}
+              className="px-4 rounded-xl items-center justify-center flex-row"
+              style={{ backgroundColor: BUTTON_BROWN, minHeight: MIN_TAP }}
             >
-              <Ionicons name="finger-print" size={20} color="white" />
-              <Text className="text-white font-semibold ml-2 text-sm">Recount</Text>
+              <Ionicons name="finger-print" size={20} color={CREAM} />
+              <Text className="font-semibold ml-2 text-sm" style={{ color: CREAM }}>Recount</Text>
             </Pressable>
           )}
           <Pressable
             onPress={handleNewScore}
-            className="flex-1 rounded-xl py-3 items-center justify-center"
-            style={{ backgroundColor: "#22c55e" }}
+            className="flex-1 rounded-xl items-center justify-center"
+            style={{ backgroundColor: BUTTON_GREEN, minHeight: 52 }}
           >
-            <Text className="text-white font-bold text-base">Score Another Deer</Text>
+            <Text className="font-bold text-base" style={{ color: CREAM }}>Score Another Deer</Text>
           </Pressable>
         </View>
       </View>

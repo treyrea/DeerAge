@@ -49,7 +49,7 @@ export const ManageSubscriptionScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Manage subscription</Text>
@@ -80,7 +80,7 @@ export const ManageSubscriptionScreen = () => {
           value={note}
           onChangeText={setNote}
           placeholder="Optional note"
-          placeholderTextColor="#8B7355"
+          placeholderTextColor="#F5F5DC"
           style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 12, padding: 12, marginTop: 14 }}
         />
         <Text style={{ color: "#F5F5DC", marginTop: 16 }}>Want us to follow up? Leave your email (optional).</Text>
@@ -88,7 +88,7 @@ export const ManageSubscriptionScreen = () => {
           value={email}
           onChangeText={setEmail}
           placeholder="Email"
-          placeholderTextColor="#8B7355"
+          placeholderTextColor="#F5F5DC"
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"

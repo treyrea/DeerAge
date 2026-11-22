@@ -244,7 +244,7 @@ export const DistanceDetailView: React.FC<DistanceDetailViewProps> = ({
 
       {/* Source */}
       <View className="flex-row items-center">
-        <Text className="text-sm" style={{ color: "#8B7355" }}>
+        <Text className="text-sm" style={{ color: "#C9B48F" }}>
           Source:
         </Text>
         <Text className="text-sm ml-2" style={{ color: "#E5D4B8" }}>
@@ -255,7 +255,7 @@ export const DistanceDetailView: React.FC<DistanceDetailViewProps> = ({
       {/* Notes if present */}
       {notes && (
         <View className="mt-3 pt-3" style={{ borderTopWidth: 1, borderTopColor: "#5A6447" }}>
-          <Text className="text-xs mb-1" style={{ color: "#8B7355" }}>
+          <Text className="text-xs mb-1" style={{ color: "#C9B48F" }}>
             Notes
           </Text>
           <Text className="text-sm" style={{ color: "#E5D4B8" }}>
@@ -270,7 +270,7 @@ export const DistanceDetailView: React.FC<DistanceDetailViewProps> = ({
         style={{ backgroundColor: "#2B3420" }}
       >
         <Ionicons name="information-circle" size={16} color="#D4AF37" />
-        <Text className="text-xs ml-2 flex-1" style={{ color: "#8B7355" }}>
+        <Text className="text-xs ml-2 flex-1" style={{ color: "#C9B48F" }}>
           Distance affects scale and confidence. Closer observations (50-100 yd) have higher accuracy than distant ones (150+ yd).
         </Text>
       </View>

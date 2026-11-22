@@ -11,6 +11,7 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { allowanceLine } from "../lib/products";
@@ -51,7 +52,7 @@ export const ModeSelectScreen = () => {
   }, []));
 
   const handleProceed = (destination: "Camera" | "PhotoSelect") => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
     if (!canProceed) {
       navigation.navigate("TierPaywall", { reason: "free_limit" });
       return;
@@ -89,7 +90,8 @@ export const ModeSelectScreen = () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             navigation.goBack();
           }}
-          className="mr-4 w-11 h-11 items-center justify-center"
+          hitSlop={8}
+          style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 16 }}
         >
           <Ionicons name="arrow-back" size={28} color="#F5F5DC" />
         </Pressable>

@@ -3,11 +3,13 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
 import { fetchFeed } from "../api/community";
 import { unseenFeedCount, useCommunityStore } from "../state/communityStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useRemoteConfig } from "../state/remoteConfig";
+import { HOME_BANNER_PRIORITY } from "../lib/home-banners";
+import { useBannerShown, useHomeBanner } from "./HomeBannerStack";
+import { softPulse } from "../lib/haptics";
 
 type NavigationProp = NativeStackNavigationProp<Record<string, object | undefined>>;
 
@@ -44,10 +46,12 @@ export const FeedHomeCard = () => {
     };
   }, [isOnline, setCachedFeed]));
 
-  if (!feedOn) return null;
   const visibleAnnouncements = feed?.announcements.filter((item) => !dismissedIds.includes(item.id)) ?? [];
   const visiblePolls = feed?.polls.filter((item) => !dismissedIds.includes(item.id)) ?? [];
-  if (visibleAnnouncements.length + visiblePolls.length === 0) return null;
+  const wants = Boolean(feedOn) && visibleAnnouncements.length + visiblePolls.length > 0;
+  useHomeBanner("feed", HOME_BANNER_PRIORITY.feed, wants);
+  const shown = useBannerShown("feed");
+  if (!wants || !shown) return null;
 
   const preview = visibleAnnouncements[0]?.title ?? visiblePolls[0]?.question ?? "See what just landed";
   const unseen = unseenFeedCount(feed, seenIds, dismissedIds);
@@ -55,7 +59,7 @@ export const FeedHomeCard = () => {
   return (
     <Pressable
       onPress={() => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        softPulse();
         navigation.navigate("Feed");
       }}
       style={{
@@ -74,7 +78,7 @@ export const FeedHomeCard = () => {
           <Text style={{ color: "#D4AF37", fontSize: 13, marginTop: 1 }}>Vote on what&apos;s next</Text>
           <Text numberOfLines={1} style={{ color: "#E5D4B8", fontSize: 13, marginTop: 4 }}>{preview}</Text>
           {stale ? (
-            <Text style={{ color: "#8B7355", fontSize: 12, marginTop: 4 }}>Showing saved updates</Text>
+            <Text style={{ color: "#C9B48F", fontSize: 12, marginTop: 4 }}>Showing saved updates</Text>
           ) : null}
         </View>
         {unseen > 0 ? (
@@ -92,7 +96,7 @@ export const FeedHomeCard = () => {
             <Text style={{ color: "#1a1f16", fontSize: 12, fontWeight: "700" }}>{unseen}</Text>
           </View>
         ) : null}
-        <Ionicons name="chevron-forward" size={18} color="#8B7355" />
+        <Ionicons name="chevron-forward" size={18} color="#C9B48F" />
       </View>
     </Pressable>
   );

@@ -71,7 +71,7 @@ export const WinBackPrompt = () => {
             value={note}
             onChangeText={setNote}
             placeholder="Optional note"
-            placeholderTextColor="#8B7355"
+            placeholderTextColor="#F5F5DC"
             style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 10, padding: 12, marginTop: 12 }}
           />
           {message ? <Text style={{ color: "#D4AF37", marginTop: 10 }}>{message}</Text> : null}

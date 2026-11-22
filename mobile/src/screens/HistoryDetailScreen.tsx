@@ -92,11 +92,11 @@ export const HistoryDetailScreen = () => {
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+          <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
           <Text className="text-white text-lg font-bold">Scorecard</Text>
-          <Pressable onPress={handleExportPDF} className="w-10 h-10 items-center justify-center">
+          <Pressable accessibilityLabel="Share" onPress={handleExportPDF} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="share-outline" size={24} color="#fff" />
           </Pressable>
         </View>

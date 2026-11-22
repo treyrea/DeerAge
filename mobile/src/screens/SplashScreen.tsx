@@ -3,7 +3,7 @@
  * Shows for 2-3 seconds with hunting-themed branding before transitioning to main camera interface
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,7 +14,6 @@ import Animated, {
   withTiming,
   withSequence,
   Easing,
-  runOnJS,
 } from "react-native-reanimated";
 
 // Preload the rack icon during splash screen
@@ -27,38 +26,27 @@ interface SplashScreenProps {
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const opacity = useSharedValue(0);
   const logoScale = useSharedValue(0.8);
+  const finishRef = useRef(onFinish);
+  finishRef.current = onFinish;
 
   useEffect(() => {
-    // Prefetch the rack icon image into expo-image cache
-    Image.prefetch(RackRulerIcon);
-
-    // Fade in animation
+    let live = true;
     opacity.value = withTiming(1, {
       duration: 400,
       easing: Easing.out(Easing.quad),
     });
-
-    // Logo scale animation
     logoScale.value = withSequence(
       withTiming(1.05, { duration: 600, easing: Easing.out(Easing.back(1.2)) }),
       withTiming(1, { duration: 200 })
     );
-
-    // Auto-dismiss after 2.5 seconds
-    const timer = setTimeout(() => {
-      opacity.value = withTiming(
-        0,
-        { duration: 300, easing: Easing.in(Easing.quad) },
-        (finished) => {
-          if (finished) {
-            runOnJS(onFinish)();
-          }
-        }
-      );
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, []);
+    // Hide as soon as the icon is ready. No extra hold on top of load time.
+    void Image.prefetch(RackRulerIcon).catch(() => false).finally(() => {
+      if (live) finishRef.current();
+    });
+    return () => {
+      live = false;
+    };
+  }, [logoScale, opacity]);
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

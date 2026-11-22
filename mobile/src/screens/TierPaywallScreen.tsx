@@ -11,7 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { CommonActions, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import type { PurchasesPackage } from "react-native-purchases";
 import {
   addCustomerInfoUpdateListener,
@@ -236,7 +236,7 @@ export const TierPaywallScreen = () => {
       setError("The App Store finished, but no active plan came back. Use Restore if you were charged.");
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    softPulse();
     close();
   };
 
@@ -256,7 +256,7 @@ export const TierPaywallScreen = () => {
       setError("The App Store finished, but the scans haven't been added yet. Tap Restore when you have a signal.");
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    softPulse();
     close();
   };
 
@@ -271,13 +271,13 @@ export const TierPaywallScreen = () => {
       return;
     }
     if (result.entitled) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      softPulse();
       close();
       return;
     }
     if (packsRestored.ok && (packsRestored.credits ?? 0) > 0) {
       setError(null);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      softPulse();
       close();
       return;
     }
@@ -288,10 +288,10 @@ export const TierPaywallScreen = () => {
     <View style={{ flex: 1, backgroundColor: "#1a1f16" }}>
       <LinearGradient colors={["#2B3420", "#1a1f16"]} style={{ flex: 1, paddingTop: insets.top }}>
         <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Pressable testID="paywall-close" onPress={close} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+          <Pressable testID="paywall-close" accessibilityLabel="Close" onPress={close} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={28} color="#F5F5DC" />
           </Pressable>
-          <Pressable onPress={() => void onRestore()} disabled={restoring}>
+          <Pressable onPress={() => void onRestore()} disabled={restoring} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
             {restoring ? <ActivityIndicator color="#D4AF37" /> : <Text style={{ color: "#D4AF37", fontWeight: "700" }}>Restore</Text>}
           </Pressable>
         </View>

@@ -153,7 +153,7 @@ export const RootNavigator = () => {
           paddingTop: 8,
         },
         tabBarActiveTintColor: "#D4AF37",
-        tabBarInactiveTintColor: "#8B7355",
+        tabBarInactiveTintColor: "#C9B48F",
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",

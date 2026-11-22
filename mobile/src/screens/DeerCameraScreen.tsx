@@ -13,7 +13,8 @@ import { DeerAnalysisFrame } from "../types/deer-scoring";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
+import { tapSquare } from "../theme/tap";
 import { AntlerSilhouette } from "../components/AntlerSilhouette";
 import { FramingBrackets } from "../components/FramingBrackets";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
@@ -109,12 +110,12 @@ export const DeerCameraScreen = () => {
     setCountdownValue(3);
 
     // Haptic for countdown start
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    softPulse();
 
     // Countdown from 3 to 1
     for (let i = 3; i >= 1; i--) {
       setCountdownValue(i);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      softPulse();
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -161,7 +162,7 @@ export const DeerCameraScreen = () => {
     setIsBurstCapturing(true);
     startCapture();
     // Haptic feedback when capture starts
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
 
     try {
       // Age: 4 frames over about 1 s. Rack/score: 8 frames over about 2 s. Same 4 fps interval.
@@ -241,7 +242,7 @@ export const DeerCameraScreen = () => {
       setIsBurstCapturing(false);
       setCaptureProgress(0);
       stopCapture();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      softPulse();
       Alert.alert("Couldn't capture", "The burst didn't finish. Hold the phone steady and try again.");
     }
   };
@@ -254,10 +255,12 @@ export const DeerCameraScreen = () => {
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
           testID="camera-close"
+          accessibilityLabel="Close"
           onPress={() => navigation.goBack()}
-          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+          hitSlop={8}
+          style={[tapSquare, { marginLeft: 24, marginTop: 16 }]}
         >
-          <Ionicons name="close" size={24} color="white" />
+          <Ionicons name="close" size={26} color="white" />
         </Pressable>
         <View className="flex-1 items-center justify-center">
           <Ionicons name="camera-outline" size={64} color="#666" />
@@ -275,10 +278,12 @@ export const DeerCameraScreen = () => {
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
           testID="camera-close"
+          accessibilityLabel="Close"
           onPress={() => navigation.goBack()}
-          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+          hitSlop={8}
+          style={[tapSquare, { marginLeft: 24, marginTop: 16 }]}
         >
-          <Ionicons name="close" size={24} color="white" />
+          <Ionicons name="close" size={26} color="white" />
         </Pressable>
         <View className="flex-1 items-center justify-center">
           <Ionicons name="camera-outline" size={64} color="#666" />
@@ -317,18 +322,13 @@ export const DeerCameraScreen = () => {
       >
         {/* Top Info Bar */}
         <View className="flex-row items-center justify-between px-6 py-4">
-          <Pressable
-            onPress={() => navigation.goBack()}
-            className="w-10 h-10 items-center justify-center bg-black/50 rounded-full"
-          >
-            <Ionicons name="close" size={24} color="white" />
-          </Pressable>
+          <View style={{ width: 44 }} />
 
           <View className="bg-black/70 px-4 py-2 rounded-full">
             <Text className="text-white text-sm font-semibold">Deer Age Camera</Text>
           </View>
 
-          <View className="w-10" />
+          <View style={{ width: 44 }} />
         </View>
 
         {/* Center Viewfinder Guide (body box sits slightly above middle) */}
@@ -362,8 +362,8 @@ export const DeerCameraScreen = () => {
                   <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
                 </View>
               )}
-              <View className="mt-4 bg-green-600/90 px-6 py-3 rounded-full">
-                <Text className="text-white text-base font-bold text-center">
+              <View className="mt-4 px-6 py-3 rounded-full" style={{ backgroundColor: "#14532D" }}>
+                <Text className="text-base font-bold text-center" style={{ color: "#F5F5DC" }}>
                   {`HOLD STILL - Capturing ${burstFrames} photos...`}
                 </Text>
               </View>
@@ -551,74 +551,6 @@ export const DeerCameraScreen = () => {
             </View>
           )}
 
-          {/* Offline Warning */}
-          {!isBurstCapturing && !isCountingDown && (!isConnected || isInternetReachable === false) && (
-            <View className="mb-4 px-6 w-full">
-              <View className="bg-red-600/90 rounded-xl p-4 border-2 border-red-400">
-                <View className="flex-row items-start mb-3">
-                  <Ionicons name="cloud-offline" size={24} color="white" />
-                  <Text className="text-white font-bold text-base ml-2 flex-1">
-                    {analysisMode === "age" ? "Age Estimation Unavailable" : "Limited Connectivity Detected"}
-                  </Text>
-                </View>
-
-                {analysisMode === "age" ? (
-                  <>
-                    <Text className="text-white text-sm mb-3 leading-5">
-                      <Text className="font-bold">Age My Deer</Text> requires internet for real-time AI analysis. You are currently in a low/no signal area.
-                    </Text>
-
-                    {/* Manual Guide Button */}
-                    <Pressable
-                      onPress={() => navigation.navigate("OfflineAgeGuide")}
-                      className="rounded-lg p-4 mb-3"
-                      style={{ backgroundColor: "#22c55e" }}
-                    >
-                      <View className="flex-row items-center justify-center mb-1">
-                        <Ionicons name="book" size={20} color="white" />
-                        <Text className="text-white font-bold text-base ml-2">
-                          Use Manual Field Guide
-                        </Text>
-                      </View>
-                      <Text className="text-white/90 text-xs text-center">
-                        Interactive checklist for manual age estimation
-                      </Text>
-                    </Pressable>
-
-                    <View className="bg-white/20 rounded-lg p-3">
-                      <Text className="text-white text-xs font-semibold mb-2">
-                        COMING SOON: Offline Mode
-                      </Text>
-                      <Text className="text-white/90 text-xs leading-4">
-                        We are building offline age estimation for remote hunting areas. Get notified when this feature launches by visiting Settings.
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <Text className="text-white text-sm mb-3 leading-5">
-                      You can <Text className="font-bold">still capture photos</Text> for rack scoring. Analysis will start automatically when signal returns.
-                    </Text>
-                    <View className="bg-white/20 rounded-lg p-3">
-                      <View className="flex-row items-start mb-2">
-                        <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 1 }} />
-                        <Text className="text-white/90 text-xs ml-2 flex-1">
-                          Photos saved to queue
-                        </Text>
-                      </View>
-                      <View className="flex-row items-start">
-                        <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 1 }} />
-                        <Text className="text-white/90 text-xs ml-2 flex-1">
-                          Auto-sync when connected
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </View>
-            </View>
-          )}
-
           {/* Progress Bar and Hold Still Message */}
           {isBurstCapturing && (
             <View className="mb-6 items-center">
@@ -638,24 +570,36 @@ export const DeerCameraScreen = () => {
           )}
 
           {/* Capture Button */}
-          <Pressable
-            onPress={startCountdown}
-            disabled={isBurstCapturing || isProcessing || isCountingDown}
-            className="items-center"
-          >
-            <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center">
-              <View className="w-16 h-16 rounded-full bg-white items-center justify-center">
-                {isBurstCapturing || isProcessing || isCountingDown ? (
-                  <ActivityIndicator size="large" color="#000" />
-                ) : (
-                  <Ionicons name="camera" size={32} color="#000" />
-                )}
+          <View className="flex-row items-center justify-between px-6 w-full">
+            <Pressable
+              testID="camera-close"
+              accessibilityLabel="Close"
+              onPress={() => navigation.goBack()}
+              hitSlop={8}
+              style={[tapSquare, { backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 22 }]}
+            >
+              <Ionicons name="close" size={26} color="white" />
+            </Pressable>
+            <Pressable
+              onPress={startCountdown}
+              disabled={isBurstCapturing || isProcessing || isCountingDown}
+              className="items-center"
+            >
+              <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center">
+                <View className="w-16 h-16 rounded-full bg-white items-center justify-center">
+                  {isBurstCapturing || isProcessing || isCountingDown ? (
+                    <ActivityIndicator size="large" color="#000" />
+                  ) : (
+                    <Ionicons name="camera" size={32} color="#000" />
+                  )}
+                </View>
               </View>
-            </View>
-            <Text className="text-white text-sm mt-3 font-medium">
-              {isCountingDown ? "Get Ready..." : isBurstCapturing ? "Capturing..." : isProcessing ? "Processing..." : "Tap to Capture"}
-            </Text>
-          </Pressable>
+              <Text className="text-white text-sm mt-3 font-medium">
+                {isCountingDown ? "Get Ready..." : isBurstCapturing ? "Capturing..." : isProcessing ? "Processing..." : "Tap to Capture"}
+              </Text>
+            </Pressable>
+            <View style={{ width: 44 }} />
+          </View>
         </View>
       </View>
 

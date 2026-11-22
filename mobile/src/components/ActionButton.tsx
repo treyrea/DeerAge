@@ -26,9 +26,9 @@ interface ActionButtonProps {
 
 const COLORS = {
   primary: {
-    bg: "#22c55e",
-    text: "#ffffff",
-    icon: "#ffffff",
+    bg: "#14532D",
+    text: "#F5F5DC",
+    icon: "#F5F5DC",
   },
   secondary: {
     bg: "#5A6447",
@@ -41,14 +41,14 @@ const COLORS = {
     icon: "#D4AF37",
   },
   danger: {
-    bg: "#ef4444",
-    text: "#ffffff",
-    icon: "#ffffff",
+    bg: "#7F1D1D",
+    text: "#F5F5DC",
+    icon: "#F5F5DC",
   },
   success: {
-    bg: "#22c55e",
-    text: "#ffffff",
-    icon: "#ffffff",
+    bg: "#14532D",
+    text: "#F5F5DC",
+    icon: "#F5F5DC",
   },
 };
 
@@ -86,7 +86,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   subtitle,
   disabled = false,
   fullWidth = true,
-  hapticStyle = "medium",
+  hapticStyle: _hapticStyle = "medium",
 }) => {
   const colors = COLORS[variant];
   const sizeStyles = SIZES[size];
@@ -95,12 +95,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
     if (disabled) return;
 
     // Haptic feedback
-    const hapticMap = {
-      light: Haptics.ImpactFeedbackStyle.Light,
-      medium: Haptics.ImpactFeedbackStyle.Medium,
-      heavy: Haptics.ImpactFeedbackStyle.Heavy,
-    };
-    Haptics.impactAsync(hapticMap[hapticStyle]);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     onPress();
   };
@@ -180,19 +175,14 @@ export const IconButton: React.FC<IconButtonProps> = ({
   variant = "secondary",
   size = 48,
   disabled = false,
-  hapticStyle = "light",
+  hapticStyle: _hapticStyle = "light",
 }) => {
   const colors = COLORS[variant];
 
   const handlePress = () => {
     if (disabled) return;
 
-    const hapticMap = {
-      light: Haptics.ImpactFeedbackStyle.Light,
-      medium: Haptics.ImpactFeedbackStyle.Medium,
-      heavy: Haptics.ImpactFeedbackStyle.Heavy,
-    };
-    Haptics.impactAsync(hapticMap[hapticStyle]);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     onPress();
   };

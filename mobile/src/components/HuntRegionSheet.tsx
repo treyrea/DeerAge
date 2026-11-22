@@ -104,7 +104,7 @@ export const HuntRegionSheet = () => {
       </Pressable>
       {!guess && !asked ? (
         <Pressable onPress={() => { void suggestWithLocation(); }} style={{ marginTop: 16, alignItems: "center" }}>
-          <Text style={{ color: "#8B7355" }}>Use location to suggest a region</Text>
+          <Text style={{ color: "#C9B48F" }}>Use location to suggest a region</Text>
         </Pressable>
       ) : null}
     </View>

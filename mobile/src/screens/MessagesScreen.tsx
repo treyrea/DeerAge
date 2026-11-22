@@ -60,7 +60,7 @@ export const MessagesScreen = () => {
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12 }}>
-        <Pressable testID="messages-back" onPress={() => navigation.goBack()} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable testID="messages-back" accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
         <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Messages from DeerAge</Text>
@@ -76,7 +76,7 @@ export const MessagesScreen = () => {
               <View style={{ marginBottom: 8 }}>
                 <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                   {item.tracker.steps.map((step) => (
-                    <Text key={step.id} style={{ color: step.current ? "#D4AF37" : "#8B7355", marginRight: 10, marginBottom: 4, fontWeight: step.current ? "800" : "500" }}>
+                    <Text key={step.id} style={{ color: step.current ? "#D4AF37" : "#C9B48F", marginRight: 10, marginBottom: 4, fontWeight: step.current ? "800" : "500" }}>
                       {step.label}
                     </Text>
                   ))}
@@ -93,7 +93,7 @@ export const MessagesScreen = () => {
             ) : null}
             {item.dispute ? (
               <View style={{ marginTop: 10 }}>
-                <Text style={{ color: "#8B7355", lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
+                <Text style={{ color: "#C9B48F", lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
                 <Pressable onPress={() => setProofFor(item.id)} style={{ marginTop: 8 }}>
                   <Text style={{ color: "#D4AF37", textDecorationLine: "underline" }}>Send jawbone or lab age</Text>
                 </Pressable>
@@ -108,7 +108,7 @@ export const MessagesScreen = () => {
                       value={proofAge}
                       onChangeText={setProofAge}
                       placeholder="Age"
-                      placeholderTextColor="#8B7355"
+                      placeholderTextColor="#F5F5DC"
                       keyboardType="decimal-pad"
                       style={{ backgroundColor: "#5A6447", color: "#F5F5DC", borderRadius: 8, padding: 10, marginTop: 6 }}
                     />
@@ -132,12 +132,12 @@ export const MessagesScreen = () => {
             ) : null}
             <View style={{ flexDirection: "row", marginTop: 14 }}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={{ color: "#8B7355", fontSize: 12, fontWeight: "700" }}>ORIGINAL</Text>
+                <Text style={{ color: "#C9B48F", fontSize: 12, fontWeight: "700" }}>ORIGINAL</Text>
                 <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "800", marginTop: 4 }}>{item.originalCall || "Call"}</Text>
                 {item.originalAge ? <Text style={{ color: "#E5D4B8" }}>{item.originalAge}</Text> : null}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#8B7355", fontSize: 12, fontWeight: "700" }}>RE-SCAN</Text>
+                <Text style={{ color: "#C9B48F", fontSize: 12, fontWeight: "700" }}>RE-SCAN</Text>
                 <Text style={{ color: "#D4AF37", fontSize: 18, fontWeight: "800", marginTop: 4 }}>{item.rescan?.fieldCall || "Not yet"}</Text>
                 {item.rescan?.ageYears != null ? <Text style={{ color: "#E5D4B8" }}>{item.rescan.ageYears}</Text> : null}
               </View>

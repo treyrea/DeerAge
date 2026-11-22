@@ -25,6 +25,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
+import { BUTTON_GREEN, CREAM, GOLD, INK } from "../theme/contrast";
 import {
   DistanceMeasurement,
   DistanceSource,
@@ -128,7 +130,7 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
   // Handle use suggested distance
   const handleUseSuggested = () => {
     if (suggestedDistance) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      softPulse();
       setDistance(suggestedDistance);
       setValidationError(null);
     }
@@ -155,11 +157,11 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
     const error = validateDistance(distance);
     if (error) {
       setValidationError(error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      softPulse();
       return;
     }
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
 
     const measurement: DistanceMeasurement = {
       distanceYards: distance,
@@ -221,8 +223,10 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
                   Distance to Deer
                 </Text>
                 <Pressable
+                  accessibilityLabel="Close"
                   onPress={handleSkip}
-                  className="w-10 h-10 items-center justify-center"
+                  hitSlop={8}
+                  style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
                 >
                   <Ionicons name="close" size={24} color="#E5D4B8" />
                 </Pressable>
@@ -323,7 +327,7 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
                   <Ionicons name="remove" size={32} color="#E5D4B8" />
                 </Pressable>
                 <View className="items-center">
-                  <Text className="text-sm" style={{ color: "#8B7355" }}>
+                  <Text className="text-sm" style={{ color: "#C9B48F" }}>
                     ±{DISTANCE_STEP} yards
                   </Text>
                 </View>
@@ -373,19 +377,19 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
                     if (!isRanged) setIsEstimated(false);
                   }}
                   className="flex-row items-center p-4 rounded-lg"
-                  style={{ backgroundColor: isRanged ? "#22c55e" : "#3D4A2F" }}
+                  style={{ backgroundColor: isRanged ? BUTTON_GREEN : "#3D4A2F" }}
                 >
                   <View
                     className="w-6 h-6 rounded-md items-center justify-center mr-3"
-                    style={{ backgroundColor: isRanged ? "#fff" : "#5A6447" }}
+                    style={{ backgroundColor: isRanged ? CREAM : "#5A6447" }}
                   >
-                    {isRanged && <Ionicons name="checkmark" size={18} color="#22c55e" />}
+                    {isRanged && <Ionicons name="checkmark" size={18} color={BUTTON_GREEN} />}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white font-semibold">
+                    <Text className="font-semibold" style={{ color: CREAM }}>
                       I ranged this with a rangefinder
                     </Text>
-                    <Text className="text-xs mt-0.5" style={{ color: isRanged ? "#fff" : "#8B7355" }}>
+                    <Text className="text-xs mt-0.5" style={{ color: isRanged ? CREAM : "#C9B48F" }}>
                       High confidence - actual measured distance
                     </Text>
                   </View>
@@ -399,23 +403,23 @@ export const DistancePicker: React.FC<DistancePickerProps> = ({
                     if (!isEstimated) setIsRanged(false);
                   }}
                   className="flex-row items-center p-4 rounded-lg"
-                  style={{ backgroundColor: !isRanged && isEstimated ? "#f59e0b" : "#3D4A2F" }}
+                  style={{ backgroundColor: !isRanged && isEstimated ? GOLD : "#3D4A2F" }}
                 >
                   <View
                     className="w-6 h-6 rounded-md items-center justify-center mr-3"
-                    style={{ backgroundColor: !isRanged && isEstimated ? "#fff" : "#5A6447" }}
+                    style={{ backgroundColor: !isRanged && isEstimated ? INK : "#5A6447" }}
                   >
                     {!isRanged && isEstimated && (
-                      <Ionicons name="checkmark" size={18} color="#f59e0b" />
+                      <Ionicons name="checkmark" size={18} color={GOLD} />
                     )}
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white font-semibold">
+                    <Text className="font-semibold" style={{ color: !isRanged && isEstimated ? INK : CREAM }}>
                       Estimated / guessed
                     </Text>
                     <Text
                       className="text-xs mt-0.5"
-                      style={{ color: !isRanged && isEstimated ? "#fff" : "#8B7355" }}
+                      style={{ color: !isRanged && isEstimated ? INK : "#C9B48F" }}
                     >
                       Medium confidence - your best estimate
                     </Text>
