@@ -17,6 +17,7 @@ import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton, type LeaseNote } from "../components/LeaseManagerButton";
 import { activeHunt, huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { RealAgeRow } from "../components/RealAgeRow";
 import { optionalStandLocation } from "../state/shotRecordStore";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
@@ -332,6 +333,7 @@ export const AgeResultScreen = () => {
             </View>
             ) : null}
             <MoreRow label="How this works" onPress={() => setShowModelCard(true)} />
+            <RealAgeRow jobId={explainableAge.scanJobId} color={BLIND.ink} />
             <View style={{ marginTop: 8 }}>
               <WrongCallCard
                 scanId={currentResult.analysisId}

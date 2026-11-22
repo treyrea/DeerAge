@@ -19,6 +19,8 @@ export interface ProxySuccess {
   result: Record<string, unknown>;
   serverTime: string | null;
   receipt: ShotReceipt | null;
+  /** The scan's server job id; a shared scan uses it for "Know his real age?". */
+  jobId?: string;
 }
 
 export let lastShotReceipt: ShotReceipt | null = null;
@@ -75,6 +77,11 @@ const CODES = new Set<AnalysisErrorCode>([
 export function apiBaseUrl(): string {
   const extra = Constants.expoConfig?.extra as { apiBaseUrl?: unknown } | undefined;
   return resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL, extra?.apiBaseUrl, ciApiBaseUrl);
+}
+
+/** The id the server knows this hunter by (RevenueCat, or the local fallback). */
+export async function currentAppUserId(): Promise<string> {
+  return (await getRevenueCatAppUserId()) || useSubscriptionStore.getState().ensureLocalUserId();
 }
 
 export function installedAppVersion(): string {
@@ -169,7 +176,7 @@ export async function analyzeImages(input: {
   const profile = useHunterProfile.getState();
   const hunt = activeHunt(profile);
   const home = homePlace(profile);
-  const appUserId = (await getRevenueCatAppUserId()) || useSubscriptionStore.getState().ensureLocalUserId();
+  const appUserId = await currentAppUserId();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
@@ -187,6 +194,8 @@ export async function analyzeImages(input: {
         minimumShooterAge: input.minimumShooterAge,
         // The server hands lease users' older reads to the full age check. Off means a quick one-read age.
         leaseRules: profile.leaseRules === true,
+        // "Help improve DeerAge" in Settings. Off (the default) shares nothing.
+        contribute: profile.helpImprove === true,
         context: {
           state: hunt.stateCode,
           ecoregion: hunt.ecoregion,
@@ -226,6 +235,7 @@ export async function analyzeImages(input: {
     record?: unknown;
   } | null;
 
+  const jobId = typeof (payload as { jobId?: unknown } | null)?.jobId === "string" ? (payload as { jobId: string }).jobId : undefined;
   if (response.status === 202 && payload?.ok && typeof (payload as { jobId?: unknown }).jobId === "string") {
     const quotedFree = payload.entitled || payload.freeUsesRemaining == null ? null : payload.freeUsesRemaining;
     const quotedCredits = typeof (payload as { scanCredits?: unknown }).scanCredits === "number"
@@ -269,5 +279,6 @@ export async function analyzeImages(input: {
     serverTime: typeof payload.serverTime === "string" ? payload.serverTime : lastShotReceipt?.serverTime ?? null,
     receipt: lastShotReceipt,
     result: payload.result,
+    jobId,
   };
 }

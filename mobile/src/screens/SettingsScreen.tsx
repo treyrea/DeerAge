@@ -18,6 +18,7 @@ import { refreshScanCredits, restoreScanPacks } from "../api/scan-credits";
 import { useFairUseAllowance } from "../hooks/useFairUseAllowance";
 import { useHunterProfile } from "../state/hunterProfile";
 import { CommunitySettings } from "../components/CommunitySettings";
+import { HelpImproveSettings } from "../components/HelpImproveSettings";
 import { loadMessages } from "../api/call-report";
 import * as Haptics from "expo-haptics";
 import type { DistanceTelemetry } from "../types/distance";
@@ -548,6 +549,8 @@ export const SettingsScreen = () => {
               </View>
             </View>
           </View>
+
+          <HelpImproveSettings />
 
           {/* Send Feedback */}
           <Pressable

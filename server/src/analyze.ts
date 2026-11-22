@@ -1,3 +1,4 @@
+import { saveContributionForJob } from "./contributions.js";
 import { findBodyBoxes, gatewayBoxCaller, withOverlays } from "./body-boxes.js";
 import { agingEngineFor, HYDROGEN_MODEL, type AgingEngine } from "./aging-switch.js";
 import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillion, hydrogenReserveUsd, inputUsdPerMillion, outputUsdPerMillion, plainReserveUsd, type TokenUsage } from "./cost.js";
@@ -47,6 +48,8 @@ interface HuntContext {
 }
 
 export interface AnalyzeBody {
+  /** "Help improve DeerAge" switch from the app. */
+  contribute?: boolean;
   mode?: string;
   appUserId?: string;
   images?: unknown;
@@ -281,7 +284,9 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
     await saveJob(job);
     const reserved = spendReserved;
     spendReserved = 0;
-    keepAlive(finishJob({
+    // "Help improve DeerAge": only when the hunter opted in; the owner switch is checked inside.
+    const contribute = body.contribute === true && !isEval;
+    const finished = finishJob({
       job,
       images,
       mode,
@@ -295,7 +300,12 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       releaseFairUse: async () => {
         if (fairUseHeld) await releaseFairUse(appUserId);
       },
-    }));
+    });
+    keepAlive(contribute
+      ? finished.then(() => saveContributionForJob({ jobId, appUserId, mode, minimum, images }).catch((error: unknown) => {
+        console.log(JSON.stringify({ event: "contribution_failed", message: error instanceof Error ? error.message.slice(0, 120) : "failed" }));
+      }))
+      : finished);
     const scanCredits = await readCredits(appUserId);
     const freeUsesRemaining = !access || access.entitled || isEval
       ? null
