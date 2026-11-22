@@ -563,3 +563,11 @@ test("an unparsed baby gate still stops when the deer is large enough", async ()
   const result = await walkHydrogen(script.call);
   assert.deepEqual(result, { kind: "stop", reason: "unparsed baby gate" });
 });
+
+test("a size failure uses the get-closer tip even when other checks also fail", () => {
+  const many = decideQuality(parseQuality(quality({ deer_large_enough: "NO", neck_chest_visible: "NO", belly_waist_visible: "NO" }))!);
+  assert.equal(many.decision, "RETAKE");
+  assert.equal(many.retake_message, RETAKE_MESSAGES.deer_large_enough);
+  const soft = decideQuality(parseQuality(quality({ contour_readable: "NO", view_angle: "HEAD_ON" }))!);
+  assert.equal(soft.retake_message, RETAKE_MESSAGES.contour_readable);
+});

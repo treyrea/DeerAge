@@ -26,6 +26,7 @@ import {
   estimateDeerAge,
 } from "../utils/scale-and-age-estimation";
 import { analyzeExplainableAge } from "../api/explainable-age-analysis";
+import { pickSharpestFrame } from "../lib/sharpest-frame";
 import { AnalysisError, type AnalysisErrorCode } from "../api/errors";
 import { useSubscriptionStore } from "./subscriptionStore";
 import { useNetworkStore } from "./networkStore";
@@ -241,11 +242,13 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         const pendingDistanceAge = distanceState.pendingDistance;
         const pendingZoomMetaAge = distanceState.pendingZoomMeta;
 
+        const ageFrame = (await pickSharpestFrame(capturedFrames)) ?? capturedFrames[0];
+        const ageFrames = [ageFrame];
+
         const explainableAge = await analyzeExplainableAge(
-          capturedFrames[0].imageUri,
+          ageFrame.imageUri,
           propertyRules.minimumShooterAge,
           propertyRules,
-          capturedFrames.slice(1).map((frame) => frame.imageUri),
         );
 
         const distanceInfoForScale = pendingDistanceAge ? {
@@ -254,7 +257,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         } : undefined;
         const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0
           ? lastProxyScale
-          : estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
+          : estimateScaleFromMultiView(ageFrames, distanceInfoForScale);
 
         const measurements: AntlerMeasurements = {
           rightMainBeam: { length: 0, side: "right" },
@@ -288,8 +291,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           analysisId: `deer-age-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           timestamp: new Date(),
           analysisMode: "age",
-          capturedFrames,
-          fusedFrameCount: capturedFrames.length,
+          capturedFrames: ageFrames,
+          fusedFrameCount: 1,
           score,
           scale,
           age,

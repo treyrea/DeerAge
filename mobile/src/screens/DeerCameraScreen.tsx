@@ -15,9 +15,20 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
 import * as Haptics from "expo-haptics";
 import { AntlerSilhouette } from "../components/AntlerSilhouette";
-import { DeerMark } from "../components/DeerMark";
+import { FramingBrackets } from "../components/FramingBrackets";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { useSubjectFill } from "../hooks/useSubjectFill";
+import { useWindowBox } from "../hooks/useWindowBox";
+import { isSubjectFillAvailable } from "../lib/subject-fill";
+import {
+  FRAME_GOLD,
+  FRAME_GREEN,
+  frameBodyGoodHintFromCopy,
+  frameBodyHintFromCopy,
+} from "../lib/frame-fill";
+import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -46,7 +57,23 @@ export const DeerCameraScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const burstFrames = burstFrameCount(analysisMode);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
+  const frameBodyHint = frameBodyHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyHint));
+  const frameBodyGoodHint = frameBodyGoodHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyGoodHint));
+  const previewLayout = useWindowBox();
+  const guideLayout = useWindowBox();
+  const bodyMode = analysisMode === "age";
+  const canDetectFill = bodyMode && isSubjectFillAvailable();
+  const bodyFilled = useSubjectFill({
+    enabled: canDetectFill && !isBurstCapturing && !isCountingDown && !isProcessing,
+    cameraRef,
+    preview: previewLayout.box,
+    guide: guideLayout.box,
+  });
+  const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
+  const guideWidth = width * 0.85;
+  const guideHeight = bodyMode ? height * 0.35 : height * 0.30;
 
 
   // Network state
@@ -134,9 +161,9 @@ export const DeerCameraScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Capture 8 frames over 2 seconds (4 FPS)
-      const totalFrames = 8;
-      const intervalMs = 250; // 250ms between frames
+      // Age: 4 frames over about 1 s. Rack/score: 8 frames over about 2 s. Same 4 fps interval.
+      const totalFrames = burstFrames;
+      const intervalMs = BURST_INTERVAL_MS;
       const capturedFrames: DeerAnalysisFrame[] = [];
 
       for (let i = 0; i < totalFrames; i++) {
@@ -261,12 +288,18 @@ export const DeerCameraScreen = () => {
   return (
     <View className="flex-1 bg-black">
       {/* Camera View */}
+      <View
+        ref={previewLayout.ref}
+        onLayout={previewLayout.onLayout}
+        style={{ width, height }}
+      >
       <Camera
         ref={cameraRef}
         style={{ width, height }}
         device={device}
         isActive={isActive && !isProcessing}
         photo={true}
+        video={canDetectFill}
         zoom={zoom}
         onError={(error) => {
           console.error("Camera error:", error);
@@ -310,16 +343,18 @@ export const DeerCameraScreen = () => {
             </View>
           ) : isBurstCapturing ? (
             <View className="items-center">
-              <View
-                className="border-2 border-green-500/60 rounded-xl items-center justify-center"
-                style={{ width: width * 0.85, height: analysisMode === "age" ? height * 0.35 : height * 0.30 }}
-              >
-                {analysisMode === "age" ? (
-                  <DeerMark size={120} opacity={0.7} />
-                ) : (
+              {bodyMode ? (
+                <View style={{ width: guideWidth, height: guideHeight }}>
+                  <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
+                </View>
+              ) : (
+                <View
+                  className="border-2 border-green-500/60 rounded-xl items-center justify-center"
+                  style={{ width: guideWidth, height: guideHeight }}
+                >
                   <AntlerSilhouette size={130} color="#F5F5DC" opacity={0.85} />
-                )}
-              </View>
+                </View>
+              )}
               <View className="mt-4 bg-green-600/90 px-6 py-3 rounded-full">
                 <Text className="text-white text-base font-bold text-center">
                   HOLD STILL - Capturing 8 photos...
@@ -328,33 +363,42 @@ export const DeerCameraScreen = () => {
             </View>
           ) : (
             <>
-              <View
-                className="border-2 rounded-xl items-center justify-center"
-                style={{
-                  width: width * 0.85,
-                  height: analysisMode === "age" ? height * 0.35 : height * 0.30,
-                  borderColor: analysisMode === "age" ? "rgba(34, 197, 94, 0.5)" : "rgba(168, 85, 247, 0.5)",
-                }}
-              >
-                {analysisMode === "age" ? (
-                  <DeerMark size={132} opacity={0.55} />
-                ) : (
+              {bodyMode ? (
+                <View
+                  ref={guideLayout.ref}
+                  onLayout={guideLayout.onLayout}
+                  style={{ width: guideWidth, height: guideHeight }}
+                >
+                  <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
+                </View>
+              ) : (
+                <View
+                  className="border-2 rounded-xl items-center justify-center"
+                  style={{
+                    width: guideWidth,
+                    height: guideHeight,
+                    borderColor: "rgba(168, 85, 247, 0.5)",
+                  }}
+                >
                   <AntlerSilhouette size={150} color="#F5F5DC" opacity={0.85} />
-                )}
-              </View>
+                </View>
+              )}
 
               <View className="mt-6 bg-black/70 px-4 py-3 rounded-xl mx-8">
-                <Text
-                  className="text-center font-bold text-base"
-                  style={{ color: analysisMode === "age" ? "#22c55e" : "#a855f7" }}
-                >
-                  {analysisMode === "age" ? "Zoom in until the body fills the frame" : "Frame the ANTLERS"}
-                </Text>
-                <Text className="text-white/70 text-center text-sm mt-1">
-                  {analysisMode === "age"
-                    ? "Side view: neck, chest, belly & legs"
-                    : "Side angle with all tines visible"}
-                </Text>
+                {bodyMode ? (
+                  <Text className="text-center font-bold text-base" style={{ color: bracketColor }}>
+                    {bodyFilled ? frameBodyGoodHint : frameBodyHint}
+                  </Text>
+                ) : (
+                  <>
+                    <Text className="text-center font-bold text-base" style={{ color: "#a855f7" }}>
+                      Frame the ANTLERS
+                    </Text>
+                    <Text className="text-white/70 text-center text-sm mt-1">
+                      Side angle with all tines visible
+                    </Text>
+                  </>
+                )}
               </View>
             </>
           )}
@@ -423,7 +467,7 @@ export const DeerCameraScreen = () => {
                       <View className="flex-row items-start mb-2">
                         <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 2 }} />
                         <Text className="text-white text-sm ml-2 flex-1">
-                          Deer moving naturally? Perfect! Burst mode captures multiple angles
+                          Hold the phone steady so DeerAge can pick the sharpest shot
                         </Text>
                       </View>
                       <View className="flex-row items-start mb-2">
@@ -475,12 +519,25 @@ export const DeerCameraScreen = () => {
                   )}
 
                   <View className="mt-3 pt-3 border-t border-white/20">
-                    <Text className="text-blue-400 text-xs font-semibold mb-1">
-                      WHY MOVEMENT HELPS:
-                    </Text>
-                    <Text className="text-gray-300 text-xs leading-5">
-                      Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
-                    </Text>
+                    {analysisMode === "age" ? (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY HOLD STEADY:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          The burst takes several shots in about one second. DeerAge keeps the sharpest one for the age read.
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY MOVEMENT HELPS:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
               )}
@@ -568,7 +625,7 @@ export const DeerCameraScreen = () => {
                 Keep Camera Steady!
               </Text>
               <Text className="text-white/80 text-sm">
-                Capturing frame {Math.ceil((captureProgress / 100) * 8)} of 8
+                Capturing frame {Math.ceil((captureProgress / 100) * burstFrames) || 1} of {burstFrames}
               </Text>
             </View>
           )}
@@ -595,6 +652,7 @@ export const DeerCameraScreen = () => {
         </View>
       </View>
 
+      </View>
     </View>
   );
 };

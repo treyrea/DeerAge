@@ -189,7 +189,7 @@ export const PhotoSelectScreen = () => {
               <View className="flex-row items-center justify-center">
                 <Ionicons name="bulb-outline" size={16} color="#22c55e" />
                 <Text className="text-gray-400 text-sm ml-2 text-center">
-                  Tip: Camera burst mode gives higher accuracy
+                  Tip: Use the camera — DeerAge takes a short burst and keeps the sharpest shot
                 </Text>
               </View>
             </View>

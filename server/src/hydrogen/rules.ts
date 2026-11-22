@@ -137,6 +137,14 @@ export function decideQuality(fields: QualityFields): QualityDecision {
   if (fails.length === 0) {
     return { decision: "AGEABLE", fails: [], retake_message: "" };
   }
+  // A too-small or too-soft deer always gets the get-closer tip, even when other
+  // checks also failed (a distant speck often fails several at once).
+  if (fails.includes("deer_large_enough")) {
+    return { decision: "RETAKE", fails, retake_message: RETAKE_MESSAGES.deer_large_enough };
+  }
+  if (fails.includes("contour_readable")) {
+    return { decision: "RETAKE", fails, retake_message: RETAKE_MESSAGES.contour_readable };
+  }
   const tip = RETAKE_MESSAGES[fails[0]] ?? RETAKE_MESSAGE_DEFAULT;
   return {
     decision: "RETAKE",

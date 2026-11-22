@@ -96,7 +96,9 @@ export function installedAppVersion(): string {
 }
 
 export function sampleFrames<T>(frames: T[], max: number): T[] {
+  if (max <= 0 || frames.length === 0) return [];
   if (frames.length <= max) return frames;
+  if (max === 1) return [frames[0]];
   const picked: T[] = [];
   for (let i = 0; i < max; i += 1) {
     const index = Math.round((i * (frames.length - 1)) / (max - 1));
@@ -217,7 +219,8 @@ export async function analyzeImages(input: {
     throw new AnalysisError("quota");
   }
 
-  const max = input.mode === "quick" ? 1 : 4;
+  // Age and Quick Check only need one photo. Rack/score still sends up to 4.
+  const max = input.mode === "score" ? 4 : 1;
   lastShotReceipt = null;
   useScanProgress.getState().start(input.mode);
   const images = await Promise.all(sampleFrames(input.imageUris, max).map((uri) => jpegBase64(uri)));

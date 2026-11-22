@@ -83,6 +83,10 @@ export interface RemoteConfig {
     inviteMessage: string;
     /** App Store link in the invite. Empty means the built-in link. */
     inviteUrl: string;
+    /** Viewfinder hint. Empty means the app's built-in "Zoom until the body fills the box". */
+    frameBodyHint: string;
+    /** Viewfinder hint when the body fills the box. Empty means "Good — hold steady". */
+    frameBodyGoodHint: string;
   };
   products: {
     offeringId: string;
@@ -142,6 +146,8 @@ export function defaultRemoteConfig(): RemoteConfig {
       noDeerTip: "",
       inviteMessage: "",
       inviteUrl: "",
+      frameBodyHint: "",
+      frameBodyGoodHint: "",
     },
     products: defaultProducts(),
     aging: defaultAgingConfig(),
@@ -179,6 +185,8 @@ function mergeConfig(stored: unknown): RemoteConfig {
     if (typeof incoming.noDeerTip === "string") copy.noDeerTip = incoming.noDeerTip.slice(0, 160);
     if (typeof incoming.inviteMessage === "string") copy.inviteMessage = incoming.inviteMessage.slice(0, INVITE_MESSAGE_MAX);
     if (typeof incoming.inviteUrl === "string") copy.inviteUrl = inviteUrlOf(incoming.inviteUrl);
+    if (typeof incoming.frameBodyHint === "string") copy.frameBodyHint = incoming.frameBodyHint.slice(0, 80);
+    if (typeof incoming.frameBodyGoodHint === "string") copy.frameBodyGoodHint = incoming.frameBodyGoodHint.slice(0, 80);
     if (Array.isArray(incoming.homeTips)) {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
@@ -333,6 +341,8 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
       if (body.inviteUrl !== "" && !url) throw new ApiError(400, "invalid_request", "inviteUrl must be an https link.");
       current.copy.inviteUrl = url;
     }
+    if (body.frameBodyHint != null) current.copy.frameBodyHint = body.frameBodyHint === "" ? "" : cleanText(body.frameBodyHint, 80);
+    if (body.frameBodyGoodHint != null) current.copy.frameBodyGoodHint = body.frameBodyGoodHint === "" ? "" : cleanText(body.frameBodyGoodHint, 80);
     if (body.contribute != null) current.contribute = patchContribute(current.contribute, body.contribute);
     if (body.products && typeof body.products === "object") {
       const incoming = body.products as Record<string, unknown>;

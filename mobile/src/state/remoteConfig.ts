@@ -32,6 +32,10 @@ export interface AppCopy {
   noDeerTip: string;
   inviteMessage: string;
   inviteUrl: string;
+  /** Empty means the built-in "Zoom until the body fills the box". */
+  frameBodyHint: string;
+  /** Empty means the built-in "Good — hold steady". */
+  frameBodyGoodHint: string;
 }
 
 export interface ProductConfig {
@@ -88,7 +92,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
     (set) => ({
       flags: FLAGS,
       products: DEFAULT_PRODUCTS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "", noDeerTitle: "", noDeerTip: "", inviteMessage: "", inviteUrl: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "", noDeerTitle: "", noDeerTip: "", inviteMessage: "", inviteUrl: "", frameBodyHint: "", frameBodyGoodHint: "" },
       contributeEnabled: false,
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
@@ -125,6 +129,8 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             noDeerTip: typeof copy.noDeerTip === "string" ? copy.noDeerTip : "",
             inviteMessage: typeof copy.inviteMessage === "string" ? copy.inviteMessage : "",
             inviteUrl: typeof copy.inviteUrl === "string" ? copy.inviteUrl : "",
+            frameBodyHint: typeof copy.frameBodyHint === "string" ? copy.frameBodyHint : "",
+            frameBodyGoodHint: typeof copy.frameBodyGoodHint === "string" ? copy.frameBodyGoodHint : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });
