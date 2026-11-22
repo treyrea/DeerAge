@@ -21,7 +21,7 @@ import { geminiCaller } from "./hydrogen/gemini.js";
 import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { ageWithRouter } from "./hydrogen/age-with-router.js";
-import { hydrogenFinishPlan, noDeerCopy, noDeerJobError } from "./hydrogen/no-deer.js";
+import { hydrogenFinishPlan, noDeerCopy, noDeerJobError, noDeerJobForMode } from "./hydrogen/no-deer.js";
 import { createScanBudget } from "./hydrogen/budget.js";
 import { loadRemoteConfig } from "./remote-config.js";
 import { runScoreCall } from "./score-pipeline.js";
@@ -341,6 +341,18 @@ async function finishJob(input: {
     if (input.mode === "score") {
       const score = await runScoreCall(input.images);
       const usd = await settleCalls(score.costs, input.reserved, input.mode, input.appUserId, input.usage);
+      if (score.noDeer || !score.result) {
+        await input.refund();
+        await input.releaseFairUse();
+        const remote = await loadRemoteConfig().catch(() => null);
+        await saveJob({
+          ...input.job,
+          status: "error",
+          provisional: null,
+          error: noDeerJobForMode("score", noDeerCopy(remote?.copy)),
+        });
+        return;
+      }
       const record = await issueRecord({
         appUserId: input.appUserId,
         images: input.images,
@@ -374,6 +386,7 @@ async function finishJob(input: {
         primary: () => ageWithRouter({ call: caller, settings: aging }),
         backup: async () => {
           const age = await runAgeCall(input.images[0], input.minimum);
+          if (age.stop === "not_deer") return { kind: "no_deer" };
           return age.result;
         },
       });
@@ -431,13 +444,20 @@ async function finishJob(input: {
       void saveJob({ ...input.job, provisional });
     });
     if (age.stop || !age.result) {
+      if (age.costs.length > 0) {
+        await settleCalls(age.costs, input.reserved, input.mode, input.appUserId, input.usage);
+      }
       await input.refund();
       await input.releaseFairUse();
       const code = age.stop ?? "unreadable";
+      const remote = code === "not_deer" ? await loadRemoteConfig().catch(() => null) : null;
       await saveJob({
         ...input.job,
         status: "error",
-        error: { code, message: STOP_MESSAGE[code] },
+        provisional: code === "not_deer" ? null : input.job.provisional,
+        error: code === "not_deer"
+          ? noDeerJobForMode(input.mode === "quick" ? "quick" : "age", noDeerCopy(remote?.copy))
+          : { code, message: STOP_MESSAGE[code] },
       });
       return;
     }

@@ -4,6 +4,8 @@
  * run_e5_stack_r55v3_full51.py. Prompt wording lives in the text files.
  */
 
+import { deerPresentValue, type DeerPresentAnswer } from "./no-deer.js";
+
 export const RETAKE_MESSAGES: Record<string, string> = {
   view_angle: "Try a side-on shot so the chest, belly, and rump are all visible.",
   standing_upright: "Try a photo of the deer standing, not bedded, with the body upright.",
@@ -85,7 +87,7 @@ function tryParse(text: string): Record<string, unknown> | null {
   }
 }
 
-export type DeerAnswer = "present" | "absent" | "unknown";
+export type DeerAnswer = DeerPresentAnswer;
 
 /**
  * Only an explicit NO means no deer. A missing field, YES, or CANT_TELL
@@ -95,10 +97,7 @@ export type DeerAnswer = "present" | "absent" | "unknown";
 export function deerAnswer(text: string): DeerAnswer {
   const json = extractJsonObject(text);
   if (!json) return "unknown";
-  const value = String(json.deer_present ?? "").trim().toUpperCase();
-  if (value === "NO") return "absent";
-  if (value === "YES" || value === "CANT_TELL") return "present";
-  return "unknown";
+  return deerPresentValue(json.deer_present);
 }
 
 export function parseQuality(text: string): QualityFields | null {

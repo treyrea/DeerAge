@@ -4,6 +4,7 @@
  */
 
 import { readingFrom, boxesFrom } from "./age-pipeline.js";
+import { readingIsNoDeer } from "./hydrogen/no-deer.js";
 import { finalCall, classStep } from "./field-call.js";
 import { callModel } from "./gateway.js";
 import { coverAntlers } from "./mask.js";
@@ -110,6 +111,16 @@ async function liveSecondLook(image: string, minimum: number): Promise<SecondLoo
     allowStatusRetry: true,
   });
   const mainRead = readingFrom(main.text);
+  if (readingIsNoDeer(mainRead.deerPresent, mainRead.stop)) {
+    return {
+      ageYears: null,
+      fieldCall: "",
+      bodyOnlyAge: null,
+      cues: [],
+      model,
+      costUsd: main.usd,
+    };
+  }
   let bodyOnlyAge: number | null = null;
   let extra = 0;
   try {
@@ -137,7 +148,8 @@ async function liveSecondLook(image: string, minimum: number): Promise<SecondLoo
         allowStatusRetry: true,
       });
       extra += masked.usd;
-      bodyOnlyAge = readingFrom(masked.text).age;
+      const maskedRead = readingFrom(masked.text);
+      if (!readingIsNoDeer(maskedRead.deerPresent, maskedRead.stop)) bodyOnlyAge = maskedRead.age;
     }
   } catch {
     // The second age still stands. The body check is simply missing.
