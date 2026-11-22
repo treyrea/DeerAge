@@ -33,6 +33,7 @@ import {
   frameBodyGoodHintFromCopy,
   frameBodyHintFromCopy,
 } from "../lib/frame-fill";
+import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -65,6 +66,7 @@ export const DeerCameraScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const burstFrames = burstFrameCount(analysisMode);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
   const frameBodyHint = frameBodyHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyHint));
   const frameBodyGoodHint = frameBodyGoodHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyGoodHint));
@@ -202,9 +204,9 @@ export const DeerCameraScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Capture 8 frames over 2 seconds (4 FPS)
-      const totalFrames = 8;
-      const intervalMs = 250; // 250ms between frames
+      // Age: 4 frames over about 1 s. Rack/score: 8 frames over about 2 s. Same 4 fps interval.
+      const totalFrames = burstFrames;
+      const intervalMs = BURST_INTERVAL_MS;
       const capturedFrames: DeerAnalysisFrame[] = [];
 
       for (let i = 0; i < totalFrames; i++) {
@@ -517,7 +519,7 @@ export const DeerCameraScreen = () => {
                       <View className="flex-row items-start mb-2">
                         <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 2 }} />
                         <Text className="text-white text-sm ml-2 flex-1">
-                          Deer moving naturally? Perfect! Burst mode captures multiple angles
+                          Hold the phone steady so DeerAge can pick the sharpest shot
                         </Text>
                       </View>
                       <View className="flex-row items-start mb-2">
@@ -569,12 +571,25 @@ export const DeerCameraScreen = () => {
                   )}
 
                   <View className="mt-3 pt-3 border-t border-white/20">
-                    <Text className="text-blue-400 text-xs font-semibold mb-1">
-                      WHY MOVEMENT HELPS:
-                    </Text>
-                    <Text className="text-gray-300 text-xs leading-5">
-                      Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
-                    </Text>
+                    {analysisMode === "age" ? (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY HOLD STEADY:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          The burst takes several shots in about one second. DeerAge keeps the sharpest one for the age read.
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY MOVEMENT HELPS:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
               )}
@@ -662,7 +677,7 @@ export const DeerCameraScreen = () => {
                 Keep Camera Steady!
               </Text>
               <Text className="text-white/80 text-sm">
-                Capturing frame {Math.ceil((captureProgress / 100) * 8)} of 8
+                Capturing frame {Math.ceil((captureProgress / 100) * burstFrames) || 1} of {burstFrames}
               </Text>
             </View>
           )}

@@ -1,6 +1,6 @@
 /**
  * Age analysis through the DeerAge proxy.
- * The server runs the frames in parallel and returns the median age.
+ * Age scans send one photo. The burst picker chooses the sharpest frame first.
  */
 
 import { overlaysFrom } from "./body-overlays";
