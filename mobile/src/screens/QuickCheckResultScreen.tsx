@@ -155,11 +155,11 @@ export const QuickCheckResultScreen = () => {
             </View>
 
             {/* Thumbnail */}
-            <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.4, height: SCREEN_WIDTH * 0.4 }}>
+            <View className="rounded-xl overflow-hidden mb-8 bg-black" style={{ width: SCREEN_WIDTH * 0.4, height: SCREEN_WIDTH * 0.4 }}>
               <Image
                 source={{ uri: imageUri }}
                 style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             </View>
           </View>
