@@ -475,7 +475,7 @@ export const DeerCameraScreen = () => {
                       <View className="flex-row items-start mb-2">
                         <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 2 }} />
                         <Text className="text-white text-sm ml-2 flex-1">
-                          Deer moving naturally? Perfect! Burst mode captures multiple angles
+                          Hold the phone steady so DeerAge can pick the sharpest shot
                         </Text>
                       </View>
                       <View className="flex-row items-start mb-2">
@@ -527,12 +527,25 @@ export const DeerCameraScreen = () => {
                   )}
 
                   <View className="mt-3 pt-3 border-t border-white/20">
-                    <Text className="text-blue-400 text-xs font-semibold mb-1">
-                      WHY MOVEMENT HELPS:
-                    </Text>
-                    <Text className="text-gray-300 text-xs leading-5">
-                      Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
-                    </Text>
+                    {analysisMode === "age" ? (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY HOLD STEADY:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          The burst takes several shots in about two seconds. DeerAge keeps the sharpest one for the age read.
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-blue-400 text-xs font-semibold mb-1">
+                          WHY MOVEMENT HELPS:
+                        </Text>
+                        <Text className="text-gray-300 text-xs leading-5">
+                          Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
               )}
