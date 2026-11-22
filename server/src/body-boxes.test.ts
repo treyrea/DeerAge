@@ -35,6 +35,17 @@ test("when no reason names a part, every found part is outlined with its plain n
   const overlays = bodyOverlays(parseBodyBoxes(reply), ["Overall build reads mature."]);
   assert.equal(overlays.length, 5);
   assert.equal(overlays.find((o) => o.featureId === "neck")?.label, "Neck");
+  assert.equal(overlays.find((o) => o.featureId === "neck")?.detail, undefined);
+});
+
+test("detail keeps the full reason when the on-photo label is shortened", () => {
+  const long = "The recorded belly line is described as sagging well below the chest and nearly level with the back on a mature buck.";
+  const belly = bodyOverlays(parseBodyBoxes(reply), [long]).find((overlay) => overlay.featureId === "belly");
+  assert.ok(belly);
+  assert.equal(belly.detail, long);
+  assert.match(belly.label, /^Belly & waist: /);
+  assert.ok(belly.label.endsWith("…"));
+  assert.ok(belly.detail.length > belly.label.length);
 });
 
 test("withOverlays adds overlays only when there is something to draw", () => {

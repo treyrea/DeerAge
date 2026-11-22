@@ -3,7 +3,7 @@
  * Why and More stay collapsed until he asks.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Image, Modal, Pressable, ScrollView, StatusBar, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,6 +24,8 @@ import { showPreShotRecord } from "../lib/lease-rules";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { shownAge } from "../utils/age-class";
 import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
+import { extraBodyNotes } from "../utils/body-cues";
+import { PhotoViewer } from "../components/PhotoViewer";
 import { ErrorModal } from "../components/ErrorModal";
 import {
   BLIND,
@@ -53,6 +55,9 @@ export const AgeResultScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const [hasSaved, setHasSaved] = useState(false);
   const [showOverlays, setShowOverlays] = useState(true);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef(0);
   const [showWhy, setShowWhy] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showModelCard, setShowModelCard] = useState(false);
@@ -133,6 +138,7 @@ export const AgeResultScreen = () => {
     || "";
   const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
   const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
+  const bodyNotes = extraBodyNotes(clues, explainableAge.bodyFeatureOverlays);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
   const note = copy?.verdictNote?.trim() || FIELD_READ_NOTE;
   const minimumPrompt = copy?.setMinimumPrompt?.trim() || SET_MINIMUM_PROMPT;
@@ -210,8 +216,13 @@ export const AgeResultScreen = () => {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+        onScroll={(event) => {
+          scrollOffset.current = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         {word ? (
           <Text
@@ -239,7 +250,20 @@ export const AgeResultScreen = () => {
             )}
           </View>
           {imageUri ? (
-            <Image source={{ uri: imageUri }} style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: "#1C1B17" }} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View full size photo"
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+                setPhotoOpen(true);
+              }}
+            >
+              <Image
+                accessible={false}
+                source={{ uri: imageUri }}
+                style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: "#1C1B17" }}
+              />
+            </Pressable>
           ) : null}
         </View>
 
@@ -302,16 +326,19 @@ export const AgeResultScreen = () => {
                   overlays={explainableAge.bodyFeatureOverlays}
                   showOverlays={showOverlays}
                   onToggleOverlays={() => setShowOverlays((shown) => !shown)}
+                  scrollRef={scrollRef}
+                  scrollOffset={scrollOffset}
                 />
               </View>
             ) : null}
-            {clues.length > 0 ? clues.map((line) => (
+            {bodyNotes.map((line) => (
               <Text key={line} style={{ color: BLIND.ink, fontSize: 16, lineHeight: 23, marginTop: 12 }}>{line}</Text>
-            )) : (
+            ))}
+            {bodyNotes.length === 0 && explainableAge.bodyFeatureOverlays.length === 0 ? (
               <Text style={{ color: BLIND.muted, fontSize: 16, lineHeight: 23, marginTop: 12 }}>
                 No other body note on this photo.
               </Text>
-            )}
+            ) : null}
           </View>
         ) : null}
 
@@ -428,6 +455,7 @@ export const AgeResultScreen = () => {
         onDismiss={() => setShowSuccessModal(false)}
         confirmText="OK"
       />
+      {imageUri ? <PhotoViewer visible={photoOpen} imageUri={imageUri} onClose={() => setPhotoOpen(false)} /> : null}
     </View>
   );
 };

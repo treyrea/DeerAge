@@ -252,6 +252,15 @@ export interface BodyFeatureOverlay {
   label: string; // e.g., "Neck: thick 82%"
   confidence: number; // 0-100
   cue?: AgeCue;
+  /** Optional short line from a newer server. Old payloads omit it. */
+  shortCue?: string;
+  /** Full reason. Old payloads omit it and the label is the only text. */
+  detail?: string;
+  /** Which way this part points, when the server actually says so. */
+  lean?: "older" | "younger" | "neutral";
+  ageWeight?: number;
+  /** Percent of the photo. Absent means the center of the bounding box. */
+  anchor?: { x: number; y: number };
 }
 
 export interface ExplainableAgeEstimation {
