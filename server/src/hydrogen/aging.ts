@@ -26,6 +26,10 @@ export interface AgingConfig {
   rangeNote: string;
   /** Outline the body parts behind the age on the age result photo (one small gateway call). */
   bodyBoxes: boolean;
+  /** Start the photo check, baby gate and Step A together (same answers, less waiting). */
+  parallelStart: boolean;
+  /** Start every closer pair together once Step A is in (same answers, about 2 cents more). */
+  parallelClosers: boolean;
 }
 
 export function defaultAgingConfig(): AgingConfig {
@@ -37,6 +41,8 @@ export function defaultAgingConfig(): AgingConfig {
     callTimeoutMs: DEFAULT_CALL_TIMEOUT_MS,
     rangeNote: DEFAULT_RANGE_NOTE,
     bodyBoxes: true,
+    parallelStart: true,
+    parallelClosers: true,
   };
 }
 
@@ -66,6 +72,8 @@ export function normalizeAging(stored: unknown): AgingConfig {
     callTimeoutMs: clampCallTimeout(row.callTimeoutMs ?? base.callTimeoutMs),
     rangeNote: rangeNote || base.rangeNote,
     bodyBoxes: typeof row.bodyBoxes === "boolean" ? row.bodyBoxes : base.bodyBoxes,
+    parallelStart: typeof row.parallelStart === "boolean" ? row.parallelStart : base.parallelStart,
+    parallelClosers: typeof row.parallelClosers === "boolean" ? row.parallelClosers : base.parallelClosers,
   };
 }
 

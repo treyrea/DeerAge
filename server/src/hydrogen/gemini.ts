@@ -45,14 +45,16 @@ export function extractGeminiText(payload: unknown): string {
 export function geminiCaller(
   imageBase64: string,
   usage: TokenUsage,
-  options?: { timeoutMs?: number; budget?: ScanBudget; fetchImpl?: typeof fetch },
+  options?: { timeoutMs?: number; budget?: ScanBudget; fetchImpl?: typeof fetch; signal?: AbortSignal },
 ): ModelCaller {
   const key = process.env.GEMINI_API_KEY?.trim() ?? "";
   if (!key) throw new UpstreamError("The analysis service is not configured.", 503, false);
   const timeoutMs = clampCallTimeout(options?.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS);
   const budget = options?.budget ?? createScanBudget(timeoutMs);
-  return async (prompt: string, accept?: (text: string) => boolean) => {
+  return async (prompt: string, accept?: (text: string) => boolean, signal?: AbortSignal) => {
+    const signals = [options?.signal, signal].filter((value): value is AbortSignal => value != null);
     const text = await generateGeminiText({
+      signal: signals.length === 0 ? undefined : signals.length === 1 ? signals[0] : AbortSignal.any(signals),
       key,
       prompt,
       imageBase64,
@@ -85,10 +87,13 @@ export async function generateGeminiText(input: {
   budget: ScanBudget;
   accept?: (text: string) => boolean;
   fetchImpl?: typeof fetch;
+  /** Cancels a call the scan no longer needs. A cancelled call is never retried. */
+  signal?: AbortSignal;
 }): Promise<string> {
   let lastText: string | null = null;
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (input.signal?.aborted) throw new CallCancelledError();
     if (!input.budget.canStart()) {
       if (lastError) throw lastError;
       if (lastText != null) return lastText;
@@ -96,12 +101,14 @@ export async function generateGeminiText(input: {
     }
     try {
       const text = await once(input);
+      if (input.signal?.aborted) throw new CallCancelledError();
       const accepted = text.trim().length > 0 && (input.accept ? input.accept(text) : true);
       if (accepted) return text;
       lastText = text;
       lastError = null;
       logAttempt(attempt, text.trim() ? "unparsed" : "empty", 0);
     } catch (error) {
+      if (input.signal?.aborted) throw new CallCancelledError();
       if (!isRetryableGemini(error)) throw error;
       lastError = error;
       lastText = null;
@@ -126,6 +133,14 @@ function logAttempt(attempt: number, reason: string, status: number) {
   }));
 }
 
+/** The scan stopped needing this call (no deer, or a speculative call the walk did not use). */
+export class CallCancelledError extends Error {
+  constructor() {
+    super("Model call cancelled: the scan no longer needs it.");
+    this.name = "CallCancelledError";
+  }
+}
+
 async function once(input: {
   key: string;
   prompt: string;
@@ -133,9 +148,12 @@ async function once(input: {
   usage: TokenUsage;
   timeoutMs: number;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), input.timeoutMs);
+  const onCancel = () => controller.abort();
+  input.signal?.addEventListener("abort", onCancel, { once: true });
   const fetchImpl = input.fetchImpl ?? fetch;
   try {
     const response = await fetchImpl(geminiEndpoint(), {
@@ -162,11 +180,13 @@ async function once(input: {
     return extractGeminiText(payload);
   } catch (error) {
     if (error instanceof UpstreamError) throw error;
+    if (input.signal?.aborted) throw new CallCancelledError();
     if (error instanceof Error && error.name === "AbortError") {
       throw new UpstreamError("The analysis timed out.", 504, true);
     }
     throw new UpstreamError("The analysis service could not be reached.", 502, true);
   } finally {
     clearTimeout(timer);
+    input.signal?.removeEventListener("abort", onCancel);
   }
 }

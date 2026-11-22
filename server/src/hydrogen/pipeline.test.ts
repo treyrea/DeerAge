@@ -14,7 +14,7 @@ import { costUsd, emptyUsage, geminiInputUsdPerMillion, geminiOutputUsdPerMillio
 import { UpstreamError } from "../openai.js";
 import { hydrogenAgeBody } from "./result.js";
 import { ScanBudget, ScanDeadlineError } from "./budget.js";
-import { generateGeminiText, geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
+import { CallCancelledError, generateGeminiText, geminiRequestBody, extractGeminiText, GEMINI_MAX_OUTPUT_TOKENS } from "./gemini.js";
 import { walkHydrogen, type ModelCaller } from "./pipeline.js";
 import { activeCrossCheckPrompt, activePlainPrompt, buildCloserPrompt, hydrogenPromptDirectory } from "./prompts.js";
 import { RETAKE_MESSAGE_DEFAULT, RETAKE_MESSAGES, decideQuality, parseCloser, parseQuality } from "./rules.js";
@@ -501,4 +501,19 @@ test("a throwing progress listener never stops the walk", async () => {
     throw new Error("display broke");
   });
   assert.equal(result.kind, "age");
+});
+
+test("a cancelled gemini call stops at once and is never retried", async () => {
+  const hang = scriptedFetch(["hang", { status: 200, text: "late" }]);
+  const controller = new AbortController();
+  const pending = generateGeminiText({ ...geminiInput(hang.fetchImpl, 5_000), signal: controller.signal });
+  setTimeout(() => controller.abort(), 10);
+  await assert.rejects(pending, (error: unknown) => error instanceof CallCancelledError);
+  assert.equal(hang.calls(), 1);
+
+  const unused = scriptedFetch([{ status: 200, text: "never" }]);
+  const already = new AbortController();
+  already.abort();
+  await assert.rejects(() => generateGeminiText({ ...geminiInput(unused.fetchImpl, 30), signal: already.signal }), (error: unknown) => error instanceof CallCancelledError);
+  assert.equal(unused.calls(), 0);
 });
