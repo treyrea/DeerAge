@@ -1,19 +1,27 @@
 /**
- * Body Feature Overlay Component
- * Renders labeled bounding boxes over deer body features with interactive tap-to-focus
+ * Body Feature Analysis.
+ * Numbered dots sit on the photo. The words live in the list underneath.
  */
 
-import React, { useEffect, useState } from "react";
-import { View, Text, Image, Pressable, Modal, ScrollView, Dimensions } from "react-native";
-import { BodyFeatureOverlay, AgeCue } from "../types/deer-scoring";
+import React, { useEffect, useRef, useState, type RefObject } from "react";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { containedRect } from "../api/body-overlays";
+import * as Haptics from "expo-haptics";
+import type { BodyFeatureOverlay } from "../types/deer-scoring";
+import { dotCenter } from "../api/body-overlays";
+import { LEAN_WORD, regionRows } from "../utils/body-cues";
+import { BLIND } from "../utils/blind-verdict";
+
+const GOLD = "#D4AF37";
+const DOT = 22;
 
 interface Props {
   imageUri: string;
   overlays: BodyFeatureOverlay[];
   showOverlays: boolean;
   onToggleOverlays: () => void;
+  scrollRef?: RefObject<ScrollView | null>;
+  scrollOffset?: RefObject<number>;
 }
 
 export const BodyFeatureOverlayComponent: React.FC<Props> = ({
@@ -21,254 +29,220 @@ export const BodyFeatureOverlayComponent: React.FC<Props> = ({
   overlays,
   showOverlays,
   onToggleOverlays,
+  scrollRef,
+  scrollOffset,
 }) => {
-  const [selectedOverlay, setSelectedOverlay] = useState<BodyFeatureOverlay | null>(null);
   const [photoSize, setPhotoSize] = useState({ width: 0, height: 0 });
+  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const rowRefs = useRef<Record<string, View | null>>({});
+  const rows = regionRows(overlays);
+
+  useEffect(() => {
+    setSelectedId(null);
+    setExpandedId(null);
+  }, [overlays]);
 
   useEffect(() => {
     let live = true;
-    Image.getSize(imageUri, (width, height) => {
-      if (live) setPhotoSize({ width, height });
-    }, () => undefined);
+    Image.getSize(
+      imageUri,
+      (width, height) => {
+        if (live) setPhotoSize({ width, height });
+      },
+      () => undefined,
+    );
     return () => {
       live = false;
     };
   }, [imageUri]);
-  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
 
-  const handleOverlayPress = (overlay: BodyFeatureOverlay) => {
-    setSelectedOverlay(overlay);
+  const scrollToRow = (featureId: string) => {
+    const row = rowRefs.current[featureId];
+    const scroller = scrollRef?.current;
+    if (!row || !scroller) return;
+    row.measureInWindow((_x, rowY, _width, rowHeight) => {
+      const frame = scroller as unknown as {
+        measureInWindow: (callback: (x: number, y: number, width: number, height: number) => void) => void;
+      };
+      frame.measureInWindow((_sx, top, _sw, viewHeight) => {
+        const offset = rowY - top;
+        if (offset >= 8 && offset + rowHeight <= viewHeight - 8) return;
+        scroller.scrollTo({
+          y: Math.max(0, (scrollOffset?.current ?? 0) + offset - 12),
+          animated: true,
+        });
+      });
+    });
+  };
+
+  const focus = (featureId: string, fromDot: boolean) => {
+    void Haptics.selectionAsync().catch(() => undefined);
+    const row = rows.find((item) => item.featureId === featureId);
+    if (selectedId === featureId) {
+      if (row?.detail) setExpandedId((current) => (current === featureId ? null : featureId));
+    } else {
+      setSelectedId(featureId);
+      setExpandedId(null);
+    }
+    if (fromDot) scrollToRow(featureId);
   };
 
   return (
     <View>
-      {/* Toggle Button */}
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-sm font-semibold" style={{ color: "#E5D4B8" }}>
-          Body Feature Analysis
-        </Text>
-        {overlays.length === 0 ? (
-          <Text className="text-xs" style={{ color: "#8B7355" }}>
-            No outlines for this photo
-          </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <Text style={{ color: BLIND.ink, fontSize: 15, fontWeight: "600" }}>Body Feature Analysis</Text>
+        {rows.length === 0 ? (
+          <Text style={{ color: BLIND.muted, fontSize: 13 }}>No outlines for this photo</Text>
         ) : (
-        <Pressable
-          onPress={onToggleOverlays}
-          className="flex-row items-center px-3 py-2 rounded-lg"
-          style={{ backgroundColor: showOverlays ? "#D4AF37" : "#5A6447" }}
-        >
-          <Ionicons
-            name={showOverlays ? "eye" : "eye-off"}
-            size={16}
-            color="white"
-          />
-          <Text className="text-white text-xs font-semibold ml-2">
-            {showOverlays ? "Hide" : "Show"} Overlays
-          </Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showOverlays ? "Hide overlays" : "Show overlays"}
+            onPress={onToggleOverlays}
+            style={{ minHeight: 36, flexDirection: "row", alignItems: "center", paddingHorizontal: 2 }}
+          >
+            <Ionicons name={showOverlays ? "eye" : "eye-off"} size={16} color={BLIND.button} />
+            <Text style={{ color: BLIND.button, fontSize: 13, fontWeight: "600", marginLeft: 6 }}>
+              {showOverlays ? "Hide" : "Show"} Overlays
+            </Text>
+          </Pressable>
         )}
       </View>
 
-      {/* Image with Overlays */}
-      <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#1a1a1a" }}>
+      <View style={{ borderRadius: 16, overflow: "hidden", backgroundColor: "#1C1B17" }}>
         <Image
           source={{ uri: imageUri }}
           style={{ width: "100%", height: 300 }}
           resizeMode="contain"
+          accessible={false}
           onLayout={(event) => {
             const { width, height } = event.nativeEvent.layout;
             setImageLayout({ width, height });
           }}
         />
-
-        {/* Render overlays if enabled */}
-        {showOverlays && imageLayout.width > 0 && (
-          <View
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-            }}
-          >
-            {overlays.map((overlay, index) => {
-              // Boxes are percent of the photo; "contain" letterboxes it inside the view.
-              const rect = containedRect(imageLayout.width, imageLayout.height, photoSize.width, photoSize.height);
-              const left = rect.left + (overlay.boundingBox.x / 100) * rect.width;
-              const top = rect.top + (overlay.boundingBox.y / 100) * rect.height;
-              const width = (overlay.boundingBox.width / 100) * rect.width;
-              const height = (overlay.boundingBox.height / 100) * rect.height;
-
+        {showOverlays && imageLayout.width > 0 ? (
+          <View pointerEvents="box-none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+            {rows.map((row) => {
+              const center = dotCenter(
+                imageLayout.width,
+                imageLayout.height,
+                photoSize.width,
+                photoSize.height,
+                row.anchor,
+                DOT / 2,
+              );
+              const selected = selectedId === row.featureId;
+              const size = selected ? DOT + 4 : DOT;
               return (
                 <Pressable
-                  key={overlay.featureId}
-                  onPress={() => handleOverlayPress(overlay)}
+                  key={row.featureId}
+                  testID={`body-dot-${row.number}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Region ${row.number}, ${row.name}`}
+                  accessibilityState={{ selected }}
+                  onPress={() => focus(row.featureId, true)}
+                  hitSlop={8}
                   style={{
                     position: "absolute",
-                    left,
-                    top,
-                    width,
-                    height,
-                    borderWidth: 2,
-                    borderColor: "#D4AF37",
-                    backgroundColor: "rgba(212, 175, 55, 0.1)",
-                    borderRadius: 4,
+                    left: center.x - size / 2,
+                    top: center.y - size / 2,
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                    backgroundColor: GOLD,
+                    borderWidth: 1.5,
+                    borderColor: "#1A1814",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: selected ? 2 : 1,
                   }}
                 >
-                  {/* Label tag */}
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: -24,
-                      left: 0,
-                      backgroundColor: "#D4AF37",
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 4,
-                    }}
-                  >
-                    <Text className="text-xs font-bold" style={{ color: "#2B3420" }}>
-                      {overlay.label}
-                    </Text>
-                  </View>
+                  <Text style={{ color: "#1A1814", fontSize: 12, fontWeight: "700" }}>{row.number}</Text>
                 </Pressable>
               );
             })}
           </View>
-        )}
+        ) : null}
       </View>
 
-      {/* Helper text */}
-      {showOverlays && overlays.length > 0 && (
-        <View className="mt-2 flex-row items-center">
-          <Ionicons name="information-circle" size={16} color="#D4AF37" />
-          <Text className="text-xs ml-2" style={{ color: "#E5D4B8" }}>
-            Tap any highlighted area to see detailed explanation
-          </Text>
-        </View>
-      )}
-
-      {/* Cue Explanation Modal */}
-      <Modal
-        visible={selectedOverlay !== null}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedOverlay(null)}
-      >
-        <Pressable
-          className="flex-1 justify-center items-center"
-          style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-          onPress={() => setSelectedOverlay(null)}
-        >
-          <Pressable
-            className="rounded-2xl p-6 mx-6"
-            style={{ backgroundColor: "#3D4A2F", maxWidth: 400, width: "90%" }}
-            onPress={(e) => e.stopPropagation()}
-          >
-            {selectedOverlay && (
-              <>
-                {/* Header */}
-                <View className="flex-row items-center justify-between mb-4">
-                  <View className="flex-1">
-                    <Text className="text-lg font-bold text-white">
-                      {selectedOverlay.name}
-                    </Text>
-                    {selectedOverlay.confidence > 0 ? (
-                    <View className="flex-row items-center mt-1">
-                      <View
-                        className="rounded px-2 py-0.5"
-                        style={{
-                          backgroundColor:
-                            selectedOverlay.confidence >= 75
-                              ? "#22c55e"
-                              : selectedOverlay.confidence >= 50
-                              ? "#3b82f6"
-                              : "#f59e0b",
-                        }}
-                      >
-                        <Text className="text-white text-xs font-bold">
-                          {selectedOverlay.confidence}% Confidence
-                        </Text>
-                      </View>
-                    </View>
-                    ) : null}
+      {rows.length > 0 ? (
+        <View style={{ marginTop: 8 }}>
+          {rows.map((row) => {
+            const selected = selectedId === row.featureId;
+            const expanded = expandedId === row.featureId && Boolean(row.detail);
+            return (
+              <View
+                key={row.featureId}
+                ref={(node) => {
+                  rowRefs.current[row.featureId] = node;
+                }}
+                collapsable={false}
+              >
+                <Pressable
+                  testID={`body-line-${row.number}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${row.number}. ${row.name}${row.cue ? `, ${row.cue}` : ""}`}
+                  accessibilityState={{ selected, expanded }}
+                  onPress={() => focus(row.featureId, false)}
+                  style={{
+                    minHeight: 44,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 8,
+                    borderRadius: 10,
+                    backgroundColor: selected ? "rgba(212, 175, 55, 0.14)" : "transparent",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: DOT,
+                      height: DOT,
+                      borderRadius: DOT / 2,
+                      backgroundColor: GOLD,
+                      borderWidth: 1.5,
+                      borderColor: "#1A1814",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#1A1814", fontSize: 12, fontWeight: "700" }}>{row.number}</Text>
                   </View>
-                  <Pressable onPress={() => setSelectedOverlay(null)}>
-                    <Ionicons name="close-circle" size={32} color="#E5D4B8" />
-                  </Pressable>
-                </View>
-
-                {!selectedOverlay.cue && selectedOverlay.label && selectedOverlay.label !== selectedOverlay.name ? (
-                  <Text className="text-base text-white mb-4">
-                    {selectedOverlay.label.startsWith(`${selectedOverlay.name}: `)
-                      ? selectedOverlay.label.slice(selectedOverlay.name.length + 2)
-                      : selectedOverlay.label}
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: BLIND.ink, fontSize: 15, fontWeight: "600", marginLeft: 10, flexShrink: 1 }}
+                  >
+                    {row.name}
+                  </Text>
+                  {row.cue ? (
+                    <Text numberOfLines={1} style={{ color: BLIND.muted, fontSize: 15, marginLeft: 8, flex: 1 }}>
+                      {row.cue}
+                    </Text>
+                  ) : (
+                    <View style={{ flex: 1 }} />
+                  )}
+                  {row.lean ? (
+                    <Text style={{ color: leanColor(row.lean), fontSize: 12, fontWeight: "600", marginLeft: 8 }}>
+                      {LEAN_WORD[row.lean]}
+                    </Text>
+                  ) : null}
+                </Pressable>
+                {expanded ? (
+                  <Text style={{ color: BLIND.ink, fontSize: 15, lineHeight: 22, marginLeft: 40, marginRight: 8, marginBottom: 8 }}>
+                    {row.detail}
                   </Text>
                 ) : null}
-
-                {/* Detected Pattern */}
-                {selectedOverlay.cue && (
-                  <View className="mb-4">
-                    <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                      WHAT I SEE:
-                    </Text>
-                    <Text className="text-base text-white mb-3">
-                      {selectedOverlay.cue.detectedPattern}
-                    </Text>
-
-                    {/* Age Weight Indicator */}
-                    <View className="flex-row items-center mb-3">
-                      <Text className="text-sm font-semibold mr-3" style={{ color: "#D4AF37" }}>
-                        AGE PUSH:
-                      </Text>
-                      <View className="flex-1 flex-row items-center">
-                        <Text className="text-xs mr-2" style={{ color: "#E5D4B8" }}>
-                          Younger
-                        </Text>
-                        <View className="flex-1 h-2 rounded-full" style={{ backgroundColor: "#5A6447" }}>
-                          <View
-                            className="h-2 rounded-full"
-                            style={{
-                              width: `${((selectedOverlay.cue.ageWeight + 3) / 6) * 100}%`,
-                              backgroundColor:
-                                selectedOverlay.cue.ageWeight < 0
-                                  ? "#f59e0b"
-                                  : selectedOverlay.cue.ageWeight > 0
-                                  ? "#22c55e"
-                                  : "#9ca3af",
-                            }}
-                          />
-                        </View>
-                        <Text className="text-xs ml-2" style={{ color: "#E5D4B8" }}>
-                          Older
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Explanation */}
-                    <Text className="text-sm font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                      WHY THIS MATTERS:
-                    </Text>
-                    <Text className="text-sm leading-6" style={{ color: "#E5D4B8" }}>
-                      {selectedOverlay.cue.explanation}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Close button */}
-                <Pressable
-                  onPress={() => setSelectedOverlay(null)}
-                  className="rounded-lg py-3 items-center mt-2"
-                  style={{ backgroundColor: "#5A6447" }}
-                >
-                  <Text className="text-white font-semibold">Close</Text>
-                </Pressable>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 };
+
+function leanColor(lean: "older" | "younger" | "neutral"): string {
+  if (lean === "older") return BLIND.take;
+  if (lean === "younger") return BLIND.walk;
+  return BLIND.muted;
+}

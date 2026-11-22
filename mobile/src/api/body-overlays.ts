@@ -1,4 +1,5 @@
 import type { BodyFeatureOverlay } from "../types/deer-scoring";
+import { optionalOverlayFields } from "../utils/body-cues";
 
 const pct = (value: unknown): number | null => {
   const n = typeof value === "number" ? value : Number(value);
@@ -28,6 +29,7 @@ export function overlaysFrom(raw: unknown): BodyFeatureOverlay[] {
       boundingBox: { x, y, width: Math.min(width, 100 - x), height: Math.min(height, 100 - y) },
       label: typeof row.label === "string" && row.label.trim() ? row.label.trim() : name,
       confidence: Math.max(0, Math.min(100, Math.round(Number(row.confidence) || 0))),
+      ...optionalOverlayFields(row),
     });
   }
   return out;
@@ -45,4 +47,25 @@ export function containedRect(viewWidth: number, viewHeight: number, imageWidth:
   const width = imageWidth * scale;
   const height = imageHeight * scale;
   return { left: (viewWidth - width) / 2, top: (viewHeight - height) / 2, width, height };
+}
+
+/** Center of a numbered dot. The anchor is a percent of the photo, then kept inside the drawn photo. */
+export function dotCenter(
+  viewWidth: number,
+  viewHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+  anchor: { x: number; y: number },
+  radius = 11,
+): { x: number; y: number } {
+  const rect = containedRect(viewWidth, viewHeight, imageWidth, imageHeight);
+  const rawX = rect.left + (anchor.x / 100) * rect.width;
+  const rawY = rect.top + (anchor.y / 100) * rect.height;
+  if (!(rect.width > 0 && rect.height > 0)) return { x: rawX, y: rawY };
+  const inset = Math.min(Math.max(radius, 0), rect.width / 2, rect.height / 2);
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+  return {
+    x: clamp(rawX, rect.left + inset, rect.left + rect.width - inset),
+    y: clamp(rawY, rect.top + inset, rect.top + rect.height - inset),
+  };
 }

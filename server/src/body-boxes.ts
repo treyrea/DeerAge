@@ -28,6 +28,10 @@ export interface BodyOverlay {
   boundingBox: { x: number; y: number; width: number; height: number };
   label: string;
   confidence: number;
+  /**
+   * Full reason, when this outline came from one. Old apps ignore it and still read `label`.
+   */
+  detail?: string;
 }
 
 export function bodyBoxPrompt(): string {
@@ -93,12 +97,15 @@ export function bodyOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: s
   return parts.map((part) => {
     const [x0, y0, x1, y1] = boxes[part.id]!;
     const pct = (n: number) => Math.round(n * 1000) / 10;
+    const reason = named.length > 0 ? lines.find((line) => part.words.test(line)) : undefined;
+    const detail = reason?.replace(/\s+/g, " ").trim();
     return {
       featureId: part.id,
       name: part.name,
       boundingBox: { x: pct(x0), y: pct(y0), width: pct(x1 - x0), height: pct(y1 - y0) },
-      label: named.length > 0 ? shortLabel(part.name, lines.find((line) => part.words.test(line))) : part.name,
+      label: named.length > 0 ? shortLabel(part.name, reason) : part.name,
       confidence: 0,
+      ...(detail ? { detail } : {}),
     };
   });
 }
