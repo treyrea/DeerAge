@@ -5,6 +5,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Alert, View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { ScanProgressCompact } from "../components/ScanProgressView";
+import { useScanProgress } from "../state/scanProgress";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,7 +41,6 @@ export const QuickCheckCameraScreen = () => {
   const [zoom, setZoom] = useState(1);
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
-  const provisional = useDeerScoringStore((s) => s.provisional);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Get min and max zoom from device
@@ -86,11 +87,15 @@ export const QuickCheckCameraScreen = () => {
       const imageUri = `file://${photo.path}`;
 
       setIsCapturing(false);
+      useScanProgress.getState().start("quick");
       setIsAnalyzing(true);
 
       // Run quick analysis (3-5 seconds)
       const result = await quickAgeCheck(imageUri, propertyRules.minimumShooterAge);
 
+      useScanProgress.getState().finish();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 300));
       setIsAnalyzing(false);
 
       // Navigate to result screen
@@ -197,16 +202,8 @@ export const QuickCheckCameraScreen = () => {
         {/* Center Guide - Body focused - LARGER */}
         <View className="flex-1 items-center justify-center" pointerEvents="none">
           {isAnalyzing ? (
-            // Analyzing state
-            <View className="items-center">
-              <View className="w-24 h-24 bg-amber-500/30 rounded-full items-center justify-center mb-4">
-                <ActivityIndicator size="large" color="#f59e0b" />
-              </View>
-              <Text className="text-white text-xl font-bold text-center">
-                {provisional?.fieldCall === "LET WALK" ? "LET WALK" : "Hold, checking his body."}
-              </Text>
-              <Text className="text-white/70 text-sm mt-2 text-center">{provisional?.note || "The first look never calls a shooter."}</Text>
-            </View>
+            // Analyzing: one bar, one line, honest time left
+            <ScanProgressCompact fallbackMode="quick" />
           ) : (
             // Ready to capture - LARGER viewer window
             <>
@@ -248,15 +245,13 @@ export const QuickCheckCameraScreen = () => {
                 >
                   {isCapturing ? (
                     <ActivityIndicator size="large" color="#fff" />
-                  ) : isAnalyzing ? (
-                    <Ionicons name="hourglass" size={32} color="#fff" />
                   ) : (
                     <Ionicons name="flash" size={32} color="#fff" />
                   )}
                 </View>
               </View>
               <Text className="text-white text-sm mt-2 font-semibold">
-                {isCapturing ? "Capturing..." : isAnalyzing ? "Analyzing..." : "Quick Check"}
+                {isCapturing ? "Capturing..." : isAnalyzing ? " " : "Quick Check"}
               </Text>
             </Pressable>
           </View>

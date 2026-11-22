@@ -9,7 +9,7 @@ import type { AgingConfig } from "./aging.js";
 import { ScanDeadlineError } from "./budget.js";
 import { applyRules, parseCc, type CrossCheck, type RuleDecision } from "./crosscheck.js";
 import { parseAge } from "./plain.js";
-import { walkHydrogen, type ModelCaller, type WalkResult } from "./pipeline.js";
+import { walkHydrogen, type ModelCaller, type WalkResult, type WalkStepListener } from "./pipeline.js";
 import { activeCrossCheckPrompt, activePlainPrompt } from "./prompts.js";
 import { cls, formatAgeLabel, route, type Ours, type RouteResult } from "./router.js";
 
@@ -98,11 +98,13 @@ function shownAge(result: RouteResult, walk: WalkResult | null, rule: RuleDecisi
 export async function ageWithRouter(input: {
   call: ModelCaller;
   settings: AgingConfig;
-  walk?: (call: ModelCaller) => Promise<WalkResult>;
+  walk?: (call: ModelCaller, onStep?: WalkStepListener) => Promise<WalkResult>;
   log?: (event: AgeRouterLog) => void;
   now?: () => number;
   /** A plain answer this scan already paid for (Quick Check hand-off). Skips the second plain call. */
   plain?: [number, number] | null;
+  /** Display-only progress: each walk call, the walk finishing, the cross-check finishing. */
+  progress?: { walkStep: WalkStepListener; walkDone: () => void; crossCheckDone: () => void };
 }): Promise<WalkResult> {
   const now = input.now ?? Date.now;
   const started = now();
@@ -115,7 +117,16 @@ export async function ageWithRouter(input: {
   const crossPrompt = wantCrossCheck ? activeCrossCheckPrompt(input.settings.crossCheckPrompt) : "";
   const walk = input.walk ?? walkHydrogen;
 
-  const walkTask = walk(input.call)
+  const progress = input.progress;
+  const safely = (fn: (() => void) | undefined) => {
+    try {
+      fn?.();
+    } catch {
+      // Progress is display only.
+    }
+  };
+  const walkTask = walk(input.call, progress?.walkStep)
+    .finally(() => safely(progress?.walkDone))
     .then((result) => ({ ok: true as const, result, error: null }))
     .catch((error: unknown) => ({ ok: false as const, result: null, error }));
   const plainTask = !routerOn
@@ -123,7 +134,9 @@ export async function ageWithRouter(input: {
     : input.plain !== undefined
       ? Promise.resolve(input.plain)
       : readPlain(input.call, plainPrompt);
-  const crossTask = wantCrossCheck ? readCrossCheck(input.call, crossPrompt) : Promise.resolve(null);
+  const crossTask = wantCrossCheck
+    ? readCrossCheck(input.call, crossPrompt).finally(() => safely(progress?.crossCheckDone))
+    : Promise.resolve(null);
   const [walkBox, plain, crossCheck] = await Promise.all([walkTask, plainTask, crossTask]);
 
   const walkResult = walkBox.ok ? walkBox.result : null;

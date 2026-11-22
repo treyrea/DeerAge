@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo } from "react";
-import { View, Text, ActivityIndicator, ScrollView, Pressable, Image, Dimensions, StatusBar } from "react-native";
+import { View, Text, ScrollView, Pressable, Image, Dimensions, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -15,6 +15,8 @@ import * as Haptics from "expo-haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
+import { ScanProgressView } from "../components/ScanProgressView";
+import { useScanProgress } from "../state/scanProgress";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -112,15 +114,15 @@ export const ProcessingScreen = () => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
   }, [error, errorCode, analysisMode]);
 
-  // Navigate to results when processing completes
+  // On the result: fill the bar, one light success tap, then show it.
   useEffect(() => {
-    if (!isProcessing && currentResult) {
-      if (analysisMode === "age") {
-        navigation.replace("AgeResults");
-      } else {
-        navigation.replace("Results");
-      }
-    }
+    if (isProcessing || !currentResult) return undefined;
+    useScanProgress.getState().finish();
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    const timer = setTimeout(() => {
+      navigation.replace(analysisMode === "age" ? "AgeResults" : "Results");
+    }, 350);
+    return () => clearTimeout(timer);
   }, [isProcessing, currentResult, analysisMode, navigation]);
 
   // Modified safety check - don't redirect if we just had an error
@@ -354,104 +356,21 @@ export const ProcessingScreen = () => {
     );
   }
 
-  // Normal processing UI
+  // Waiting: his photo, one bar, one line, honest time left.
   return (
-    <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      <ScrollView contentContainerClassName="flex-1 items-center justify-center px-6">
-        {(
-          <View className="items-center">
-            {/* Loading Indicator */}
-            <View className="mb-8">
-              <ActivityIndicator size="large" color="#22c55e" />
-            </View>
-
-            {/* Title */}
-            <Text className="text-white text-2xl font-bold mb-2 text-center">
-              {analysisMode === "score"
-                ? "Scoring"
-                : provisional?.fieldCall === "LET WALK"
-                  ? "LET WALK"
-                  : "Hold, checking his body."}
-            </Text>
-            <Text className="text-gray-400 text-center mb-8">
-              {analysisMode === "score"
-                ? "This can take a couple of minutes. DeerAge will not guess early."
-                : provisional?.note || "Checking the body before the rack."}
-            </Text>
-
-            {/* Processing Steps */}
-            <View className="w-full max-w-md space-y-4">
-              <ProcessingStep
-                icon="scan"
-                title="Multi-Frame Analysis"
-                description="Detecting antlers and measuring geometry"
-                isActive={true}
-              />
-              <ProcessingStep
-                icon="resize"
-                title="Scale Estimation"
-                description="Calculating real-world measurements"
-                isActive={true}
-              />
-              <ProcessingStep
-                icon="git-compare"
-                title="Antler Reconstruction"
-                description="Fusing measurements and classifying all tines"
-                isActive={true}
-              />
-              <ProcessingStep
-                icon="calculator"
-                title="B&C Scoring"
-                description="Computing official Boone & Crockett scores"
-                isActive={true}
-              />
-              <ProcessingStep
-                icon="time"
-                title="Age Estimation"
-                description="Determining age band with regional priors"
-                isActive={true}
-              />
-            </View>
-
-            {/* Processing Info */}
-            <View className="mt-8 px-4 w-full max-w-md">
-              <Text className="text-gray-400 text-center text-sm leading-relaxed">
-                {analysisMode === "age"
-                  ? "AI is analyzing body characteristics to estimate age. This typically takes 30-60 seconds."
-                  : "AI is analyzing antler geometry and applying B&C scoring rules. This typically takes 30-60 seconds."}
-              </Text>
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </View>
-  );
-};
-
-interface ProcessingStepProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  isActive: boolean;
-}
-
-const ProcessingStep: React.FC<ProcessingStepProps> = ({ icon, title, description, isActive }) => {
-  return (
-    <View className="flex-row items-start">
-      <View
-        className={`w-10 h-10 rounded-full items-center justify-center mr-4 ${
-          isActive ? "bg-green-500/20" : "bg-neutral-800"
-        }`}
-      >
-        <Ionicons name={icon} size={20} color={isActive ? "#22c55e" : "#666"} />
-      </View>
-      <View className="flex-1">
-        <Text className={`font-semibold mb-1 ${isActive ? "text-white" : "text-gray-500"}`}>
-          {title}
-        </Text>
-        <Text className={`text-sm ${isActive ? "text-gray-400" : "text-gray-600"}`}>
-          {description}
-        </Text>
+    <View style={{ flex: 1, backgroundColor: BLIND.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+        <ScanProgressView
+          imageUri={imageUri}
+          fallbackMode={analysisMode === "age" ? "age" : "score"}
+          photoWidth={Math.min(SCREEN_WIDTH - 48, 420)}
+        />
+        {analysisMode === "age" && provisional?.fieldCall === "LET WALK" ? (
+          <Text style={{ color: BLIND.walk, fontSize: 15, marginTop: 8, alignSelf: "center", width: Math.min(SCREEN_WIDTH - 48, 420) }}>
+            {provisional.note || "Early read: let him walk."}
+          </Text>
+        ) : null}
       </View>
     </View>
   );

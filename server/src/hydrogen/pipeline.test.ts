@@ -484,3 +484,21 @@ test("clients older than 1.0.9 stay on the existing age path", () => {
   assert.equal(agingEngineFor("1.0.10", "sol"), "sol");
   assert.equal(agingEngineFor("1.0.9", "gpt-5.6-sol"), "sol");
 });
+
+test("the walk reports each call before it starts, for the progress bar", async () => {
+  const script = scripted([quality(), gate("NO", "NO"), "Body notes.", closer("YOUNGER"), closer("OLDER")]);
+  const steps: string[] = [];
+  const result = await walkHydrogen(script.call, (step) => {
+    steps.push(step.step === "closer" ? `closer${step.index}` : step.step);
+  });
+  assert.equal(result.kind, "age");
+  assert.deepEqual(steps, ["quality", "gate", "stepA", "closer0", "closer1"]);
+});
+
+test("a throwing progress listener never stops the walk", async () => {
+  const script = scripted([quality(), gate("YES", "YES")]);
+  const result = await walkHydrogen(script.call, () => {
+    throw new Error("display broke");
+  });
+  assert.equal(result.kind, "age");
+});
