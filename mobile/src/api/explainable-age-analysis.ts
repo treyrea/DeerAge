@@ -133,5 +133,6 @@ export async function analyzeExplainableAge(
       ? result.reasons.filter((line): line is string => typeof line === "string" && line.trim().length > 0).map((line) => line.trim())
       : undefined,
     pipeline: hydrogen ? "hydrogen" : "openai",
+    scanJobId: response.jobId,
   };
 }

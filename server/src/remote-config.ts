@@ -15,6 +15,7 @@ import {
   clampCallTimeout,
   type AgingConfig,
 } from "./hydrogen/aging.js";
+import { defaultContributeConfig, normalizeContribute, patchContribute, type ContributeConfig } from "./contribute-config.js";
 import { defaultQuickConfig, normalizeQuick, patchQuick, QuickConfigError, type QuickConfig } from "./quick-engine.js";
 import {
   ApiError,
@@ -31,6 +32,14 @@ import {
 } from "./wire.js";
 
 const KEY = "deerage:remote-config";
+const INVITE_MESSAGE_MAX = 400;
+
+/** https links only, so a bad PATCH can't put a javascript: or http link in the share sheet. */
+export function inviteUrlOf(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const text = value.trim();
+  return /^https:\/\/[^\s<>"']{4,300}$/.test(text) ? text : "";
+}
 
 export const FLAG_NAMES = [
   "feed",
@@ -70,6 +79,10 @@ export interface RemoteConfig {
     noDeerTitle: string;
     /** Empty means the built-in retake tip. */
     noDeerTip: string;
+    /** Invite-a-buddy share text. Empty means the app's built-in message. */
+    inviteMessage: string;
+    /** App Store link in the invite. Empty means the built-in link. */
+    inviteUrl: string;
   };
   products: {
     offeringId: string;
@@ -80,6 +93,8 @@ export interface RemoteConfig {
   aging: AgingConfig;
   /** Quick Check engine. Live: switch without a deploy. */
   quick: QuickConfig;
+  /** "Help improve DeerAge" storage. Off by default: nothing is stored until the owner turns it on. */
+  contribute: ContributeConfig;
 }
 
 function productId(name: string, fallback: string): string {
@@ -125,10 +140,13 @@ export function defaultRemoteConfig(): RemoteConfig {
       setMinimumPrompt: "",
       noDeerTitle: "",
       noDeerTip: "",
+      inviteMessage: "",
+      inviteUrl: "",
     },
     products: defaultProducts(),
     aging: defaultAgingConfig(),
     quick: defaultQuickConfig(),
+    contribute: defaultContributeConfig(),
   };
 }
 
@@ -159,6 +177,8 @@ function mergeConfig(stored: unknown): RemoteConfig {
     if (typeof incoming.setMinimumPrompt === "string") copy.setMinimumPrompt = incoming.setMinimumPrompt.slice(0, 120);
     if (typeof incoming.noDeerTitle === "string") copy.noDeerTitle = incoming.noDeerTitle.slice(0, 40);
     if (typeof incoming.noDeerTip === "string") copy.noDeerTip = incoming.noDeerTip.slice(0, 160);
+    if (typeof incoming.inviteMessage === "string") copy.inviteMessage = incoming.inviteMessage.slice(0, INVITE_MESSAGE_MAX);
+    if (typeof incoming.inviteUrl === "string") copy.inviteUrl = inviteUrlOf(incoming.inviteUrl);
     if (Array.isArray(incoming.homeTips)) {
       copy.homeTips = incoming.homeTips.filter((tip): tip is string => typeof tip === "string" && tip.trim().length > 0).slice(0, 4).map((tip) => tip.slice(0, 120));
     }
@@ -179,6 +199,7 @@ function mergeConfig(stored: unknown): RemoteConfig {
     products,
     aging: normalizeAging(row.aging),
     quick: normalizeQuick((row as { quick?: unknown }).quick),
+    contribute: normalizeContribute((row as { contribute?: unknown }).contribute),
   };
 }
 
@@ -206,6 +227,7 @@ export async function publicConfigPayload() {
     flags: config.flags,
     copy: config.copy,
     products: config.products,
+    contribute: { enabled: config.contribute.enabled },
   };
 }
 
@@ -288,6 +310,13 @@ export async function handleAdminConfigRequest(req: Incoming): Promise<Outgoing>
     if (body.setMinimumPrompt != null) current.copy.setMinimumPrompt = body.setMinimumPrompt === "" ? "" : cleanText(body.setMinimumPrompt, 120);
     if (body.noDeerTitle != null) current.copy.noDeerTitle = body.noDeerTitle === "" ? "" : cleanText(body.noDeerTitle, 40);
     if (body.noDeerTip != null) current.copy.noDeerTip = body.noDeerTip === "" ? "" : cleanText(body.noDeerTip, 160);
+    if (body.inviteMessage != null) current.copy.inviteMessage = body.inviteMessage === "" ? "" : patchText(body.inviteMessage, INVITE_MESSAGE_MAX, "inviteMessage");
+    if (body.inviteUrl != null) {
+      const url = body.inviteUrl === "" ? "" : inviteUrlOf(body.inviteUrl);
+      if (body.inviteUrl !== "" && !url) throw new ApiError(400, "invalid_request", "inviteUrl must be an https link.");
+      current.copy.inviteUrl = url;
+    }
+    if (body.contribute != null) current.contribute = patchContribute(current.contribute, body.contribute);
     if (body.products && typeof body.products === "object") {
       const incoming = body.products as Record<string, unknown>;
       for (const name of ["offeringId", "seasonPassId", "monthlyId", "winBackOfferId"] as const) {

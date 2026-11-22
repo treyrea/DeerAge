@@ -3,6 +3,7 @@
  * No AI provider keys are read from the request. They come from the environment.
  */
 
+import { handleAdminContributions, handleContributionAge, handleContributionImage } from "./contributions.js";
 import { handleAdminAnnouncementsRequest, handleAdminPollResultsRequest, handleAdminPollsRequest, handleFeedRequest, handlePollVoteRequest } from "./content.js";
 import { getAccess, handleJobStatus, runAnalysis, type AnalyzeBody } from "./analyze.js";
 import { handleAdminFeedbackRequest, handleAdminReply, handleCallReport, handleDeleteReportPhoto, handleFreeMonths, handleGrant, handleOwed, handleReportCases, handleReportImage, handleReportStep, handleReplies, handleRescan, handleRescanAnswer } from "./feedback.js";
@@ -77,6 +78,9 @@ export async function route(req: Incoming): Promise<Outgoing> {
   if (path === "/api/admin/free-months") return handleFreeMonths(req);
   if (path === "/api/admin/report-cases") return handleReportCases(req);
   if (path === "/api/admin/report-image") return handleReportImage(req);
+  if (path === "/api/admin/contributions") return handleAdminContributions(req);
+  if (path === "/api/admin/contribution-image") return handleContributionImage(req);
+  if (path === "/api/contribution-age") return handleContributionAge(req);
   if (path === "/api/replies") return handleReplies(req);
   if (path === "/api/rescan") return handleRescan(req);
   if (path === "/api/rescan-answer") return handleRescanAnswer(req);

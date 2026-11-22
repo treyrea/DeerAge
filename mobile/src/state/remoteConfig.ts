@@ -30,6 +30,8 @@ export interface AppCopy {
   setMinimumPrompt: string;
   noDeerTitle: string;
   noDeerTip: string;
+  inviteMessage: string;
+  inviteUrl: string;
 }
 
 export interface ProductConfig {
@@ -65,6 +67,8 @@ interface RemoteConfigState {
   minSupportedVersion: string;
   recommendedVersion: string;
   minVersion: string;
+  /** Owner switch for "Help improve DeerAge" storage. */
+  contributeEnabled: boolean;
   loaded: boolean;
   applyPayload: (body: Record<string, unknown>) => void;
 }
@@ -84,7 +88,8 @@ export const useRemoteConfig = create<RemoteConfigState>()(
     (set) => ({
       flags: FLAGS,
       products: DEFAULT_PRODUCTS,
-      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "", noDeerTitle: "", noDeerTip: "" },
+      copy: { paywallHeadline: "", paywallSubhead: "", homeTips: [], seasonalBanner: "", regionHeadsUp: "", leaseManagerText: "", leaseManagerButton: "", verdictTake: "", verdictWalk: "", verdictLook: "", verdictNote: "", setMinimumPrompt: "", noDeerTitle: "", noDeerTip: "", inviteMessage: "", inviteUrl: "" },
+      contributeEnabled: false,
       minSupportedVersion: "1.0.0",
       recommendedVersion: "",
       minVersion: "",
@@ -103,6 +108,7 @@ export const useRemoteConfig = create<RemoteConfigState>()(
           minSupportedVersion: typeof body.minSupportedVersion === "string" ? body.minSupportedVersion : "1.0.0",
           recommendedVersion: typeof body.recommendedVersion === "string" ? body.recommendedVersion : "",
           minVersion: typeof body.minVersion === "string" ? body.minVersion : "",
+          contributeEnabled: Boolean(body.contribute && typeof body.contribute === "object" && (body.contribute as Record<string, unknown>).enabled === true),
           copy: {
             paywallHeadline: typeof copy.paywallHeadline === "string" ? copy.paywallHeadline : "",
             paywallSubhead: typeof copy.paywallSubhead === "string" ? copy.paywallSubhead : "",
@@ -117,6 +123,8 @@ export const useRemoteConfig = create<RemoteConfigState>()(
             setMinimumPrompt: typeof copy.setMinimumPrompt === "string" ? copy.setMinimumPrompt : "",
             noDeerTitle: typeof copy.noDeerTitle === "string" ? copy.noDeerTitle : "",
             noDeerTip: typeof copy.noDeerTip === "string" ? copy.noDeerTip : "",
+            inviteMessage: typeof copy.inviteMessage === "string" ? copy.inviteMessage : "",
+            inviteUrl: typeof copy.inviteUrl === "string" ? copy.inviteUrl : "",
             homeTips: Array.isArray(copy.homeTips) ? copy.homeTips.filter((tip): tip is string => typeof tip === "string") : [],
           },
         });
