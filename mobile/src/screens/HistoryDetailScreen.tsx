@@ -2,7 +2,7 @@
  * History Detail Screen - View full scorecard from history
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +22,8 @@ import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { usePhotoAspect } from "../hooks/usePhotoAspect";
+import { fittedPhotoHeight } from "../lib/photo-fit";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -151,13 +153,7 @@ export const HistoryDetailScreen = () => {
           ) : null}
           {/* Image Preview */}
           {capturedFrames[0]?.imageUri && (
-            <View className="mb-6 rounded-xl overflow-hidden">
-              <Image
-                source={{ uri: capturedFrames[0].imageUri }}
-                style={{ width: "100%", height: 250 }}
-                resizeMode="cover"
-              />
-            </View>
+            <FittedPhoto uri={capturedFrames[0].imageUri} />
           )}
 
           {/* Date & Mode Badge */}
@@ -411,7 +407,6 @@ export const HistoryDetailScreen = () => {
             <DetailRow label="Processing Time" value={`${(processingTime / 1000).toFixed(1)}s`} />
             <DetailRow label="Scale Method" value={scale.method} />
             <DetailRow label="Scale Confidence" value={scale.confidence} />
-            <DetailRow label="Cloud AI" value="GPT-4.1" />
             {cloudRefinementUsed && (
               <DetailRow label="Extra Refinement" value="Yes" />
             )}
@@ -468,6 +463,21 @@ const ScoreRow: React.FC<{
       >
         {value}
       </Text>
+    </View>
+  );
+};
+
+/** Whole photo, no cover crop, so the full rack or body is visible. */
+const FittedPhoto: React.FC<{ uri: string }> = ({ uri }) => {
+  const aspect = usePhotoAspect(uri);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const height = fittedPhotoHeight(frameWidth, aspect, 460, 250);
+  return (
+    <View
+      className="mb-6 rounded-xl overflow-hidden bg-black"
+      onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+    >
+      <Image source={{ uri }} style={{ width: "100%", height }} resizeMode="contain" />
     </View>
   );
 };

@@ -30,6 +30,8 @@ import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
 import * as Haptics from "expo-haptics";
+import { usePhotoAspect } from "../hooks/usePhotoAspect";
+import { fittedPhotoHeight } from "../lib/photo-fit";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -1141,7 +1143,6 @@ export const ResultsScreen = () => {
               <DetailRow label="Processing Time" value={`${(processingTime / 1000).toFixed(1)}s`} noUnit />
               <DetailRow label="Scale Method" value={scale.method} noUnit />
               <DetailRow label="Scale Confidence" value={scale.confidence} noUnit />
-              <DetailRow label="Cloud AI" value="GPT-4.1" noUnit />
               {cloudRefinementUsed && (
                 <DetailRow label="Extra Refinement" value="Yes" noUnit />
               )}
@@ -1295,6 +1296,10 @@ export const ResultsScreen = () => {
 
 // Helper Components
 const ZoomableImage: React.FC<{ imageUri: string }> = ({ imageUri }) => {
+  // Fit the whole photo (no cover crop) so the full rack is visible.
+  const aspect = usePhotoAspect(imageUri);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const photoHeight = fittedPhotoHeight(frameWidth, aspect, 460, 250);
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -1358,13 +1363,16 @@ const ZoomableImage: React.FC<{ imageUri: string }> = ({ imageUri }) => {
   }));
 
   return (
-    <View className="mb-6 rounded-2xl overflow-hidden bg-neutral-800">
+    <View
+      className="mb-6 rounded-2xl overflow-hidden bg-black"
+      onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+    >
       <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[{ width: "100%", height: 250 }]}>
+        <Animated.View style={[{ width: "100%", height: photoHeight }]}>
           <Animated.Image
             source={{ uri: imageUri }}
             style={[{ width: "100%", height: "100%" }, animatedStyle]}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </Animated.View>
       </GestureDetector>
