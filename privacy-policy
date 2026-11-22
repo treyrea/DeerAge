@@ -1,6 +1,6 @@
 # **DeerAge Privacy Policy**
 
-**Last updated:** November 15, 2026
+**Last updated:** November 22, 2026
 **App name:** DeerAge
 **Developer:** Trey Harper
 
@@ -8,103 +8,87 @@
 
 ## **1. Introduction**
 
-DeerAge (“we,” “our,” or “us”) values your privacy. This Privacy Policy explains how we collect, use, and protect personal information when you use our mobile application (“the App”). By using the App, you agree to this policy.
+This policy explains what the DeerAge app ("the App") sends off your phone, what we keep, and why. DeerAge does not require an account, does not show ads, and does not track you across other apps or websites. We do not sell your data.
 
 ---
 
-## **2. Information We Collect**
+## **2. Photos you scan**
 
-We collect only the data necessary to provide app functionality, improve performance, and maintain reliability.
+When you run Age My Deer, Quick Check, or Score My Rack, the photo is sent to our server and on to outside AI services for analysis: Google (Gemini) and Anthropic (Claude). Some backup paths may use OpenAI models through Vercel's AI Gateway. These services return the age and score estimate.
 
-### **Personal Information**
+DeerAge does not store the photo from a normal scan. It is used to answer that request and then dropped. Results are kept on your phone in History, and you can delete them there.
 
-| Data Type                             | Purpose of Collection                                                                                     |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| **Precise Location**                  | Optional. Only while you are using the app, and only if you allow it. DeerAge uses it on the phone to suggest today's hunt region and, if you keep a pre-shot record, to attach the stand. The region name (not the GPS point) is sent with an analysis so the age prior matches the hunt. The GPS point stays on your phone unless you share a record. It is linked to your own records and is not used to track you. DeerAge does not collect location in the background. |
-| **Email Address** | Optional. Only if you sign up for rut-timing alerts and an end-of-season recap, or if you type an email on a wrong-call report or a cancel note so we can answer that one note. A report email is used for customer support only, never for marketing, and is not filled in for you. DeerAge does not require an email. |
-| **Lease manager name or phone** | Optional. Only if you type them in Settings so a text can be addressed. They stay on this phone. DeerAge does not read your contacts, does not upload the number, and does not send the message. You press Send in Messages. |
-| **Push notification token** | Optional. Only if you turn notifications on, so we can send an update or a poll to this install. |
-| **Photos or Videos**                  | To allow users to upload deer images for ageing analysis and to store or display these within the app. A submitted wrong-call report keeps that scan's photo so we can study the miss. A second look stores the same photo and the two ages. Those photos are private, linked to the report, kept until the report is resolved plus 1 year, and can be deleted from Messages in Settings. |
-| **Wrong-call reports** | If you say a call was wrong or right, DeerAge stores the scan id, the call, the result, an age you type, whether you marked it jawbone-aged, your note, and, for a wrong call, the scan photo. Confirmed harvest ages are copied into the same store so later checks can use them. |
-| **Cancel and return notes** | If you answer the cancel survey or the "What could we do better?" prompt, DeerAge stores the reason and the optional note, tied to this install's app user id. |
-
-### **Usage and Diagnostic Information**
-
-| Data Type                                               | Purpose of Collection                                                                                    |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Other Usage Data**                                    | To understand app feature usage and improve user experience.                                             |
-| **Crash Data, Performance Data, Other Diagnostic Data** | To identify and fix technical issues, monitor app stability, and improve performance.                    |
-| **Environment Scanning**                                | To analyze surroundings (e.g., lighting or object detection) for photo accuracy in deer ageing features. |
+When you keep a pre-shot record, our server stores a signed summary of the result (age class, call, cues, time) and a fingerprint (hash) of the photo so the record can be verified later. It does not store the photo or your location.
 
 ---
 
-## **3. How We Use Your Information**
+## **3. Information we collect**
 
-We use your information solely to:
+Everything below is tied to a random app user id that the App creates for this install. It is not your name or Apple ID.
 
-* Provide and improve the DeerAge app’s core features.
-* Respond to support requests.
-* Ensure app reliability and safety.
-* Analyze usage patterns for product improvement.
-* Comply with legal requirements where applicable.
+| Data | When and why |
+| --- | --- |
+| **App user id** | Created automatically. Used to count free scans, apply purchases, and link the optional items below to your install. |
+| **Purchase history** | Purchases go through Apple. RevenueCat, our subscription service, receives your purchases and app user id so the App knows what you have unlocked. We never see your payment card. |
+| **Email address** | Optional. Only if you sign up for rut-timing alerts and an end-of-season recap, or type an email on a wrong-call report or cancel note so we can reply. You can unsubscribe at any time. |
+| **Report photos and notes** | Optional. If you report a wrong call, we keep that scan's photo, the result, the age you type, whether it was jawbone-aged, and your note so we can study the miss. A second look on a report stores the second result. |
+| **Harvest checks** | Optional. If you confirm a harvested deer, we keep the scan id, the confirmed age, how it was aged, and your note. |
+| **Cancel-survey notes and poll votes** | Optional. Your answer and any note you type. |
+| **Push notification token** | Optional. Only if you turn notifications on, so we can send update notes or polls to this install. Turning notifications off removes it. |
 
-We **do not sell, rent, or trade** your personal information to third parties.
+**Location.** Optional, and only while the App is open. Your GPS point stays on your phone. It is used to suggest your hunt region and to add the stand to a pre-shot record saved on your phone. Only the region name (for example, an ecoregion) is sent with a scan so the age estimate fits your area. We do not keep it on the server.
 
----
+**Lease manager name or phone.** Optional. Stays on your phone. DeerAge does not read your contacts and does not send the text; you press Send in Messages.
 
-## **4. Data Sharing and Disclosure**
+**"Help improve DeerAge" switch.** Photo sharing through this switch is turned off on our side today, so nothing is stored. If we turn it on, we will update this policy and the App Store privacy details first. It will only ever apply if you switch it on.
 
-We may share limited information only when necessary to:
-
-* Provide core services (e.g., cloud hosting, analytics, crash reporting).
-* Comply with law enforcement or legal obligations.
-* Protect the rights, property, or safety of users or the public.
-
-All third-party service providers are bound by confidentiality and data protection agreements.
+DeerAge does not use advertising SDKs or analytics SDKs and does not collect crash reports.
 
 ---
 
-## **5. Data Retention**
+## **4. How long we keep it**
 
-We retain your data only as long as necessary to provide app functionality or as required by law. You can request deletion of your personal data at any time by contacting us at **treyrea@gmail.com**.
-
----
-
-## **6. Data Security**
-
-We use encryption, access control, and secure server environments to protect your information. While no system is completely secure, we take reasonable precautions to prevent unauthorized access, loss, or misuse.
+- **Report photos:** kept while the report is open. Once the report is closed, the photo is kept for 1 more year and then deleted. You can delete a report photo sooner from Messages in Settings.
+- **Email:** kept until you unsubscribe or ask us to delete it.
+- **Push token:** kept until you turn notifications off or it stops working.
+- **Other items above:** kept until you ask us to delete them.
 
 ---
 
-## **7. Your Privacy Rights**
+## **5. Who we share it with**
 
-Depending on your region, you may have rights to:
+We share data only with services that run the App:
 
-* Access, correct, or delete your data.
-* Withdraw consent at any time.
-* Request a copy of your personal information.
+- Google, Anthropic, and (on some backup paths) OpenAI through Vercel's AI Gateway, for photo analysis
+- Vercel and Upstash, for hosting and storage
+- RevenueCat and Apple, for purchases
+- Expo, to deliver push notifications you turned on
 
-To exercise these rights, contact us at **treyrea@gmail.com**.
-
----
-
-## **8. Children’s Privacy**
-
-DeerAge is not intended for children under 13. We do not knowingly collect personal information from anyone under this age. If such data is discovered, it will be deleted promptly.
+We may also share information when the law requires it. We do not sell, rent, or trade your data.
 
 ---
 
-## **9. Changes to This Policy**
+## **6. Your choices**
 
-We may update this Privacy Policy from time to time. The latest version will always be posted at **https://treyharper.github.io/deerage/privacy-policy**, with the updated date at the top.
+- Every optional item above can be skipped.
+- You can turn off location, camera, photos, and notifications in iPhone Settings.
+- To see or delete what we hold for your install, email **treyrea@gmail.com**.
 
 ---
 
-## **10. Contact Us**
+## **7. Children**
 
-If you have questions or concerns about this Privacy Policy or your data, please contact:
+DeerAge is not meant for children under 13, and we do not knowingly collect their data. If we learn we have, we will delete it.
 
-**Trey Harper**
+---
+
+## **8. Changes**
+
+When this policy changes, we update the date at the top. The current version is always at **https://deerage.app/privacy**.
+
+---
+
+## **9. Contact**
+
+Trey Harper, developer of DeerAge
 Email: **treyrea@gmail.com**
-Developer of *DeerAge*
----
