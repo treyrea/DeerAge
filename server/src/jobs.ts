@@ -16,6 +16,21 @@ export interface ScanJob {
 }
 
 const memory = new Map<string, ScanJob>();
+const statusReads = new Map<string, { second: number; count: number; job: ScanJob | null }>();
+let jobClock: () => number = Date.now;
+
+/** A status poll storm must not turn into a Redis GET storm. Two reads a second is enough. */
+const STATUS_READS_PER_SECOND = 2;
+
+export function resetJobPollGuardForTests(): void {
+  statusReads.clear();
+  jobClock = Date.now;
+}
+
+export function setJobClockForTests(now: (() => number) | null): void {
+  jobClock = now ?? Date.now;
+  statusReads.clear();
+}
 
 export function newJobId(): string {
   return `job_${randomBytes(8).toString("hex")}`;
@@ -33,13 +48,31 @@ export async function saveJob(job: ScanJob): Promise<void> {
 export async function loadJob(id: string): Promise<ScanJob | null> {
   const local = memory.get(id);
   if (local) return local;
+  const second = Math.floor(jobClock() / 1000);
+  const seen = statusReads.get(id);
+  if (seen && seen.second === second && seen.count >= STATUS_READS_PER_SECOND) {
+    return seen.job;
+  }
+  let job: ScanJob | null = null;
   try {
     const raw = await redisGet(`deerage:job:${id}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as ScanJob;
+    if (raw) job = JSON.parse(raw) as ScanJob;
   } catch {
-    return null;
+    job = null;
   }
+  const current = statusReads.get(id);
+  if (current && current.second === second) {
+    current.count += 1;
+    current.job = job ?? current.job;
+  } else {
+    statusReads.set(id, { second, count: 1, job });
+  }
+  if (statusReads.size > 2000) {
+    for (const [key, value] of statusReads) {
+      if (value.second < second - 2) statusReads.delete(key);
+    }
+  }
+  return job;
 }
 
 export function keepAlive(work: Promise<unknown>): void {

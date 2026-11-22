@@ -103,6 +103,8 @@ interface DeerScoringState {
   reset: () => void;
 }
 
+let analysisInFlight = false;
+
 export const useDeerScoringStore = create<DeerScoringState>()(
   persist(
     (set, get) => ({
@@ -178,8 +180,11 @@ export const useDeerScoringStore = create<DeerScoringState>()(
     set({ isCapturing: false });
   },
 
-  // Process all captured frames
+  // Process all captured frames. A second call while one scan is running does not start another.
   processFrames: async () => {
+    if (analysisInFlight) return;
+    analysisInFlight = true;
+    try {
     console.log("[Store] processFrames called");
 
     // Set processing state immediately (synchronously) before any async operations
@@ -430,6 +435,9 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         errorCode: analysisError?.code ?? "unknown",
         isProcessing: false,
       });
+    }
+    } finally {
+      analysisInFlight = false;
     }
   },
 
