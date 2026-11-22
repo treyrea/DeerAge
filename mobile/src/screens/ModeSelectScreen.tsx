@@ -203,7 +203,7 @@ export const ModeSelectScreen = () => {
             <Ionicons name="camera-outline" size={40} color="#F5F5DC" />
             <Text className="text-white text-2xl font-bold mt-4">Take Photo</Text>
             <Text className="text-sm mt-2 text-center" style={{ color: "#E5D4B8" }}>
-              Use camera with 2-second burst capture
+              {isAgeMode ? "Use camera with a 1-second burst capture" : "Use camera with 2-second burst capture"}
             </Text>
           </LinearGradient>
         </Pressable>

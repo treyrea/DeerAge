@@ -23,6 +23,7 @@ import { AntlerSilhouette } from "../components/AntlerSilhouette";
 import { DeerMark } from "../components/DeerMark";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -55,6 +56,7 @@ export const DeerCameraScreen = () => {
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const isProcessing = useDeerScoringStore((s) => s.isProcessing);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
+  const burstFrames = burstFrameCount(analysisMode);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
 
   // Distance store
@@ -177,9 +179,9 @@ export const DeerCameraScreen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Capture 8 frames over 2 seconds (4 FPS)
-      const totalFrames = 8;
-      const intervalMs = 250; // 250ms between frames
+      // Age: 4 frames over about 1 s. Rack/score: 8 frames over about 2 s. Same 4 fps interval.
+      const totalFrames = burstFrames;
+      const intervalMs = BURST_INTERVAL_MS;
       const capturedFrames: DeerAnalysisFrame[] = [];
 
       for (let i = 0; i < totalFrames; i++) {
@@ -533,7 +535,7 @@ export const DeerCameraScreen = () => {
                           WHY HOLD STEADY:
                         </Text>
                         <Text className="text-gray-300 text-xs leading-5">
-                          The burst takes several shots in about two seconds. DeerAge keeps the sharpest one for the age read.
+                          The burst takes several shots in about one second. DeerAge keeps the sharpest one for the age read.
                         </Text>
                       </>
                     ) : (
@@ -633,7 +635,7 @@ export const DeerCameraScreen = () => {
                 Keep Camera Steady!
               </Text>
               <Text className="text-white/80 text-sm">
-                Capturing frame {Math.ceil((captureProgress / 100) * 8)} of 8
+                Capturing frame {Math.ceil((captureProgress / 100) * burstFrames) || 1} of {burstFrames}
               </Text>
             </View>
           )}
