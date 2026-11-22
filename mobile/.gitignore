@@ -33,9 +33,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# iOS & Android
-ios/
-android/
+# iOS & Android prebuild output at the app root (not local modules)
+/ios/
+/android/
 
 # Expo log
 expo.log
