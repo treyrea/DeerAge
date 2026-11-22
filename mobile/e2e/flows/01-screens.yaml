@@ -203,7 +203,7 @@ appId: com.vibecode.deerage-qj3cfq
 - tapOn:
     id: e2e-update
 - extendedWaitUntil:
-    visible: "Update available"
+    visible: ".*Update available.*"
     timeout: 10000
 - takeScreenshot: update-card
 - tapOn:
