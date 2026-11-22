@@ -153,15 +153,86 @@ function asNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+type RedisPipeline = (commands: (string | number)[][]) => Promise<unknown[]>;
+
+/**
+ * One Redis touch per key per process. A flood of requests from one client
+ * must not keep writing INCR+EXPIRE after the counter is known.
+ * The first touch is a single pipeline (INCR, then EXPIRE only for that key).
+ * Later requests in this process are decided from memory.
+ */
+const REDIS_SYNCS_PER_SECOND = 200;
+const RATE_DOWN_MS = 15_000;
+
+interface RateGate {
+  used: number;
+  synced: boolean;
+  downUntil: number;
+  touched: number;
+}
+
+const rateGates = new Map<string, RateGate>();
+let rateBudgetSecond = -1;
+let rateBudgetUsed = 0;
+
+export function resetRateGatesForTests(): void {
+  rateGates.clear();
+  rateBudgetSecond = -1;
+  rateBudgetUsed = 0;
+}
+
+function sweepRateGates(now: number): void {
+  if (rateGates.size < 1500) return;
+  for (const [key, gate] of rateGates) {
+    if (now - gate.touched > 180_000) rateGates.delete(key);
+  }
+}
+
+export async function consumeRate(key: string, limit: number, ttlSeconds: number, run: RedisPipeline, now = Date.now()): Promise<boolean> {
+  sweepRateGates(now);
+  let gate = rateGates.get(key);
+  if (!gate) {
+    gate = { used: 0, synced: false, downUntil: 0, touched: now };
+    rateGates.set(key, gate);
+  }
+  gate.touched = now;
+  if (gate.downUntil > now) throw new LimitStoreError("Usage counters could not be reached.");
+  if (gate.used >= limit) return false;
+  if (gate.synced) {
+    gate.used += 1;
+    return gate.used <= limit;
+  }
+  const second = Math.floor(now / 1000);
+  if (second !== rateBudgetSecond) {
+    rateBudgetSecond = second;
+    rateBudgetUsed = 0;
+  }
+  if (rateBudgetUsed >= REDIS_SYNCS_PER_SECOND) return false;
+  rateBudgetUsed += 1;
+  gate.synced = true;
+  try {
+    const [countRaw] = await run([
+      ["INCR", key],
+      ["EXPIRE", key, ttlSeconds],
+    ]);
+    const count = asNumber(countRaw);
+    if (count <= 0) throw new LimitStoreError("Usage counters could not be reached.");
+    gate.used = Math.max(gate.used, count);
+    return gate.used <= limit;
+  } catch (error) {
+    gate.synced = false;
+    gate.downUntil = now + RATE_DOWN_MS;
+    rateBudgetUsed = Math.max(0, rateBudgetUsed - 1);
+    if (error instanceof LimitStoreError) throw error;
+    throw new LimitStoreError("Usage counters could not be reached.");
+  }
+}
+
 /** Fixed one-minute bucket shared by every instance. Returns true when the call may proceed. */
 export async function allowRate(appUserId: string, limit: number): Promise<boolean> {
   const bucket = Math.floor(Date.now() / 60_000);
   const key = `deerage:rate:${userKey(appUserId)}:${bucket}`;
-  const [count] = await pipeline([
-    ["INCR", key],
-    ["EXPIRE", key, 120],
-  ]);
-  return asNumber(count) <= limit;
+  return consumeRate(key, limit, 120, (commands) => pipeline(commands));
 }
 
 export type FairUseResult = "ok" | "daily" | "monthly";

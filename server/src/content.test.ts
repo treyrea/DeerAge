@@ -3,6 +3,7 @@ import { beforeEach, describe, test } from "node:test";
 import { setSegmentLookupForTests } from "./content.js";
 import { route, type Incoming } from "./http.js";
 import { setKvForTests, type Kv } from "./kv.js";
+import { resetRateGatesForTests } from "./limits.js";
 import type { Outgoing } from "./wire.js";
 
 class MemoryKv implements Kv {
@@ -89,6 +90,7 @@ function payload(result: Outgoing): Record<string, any> {
 
 describe("community endpoints", { concurrency: 1 }, () => {
   beforeEach(() => {
+    resetRateGatesForTests();
     setKvForTests(new MemoryKv());
     setSegmentLookupForTests(async (id) => (id.startsWith("sub_") ? "subscriber" : "free"));
     process.env.ADMIN_TOKEN = "admin-test-token";

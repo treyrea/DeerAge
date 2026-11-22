@@ -3,7 +3,7 @@
  * Reads UPSTASH_REDIS_REST_* first, then KV_REST_API_*, same as the usage counters.
  */
 
-import { redisCommand, redisConfigured, redisPipeline } from "./limits.js";
+import { consumeRate, redisCommand, redisConfigured, redisPipeline } from "./limits.js";
 import { ApiError } from "./wire.js";
 
 export interface Kv {
@@ -37,12 +37,8 @@ export function ensureRedis(): void {
 export async function allowBucket(scope: string, id: string, limit: number): Promise<void> {
   const bucket = Math.floor(Date.now() / 60_000);
   const key = `deerage:rate:${scope}:${encodeURIComponent(id).slice(0, 140)}:${bucket}`;
-  const [count] = await kv().pipeline([
-    ["INCR", key],
-    ["EXPIRE", key, 120],
-  ]);
-  const parsed = typeof count === "number" ? count : typeof count === "string" ? Number(count) : NaN;
-  if (!Number.isFinite(parsed) || parsed > limit) {
+  const allowed = await consumeRate(key, limit, 120, (commands) => kv().pipeline(commands));
+  if (!allowed) {
     throw new ApiError(429, "rate_limited", "Too many requests. Try again in a minute.");
   }
 }

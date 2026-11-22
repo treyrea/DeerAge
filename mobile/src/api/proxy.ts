@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
+import { POLL_DEADLINE_MS, statusPollContinues, statusPollDelayMs } from "./poll-schedule";
 import { ciApiBaseUrl } from "../e2e/ci-endpoint";
 import { activeHunt, homePlace, useHunterProfile } from "../state/hunterProfile";
 import { useSubscriptionStore } from "../state/subscriptionStore";
@@ -108,9 +109,10 @@ async function pollJob(jobId: string, mode: string): Promise<{
 }> {
   const base = apiBaseUrl();
   const path = mode === "score" ? "score-status" : "analyze-status";
-  const deadline = Date.now() + 300_000;
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+  const started = Date.now();
+  for (let attempt = 0; statusPollContinues(attempt, Date.now() - started); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, statusPollDelayMs(attempt)));
+    if (Date.now() - started >= POLL_DEADLINE_MS) break;
     const response = await fetch(`${base}/api/${path}?id=${encodeURIComponent(jobId)}`);
     const job = (await response.json().catch(() => null)) as {
       status?: string;
@@ -120,13 +122,15 @@ async function pollJob(jobId: string, mode: string): Promise<{
     } | null;
     if (job?.provisional?.note) {
       const { useDeerScoringStore } = await import("../state/deerScoringStore");
-      useDeerScoringStore.setState({
-        provisional: {
-          fieldCall: job.provisional.fieldCall ?? "HOLD",
-          note: job.provisional.note,
-          ageClass: job.provisional.ageClass ?? "",
-        },
-      });
+      const next = {
+        fieldCall: job.provisional.fieldCall ?? "HOLD",
+        note: job.provisional.note,
+        ageClass: job.provisional.ageClass ?? "",
+      };
+      const current = useDeerScoringStore.getState().provisional;
+      if (!current || current.note !== next.note || current.fieldCall !== next.fieldCall || current.ageClass !== next.ageClass) {
+        useDeerScoringStore.setState({ provisional: next });
+      }
     }
     if (job?.status === "done" && job.final?.result) return job.final as { result: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
     if (job?.status === "error") {
