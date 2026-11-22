@@ -1,6 +1,6 @@
 /**
  * Quick Check Camera Screen - Single tap, instant SHOOTER/LET WALK decision
- * Optimized for speed in hunting scenarios (3-5 second analysis)
+ * Optimized for speed in hunting scenarios (about a 6 second result)
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -19,9 +19,20 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import * as Haptics from "expo-haptics";
-import { DeerMark } from "../components/DeerMark";
+import { FramingBrackets } from "../components/FramingBrackets";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
+import { useRemoteConfig } from "../state/remoteConfig";
+import { useSubjectFill } from "../hooks/useSubjectFill";
+import { useWindowBox } from "../hooks/useWindowBox";
+import { isSubjectFillAvailable } from "../lib/subject-fill";
+import { resultTimeBadge } from "../lib/result-time-badge";
+import {
+  FRAME_GOLD,
+  FRAME_GREEN,
+  frameBodyGoodHintFromCopy,
+  frameBodyHintFromCopy,
+} from "../lib/frame-fill";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -42,6 +53,20 @@ export const QuickCheckCameraScreen = () => {
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
+  const frameBodyHint = frameBodyHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyHint));
+  const frameBodyGoodHint = frameBodyGoodHintFromCopy(useRemoteConfig((s) => s.copy.frameBodyGoodHint));
+  const previewLayout = useWindowBox();
+  const guideLayout = useWindowBox();
+  const canDetectFill = isSubjectFillAvailable();
+  const bodyFilled = useSubjectFill({
+    enabled: canDetectFill && !isCapturing && !isAnalyzing,
+    cameraRef,
+    preview: previewLayout.box,
+    guide: guideLayout.box,
+  });
+  const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
+  const guideWidth = width * 0.85;
+  const guideHeight = height * 0.30;
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -163,12 +188,18 @@ export const QuickCheckCameraScreen = () => {
   return (
     <View className="flex-1 bg-black">
       {/* Camera View */}
+      <View
+        ref={previewLayout.ref}
+        onLayout={previewLayout.onLayout}
+        style={{ width, height }}
+      >
       <Camera
         ref={cameraRef}
         style={{ width, height }}
         device={device}
         isActive={isActive && !isAnalyzing}
         photo={true}
+        video={canDetectFill}
         zoom={zoom}
         onError={(error) => {
           console.error("Camera error:", error);
@@ -208,18 +239,16 @@ export const QuickCheckCameraScreen = () => {
             // Ready to capture - LARGER viewer window
             <>
               <View
-                className="border-2 border-amber-500/50 rounded-xl items-center justify-center"
-                style={{ width: width * 0.85, height: height * 0.30 }}
+                ref={guideLayout.ref}
+                onLayout={guideLayout.onLayout}
+                style={{ width: guideWidth, height: guideHeight }}
               >
-                <DeerMark size={120} opacity={0.45} />
+                <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
               </View>
 
               <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">
-                <Text className="text-amber-400 text-center font-bold text-base">
-                  Frame the FULL BODY
-                </Text>
-                <Text className="text-white/70 text-center text-sm mt-1">
-                  Neck, chest, belly & legs visible
+                <Text className="text-center font-bold text-base" style={{ color: bracketColor }}>
+                  {bodyFilled ? frameBodyGoodHint : frameBodyHint}
                 </Text>
               </View>
             </>
@@ -284,7 +313,7 @@ export const QuickCheckCameraScreen = () => {
             <View className="flex-row items-center justify-between">
               <View className="bg-green-600/80 px-3 py-1.5 rounded-full flex-row items-center">
                 <Ionicons name="timer" size={14} color="white" />
-                <Text className="text-white text-xs font-semibold ml-1.5">~5 sec result</Text>
+                <Text className="text-white text-xs font-semibold ml-1.5">{resultTimeBadge("quick")}</Text>
               </View>
               <Text className="text-white/50 text-xs">
                 Threshold: {propertyRules.minimumShooterAge}+ yrs
@@ -292,6 +321,7 @@ export const QuickCheckCameraScreen = () => {
             </View>
           )}
         </View>
+      </View>
       </View>
     </View>
   );
