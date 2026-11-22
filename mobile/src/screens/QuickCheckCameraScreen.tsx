@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
 import { quickAgeCheck } from "../api/quick-age-check";
 import { isAnalysisError } from "../api/errors";
+import { FairUseLimitView } from "../components/FairUseLimit";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
@@ -53,6 +54,7 @@ export const QuickCheckCameraScreen = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [fairUse, setFairUse] = useState<{ message: string; limit: "daily" | "monthly" | null; offerPacks: boolean } | null>(null);
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
   const huntReady = useHunterProfile((s) => huntConfirmedToday(s));
@@ -133,17 +135,34 @@ export const QuickCheckCameraScreen = () => {
         imageUri,
       });
     } catch (error) {
-      console.error("Quick capture error:", error);
       setIsCapturing(false);
       setIsAnalyzing(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = isAnalysisError(error) ? error.message : "Quick Check didn't finish. Check your connection and try again.";
+      if (isAnalysisError(error) && error.code === "fair_use") {
+        setFairUse({ message, limit: error.limit, offerPacks: error.creditsBypass });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+        return;
+      }
+      console.error("Quick capture error:", error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(isAnalysisError(error) && error.code === "quota" ? "Free analyses used" : isAnalysisError(error) && error.code === "not_configured" ? "Can't reach DeerAge" : "Quick Check failed", message, isAnalysisError(error) && error.code === "quota" ? [
         { text: "Not now", style: "cancel" },
         { text: "See plans", onPress: () => navigation.navigate("TierPaywall", { reason: "free_limit" }) },
       ] : undefined);
     }
   };
+
+  if (fairUse) {
+    return (
+      <FairUseLimitView
+        message={fairUse.message}
+        limit={fairUse.limit}
+        offerPacks={fairUse.offerPacks}
+        onHome={() => navigation.popToTop()}
+        onAdded={() => setFairUse(null)}
+      />
+    );
+  }
 
   if (!huntReady) return <HuntRegionSheet />;
 

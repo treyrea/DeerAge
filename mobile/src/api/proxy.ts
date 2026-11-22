@@ -284,6 +284,8 @@ export async function analyzeImages(input: {
     mode?: string;
     serverTime?: string | null;
     record?: unknown;
+    limit?: string;
+    creditsBypass?: string;
   } | null;
 
   const jobId = typeof (payload as { jobId?: unknown } | null)?.jobId === "string" ? (payload as { jobId: string }).jobId : undefined;
@@ -316,7 +318,11 @@ export async function analyzeImages(input: {
     if (code === "quota") {
       useSubscriptionStore.getState().noteServerUsage(0, 0);
     }
-    throw new AnalysisError(code, payload?.message);
+    const limit = payload?.limit === "daily" || payload?.limit === "monthly" ? payload.limit : null;
+    throw new AnalysisError(code, payload?.message, undefined, {
+      limit,
+      creditsBypass: payload?.creditsBypass === "pack",
+    });
   }
 
   const remaining = payload.entitled || payload.freeUsesRemaining == null ? null : payload.freeUsesRemaining;

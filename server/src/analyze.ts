@@ -7,6 +7,7 @@ import { readAccess, revenueCatConfigured, writeFreeUses, type AccessSnapshot } 
 import {
   LimitStoreError,
   allowRate,
+  fairUseLimitMessage,
   fairUsePerDay,
   fairUsePerMonth,
   rateLimitPerMinute,
@@ -81,8 +82,8 @@ type FailureCode =
   | "fair_use"
   | "busy";
 
-function fail(status: number, code: FailureCode, message: string) {
-  return { status, body: { ok: false, code, message } };
+function fail(status: number, code: FailureCode, message: string, extra?: Record<string, string>) {
+  return { status, body: { ok: false, code, message, ...extra } };
 }
 
 function tokensMatch(provided: string, expected: string): boolean {
@@ -253,13 +254,21 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   try {
     if (access?.entitled) {
       const fair = await reserveFairUse(appUserId);
-      if (fair === "daily") {
-        return fail(429, "fair_use", "You've used today's analyses. The cap resets tomorrow.");
+      if (fair === "ok") {
+        fairUseHeld = true;
+      } else {
+        // The cap counters are already rolled back. A pack credit pays for this scan and is not counted.
+        let spentCredit = false;
+        try {
+          spentCredit = await consumeCredit(appUserId);
+        } catch {
+          return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
+        }
+        if (!spentCredit) {
+          return fail(429, "fair_use", fairUseLimitMessage(fair), { limit: fair, creditsBypass: "pack" });
+        }
+        creditHeld = true;
       }
-      if (fair === "monthly") {
-        return fail(429, "fair_use", "You've used this month's analyses. The daily cap still resets tomorrow, and the monthly cap resets at the start of next month.");
-      }
-      fairUseHeld = true;
     }
 
     spendReserved = engine === "hydrogen"
@@ -277,6 +286,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       if (fairUseHeld) await releaseFairUse(appUserId);
       fairUseHeld = false;
       spendReserved = 0;
+      await refund();
       return fail(503, "busy", "DeerAge is busy right now. Try again in a little while.");
     }
 

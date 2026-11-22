@@ -27,7 +27,7 @@ import {
 } from "../utils/scale-and-age-estimation";
 import { analyzeExplainableAge } from "../api/explainable-age-analysis";
 import { pickSharpestFrame } from "../lib/sharpest-frame";
-import { AnalysisError, type AnalysisErrorCode } from "../api/errors";
+import { AnalysisError, type AnalysisErrorCode, type FairUseLimit } from "../api/errors";
 import { useSubscriptionStore } from "./subscriptionStore";
 import { useNetworkStore } from "./networkStore";
 import { useDistanceStore } from "./distanceStore";
@@ -75,6 +75,9 @@ interface DeerScoringState {
   error: string | null;
   errorCode: AnalysisErrorCode | null;
   errorTip: string | null;
+  errorLimit: FairUseLimit | null;
+  /** The server that returned this error will spend a pack credit past the cap. */
+  errorCreditsBypass: boolean;
   provisional: { fieldCall: string; note: string; ageClass: string } | null;
   history: DeerScoringResult[];
   analysisMode: "age" | "score";
@@ -119,6 +122,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
   error: null,
   errorCode: null,
   errorTip: null,
+  errorLimit: null,
+  errorCreditsBypass: false,
   provisional: null,
   history: [],
   analysisMode: "score" as "age" | "score",
@@ -168,6 +173,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       error: null,
       errorCode: null,
       errorTip: null,
+      errorLimit: null,
+      errorCreditsBypass: false,
       currentResult: null,
     });
   },
@@ -193,7 +200,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
     console.log("[Store] processFrames called");
 
     // Set processing state immediately (synchronously) before any async operations
-    set({ isProcessing: true, error: null, errorCode: null, errorTip: null });
+    set({ isProcessing: true, error: null, errorCode: null, errorTip: null, errorLimit: null, errorCreditsBypass: false });
 
     const { capturedFrames, analysisMode, propertyRules } = get();
     useScanProgress.getState().start(analysisMode === "age" ? "age" : "score");
@@ -205,6 +212,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         error: "The burst didn't capture any frames. Hold the phone steady and try again.",
         errorCode: "zero_frames",
         errorTip: null,
+        errorLimit: null,
+        errorCreditsBypass: false,
         isProcessing: false,
       });
       return;
@@ -218,6 +227,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           : "You're offline. DeerAge needs a connection to score the rack.",
         errorCode: "network",
         errorTip: null,
+        errorLimit: null,
+        errorCreditsBypass: false,
         isProcessing: false,
       });
       return;
@@ -228,6 +239,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         error: "You've used your 3 free analyses.",
         errorCode: "quota",
         errorTip: null,
+        errorLimit: null,
+        errorCreditsBypass: false,
         isProcessing: false,
       });
       return;
@@ -445,6 +458,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         error: errorMessage,
         errorCode: analysisError?.code ?? "unknown",
         errorTip: analysisError?.tip || null,
+        errorLimit: analysisError?.limit ?? null,
+        errorCreditsBypass: analysisError?.creditsBypass === true,
         isProcessing: false,
       });
     }
@@ -455,7 +470,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
 
   // Clear current result
   clearCurrentResult: () => {
-    set({ currentResult: null, capturedFrames: [], error: null, errorCode: null, errorTip: null });
+    set({ currentResult: null, capturedFrames: [], error: null, errorCode: null, errorTip: null, errorLimit: null, errorCreditsBypass: false });
   },
 
   // Save result to history
@@ -553,6 +568,8 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       error: null,
       errorCode: null,
       errorTip: null,
+      errorLimit: null,
+      errorCreditsBypass: false,
     });
   },
     }),

@@ -23,7 +23,7 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
   not_configured: "This copy of DeerAge can't find its server. Close DeerAge fully and reopen it to load the latest update.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   quota: "You've used your 3 free analyses.",
-  fair_use: "You've used today's analyses. The cap resets tomorrow.",
+  fair_use: "You've reached today's limit. It resets at midnight Central.",
   busy: "DeerAge is busy right now. Try again in a little while.",
   not_deer: "This photo doesn't show a deer.",
   no_deer: "No deer found",
@@ -39,15 +39,23 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
   unknown: "Analysis failed. Try again.",
 };
 
+export type FairUseLimit = "daily" | "monthly";
+
 export class AnalysisError extends Error {
   readonly code: AnalysisErrorCode;
   readonly tip: string;
+  /** Set when the server says which fair-use cap was hit. */
+  readonly limit: FairUseLimit | null;
+  /** True only when this server will spend a pack credit to pass the cap. */
+  readonly creditsBypass: boolean;
 
-  constructor(code: AnalysisErrorCode, message?: string, tip?: string) {
+  constructor(code: AnalysisErrorCode, message?: string, tip?: string, extra?: { limit?: FairUseLimit | null; creditsBypass?: boolean }) {
     super(message && message.trim().length > 0 ? message : FALLBACK[code]);
     this.name = "AnalysisError";
     this.code = code;
     this.tip = tip?.trim() ?? "";
+    this.limit = extra?.limit === "daily" || extra?.limit === "monthly" ? extra.limit : null;
+    this.creditsBypass = extra?.creditsBypass === true;
   }
 }
 

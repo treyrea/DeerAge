@@ -1,7 +1,10 @@
 /**
  * Scan packs are consumables. A credit is added only after RevenueCat shows
  * that transaction on this app user, and the same transaction is never added twice.
- * Credits do not expire. A subscriber does not spend them.
+ * Credits do not expire.
+ * Someone who is not subscribed spends a credit before a free scan.
+ * A subscriber spends a credit only after the daily or monthly fair-use cap,
+ * and that scan is not counted against fair use. analyze.ts makes that choice.
  */
 
 import { allowBucket, ensureRedis, kv } from "./kv.js";
@@ -117,7 +120,8 @@ export async function returnCredit(appUserId: string): Promise<void> {
 
 /**
  * Non-subscribers spend a pack credit before a free scan is used.
- * Subscribers do not spend credits. No credit and no free scan is blocked.
+ * This helper does not apply the fair-use cap. A subscriber's credit is spent
+ * in analyze.ts, and only after that cap is already hit.
  */
 export async function takeScanAllowance(input: {
   appUserId: string;
