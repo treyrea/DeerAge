@@ -6,6 +6,7 @@ export type AnalysisErrorCode =
   | "fair_use"
   | "busy"
   | "not_deer"
+  | "no_deer"
   | "no_body"
   | "no_antlers"
   | "poor_quality"
@@ -25,6 +26,7 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
   fair_use: "You've used today's analyses. The cap resets tomorrow.",
   busy: "DeerAge is busy right now. Try again in a little while.",
   not_deer: "This photo doesn't show a deer.",
+  no_deer: "No deer found",
   no_body: "The deer's body isn't visible enough to age. Use a broadside photo of the whole deer.",
   no_antlers: "No antlers are visible in this photo.",
   poor_quality: "The photo is too dark or blurry to analyze. Try a clearer shot.",
@@ -39,11 +41,13 @@ const FALLBACK: Record<AnalysisErrorCode, string> = {
 
 export class AnalysisError extends Error {
   readonly code: AnalysisErrorCode;
+  readonly tip: string;
 
-  constructor(code: AnalysisErrorCode, message?: string) {
+  constructor(code: AnalysisErrorCode, message?: string, tip?: string) {
     super(message && message.trim().length > 0 ? message : FALLBACK[code]);
     this.name = "AnalysisError";
     this.code = code;
+    this.tip = tip?.trim() ?? "";
   }
 }
 

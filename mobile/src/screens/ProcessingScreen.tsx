@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
-import { BLIND, verdictWord } from "../utils/blind-verdict";
+import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -73,12 +73,15 @@ export const ProcessingScreen = () => {
   const currentResult = useDeerScoringStore((s) => s.currentResult);
   const error = useDeerScoringStore((s) => s.error);
   const errorCode = useDeerScoringStore((s) => s.errorCode);
+  const errorTip = useDeerScoringStore((s) => s.errorTip);
   const capturedFrames = useDeerScoringStore((s) => s.capturedFrames);
   const analysisMode = useDeerScoringStore((s) => s.analysisMode);
   const provisional = useDeerScoringStore((s) => s.provisional);
   const clearCurrentResult = useDeerScoringStore((s) => s.clearCurrentResult);
   const setAnalysisMode = useDeerScoringStore((s) => s.setAnalysisMode);
   const verdictLook = useRemoteConfig((s) => s.copy.verdictLook);
+  const noDeerTitle = useRemoteConfig((s) => s.copy.noDeerTitle);
+  const noDeerTip = useRemoteConfig((s) => s.copy.noDeerTip);
 
   // Get the image URI for error display
   const imageUri = capturedFrames[0]?.imageUri;
@@ -157,6 +160,36 @@ export const ProcessingScreen = () => {
       || errorInfo.category === "no_body"
     ),
   );
+
+  if (error && errorCode === "no_deer") {
+    const title = noDeerTitle.trim() || error || NO_DEER_TITLE;
+    const tip = noDeerTip.trim() || errorTip || NO_DEER_TIP;
+    return (
+      <View style={{ flex: 1, backgroundColor: BLIND.bg, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <StatusBar barStyle="light-content" />
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingHorizontal: 28, paddingBottom: 16 }}>
+          <Text style={{ color: BLIND.ink, fontSize: 32, fontWeight: "700", textAlign: "center" }}>{title}</Text>
+          <Text style={{ color: BLIND.muted, fontSize: 17, lineHeight: 24, marginTop: 14, textAlign: "center" }}>{tip}</Text>
+        </ScrollView>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+          <Pressable
+            testID="no-deer-try-again"
+            onPress={scanAgain}
+            style={{ minHeight: 60, borderRadius: 14, backgroundColor: BLIND.button, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: BLIND.buttonInk, fontSize: 18, fontWeight: "700" }}>Try again</Text>
+          </Pressable>
+          <Pressable
+            testID="no-deer-done"
+            onPress={handleHome}
+            style={{ minHeight: 52, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: BLIND.muted, fontSize: 17 }}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   // Error UI - Graceful with tips (similar to QuickCheckResultScreen)
   if (error && errorInfo && needsAnotherLook) {

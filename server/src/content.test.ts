@@ -290,6 +290,8 @@ describe("community endpoints", { concurrency: 1 }, () => {
       seasonalBanner: "The rut is on",
       paywallHeadline: "A season of reads",
       verdictWalk: "LET HIM WALK",
+      noDeerTitle: "No deer in this photo",
+      noDeerTip: "Step back and get the whole deer.",
       flags: { shootOrPass: false },
       homeTips: ["Broadside, whole body"],
     }, ADMIN));
@@ -301,6 +303,8 @@ describe("community endpoints", { concurrency: 1 }, () => {
     assert.equal(payload(config).copy.paywallHeadline, "A season of reads");
     assert.equal(payload(config).copy.verdictWalk, "LET HIM WALK");
     assert.equal(payload(config).copy.verdictTake, "");
+    assert.equal(payload(config).copy.noDeerTitle, "No deer in this photo");
+    assert.equal(payload(config).copy.noDeerTip, "Step back and get the whole deer.");
     assert.equal(payload(config).flags.shootOrPass, false);
     assert.equal(payload(config).flags.feed, true);
   });

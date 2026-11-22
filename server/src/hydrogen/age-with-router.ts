@@ -121,6 +121,21 @@ export async function ageWithRouter(input: {
   const [walkBox, plain, crossCheck] = await Promise.all([walkTask, plainTask, crossTask]);
 
   const walkResult = walkBox.ok ? walkBox.result : null;
+  if (walkResult?.kind === "no_deer") {
+    log({
+      event: "age_router",
+      branch: "no_deer",
+      plainLabel: plainLabel(plain),
+      oursLabel: "",
+      finalLabel: "",
+      plainOk: plain != null,
+      ccOk: crossCheck != null,
+      ms: Math.max(0, now() - started),
+      ...(plainPrompt ? { plainPromptSha: sha256(plainPrompt) } : {}),
+      ...(crossPrompt ? { crossCheckPromptSha: sha256(crossPrompt) } : {}),
+    });
+    return walkResult;
+  }
   const rule = walkResult?.kind === "age" && wantCrossCheck
     ? applyRules(walkResult.low, walkResult.high, crossCheck, walkResult.viaBabyGate === true)
     : null;

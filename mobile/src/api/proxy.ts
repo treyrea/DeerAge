@@ -58,6 +58,7 @@ const CODES = new Set<AnalysisErrorCode>([
   "fair_use",
   "busy",
   "not_deer",
+  "no_deer",
   "no_body",
   "no_antlers",
   "poor_quality",
@@ -118,7 +119,7 @@ async function pollJob(jobId: string, mode: string): Promise<{
       status?: string;
       provisional?: { fieldCall?: string; note?: string; ageClass?: string };
       final?: { result?: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
-      error?: { code?: string; message?: string };
+      error?: { code?: string; message?: string; kind?: string; tip?: string };
     } | null;
     if (job?.provisional?.note) {
       const { useDeerScoringStore } = await import("../state/deerScoringStore");
@@ -134,6 +135,9 @@ async function pollJob(jobId: string, mode: string): Promise<{
     }
     if (job?.status === "done" && job.final?.result) return job.final as { result: Record<string, unknown>; record?: unknown; estimatedCostUsd?: number; mode?: string };
     if (job?.status === "error") {
+      if (job.error?.kind === "no_deer") {
+        throw new AnalysisError("no_deer", job.error.message, job.error.tip);
+      }
       const code = job.error?.code && CODES.has(job.error.code as AnalysisErrorCode) ? job.error.code as AnalysisErrorCode : "upstream";
       throw new AnalysisError(code, job.error?.message);
     }

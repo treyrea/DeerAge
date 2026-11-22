@@ -15,6 +15,7 @@ import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
+import { showPreShotRecord } from "../lib/lease-rules";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { normalizeFieldCall } from "../utils/field-call";
 import { ShareableResultCard } from "../components/ShareableResultCard";
@@ -142,15 +143,11 @@ export const ResultsScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
-  const ageLabel = formatAgeClass(currentResult?.explainableAge?.estimatedAge ?? currentResult?.age?.estimatedAge);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
-  const followUp = useResultFollowUp(Boolean(currentResult), currentResult ? {
-    imageUri: currentResult.capturedFrames?.[0]?.imageUri,
-    headline: ageLabel,
-    call: currentResult?.explainableAge?.fieldCall
-      ?? (currentResult?.explainableAge?.meetsMinimumAge ? "SHOOTER" : "LET WALK"),
-    confidence: typeof currentResult.analysisConfidence === "number" ? Math.round(currentResult.analysisConfidence * 100) : undefined,
-  } : null);
+  const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
+  const leaseRules = useHunterProfile((s) => s.leaseRules);
+  const recordsOn = showPreShotRecord(leaseRules, recordFlag);
+  const followUp = useResultFollowUp(Boolean(currentResult));
 
   if (!currentResult) {
     return null;
@@ -347,7 +344,9 @@ export const ResultsScreen = () => {
               leaseMinimum,
             }}
           />
+          {recordsOn ? (
           <PreShotBar
+            compact
             draft={{
               localId: currentResult.analysisId,
               mode: currentResult.analysisMode === "age" ? "age" : "score",
@@ -365,7 +364,9 @@ export const ResultsScreen = () => {
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
           />
+          ) : null}
           <RegionHeadsUp />
+          {leaseRules ? (
           <LeaseManagerButton
             ageClass={displayedAge}
             call={currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || ""}
@@ -375,6 +376,7 @@ export const ResultsScreen = () => {
             receiptId={currentResult.shotReceipt?.id}
             photoUri={currentResult.capturedFrames?.[0]?.imageUri}
           />
+          ) : null}
           {/* Unified Metrics Card - Shows ALL key metrics */}
           <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
             <Text className="text-sm font-medium mb-4" style={{ color: "#D4AF37" }}>

@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { View, Text, Pressable, Image, Dimensions } from "react-native";
+import { View, Text, Pressable, Image, Dimensions, ScrollView, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -13,8 +13,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
-import { ShareableResultCard } from "../components/ShareableResultCard";
 import { formatAgeClass } from "../utils/age-class";
+import { showPreShotRecord } from "../lib/lease-rules";
+import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { WrongCallCard } from "../components/WrongCallCard";
@@ -49,13 +50,12 @@ export const QuickCheckResultScreen = () => {
   const isInvalidImage = result.isValidImage === false;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
-  const followUp = useResultFollowUp(!isInvalidImage, {
-    imageUri,
-    headline: ageClassLabel,
-    call: result.decision === "SHOOT" ? "SHOOTER" : "LET WALK",
-    confidence: result.confidence,
-  });
+  const followUp = useResultFollowUp(!isInvalidImage);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
+  const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
+  const leaseRules = useHunterProfile((s) => s.leaseRules);
+  const recordsOn = showPreShotRecord(leaseRules, recordFlag);
+  const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
   const readAt = React.useMemo(() => new Date().toLocaleString(), []);
 
   // Haptic feedback on mount
@@ -200,21 +200,22 @@ export const QuickCheckResultScreen = () => {
     ? "Chest Depth"
     : "Leg Proportion";
 
+  const shareRead = () => {
+    const call = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
+    void Share.share({ message: `${call} · ${ageClassLabel} · minimum ${leaseMinimum}` }).catch(() => undefined);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420" }}>
       <LinearGradient
         colors={["#2B3420", "#1a1f16"]}
         style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
       >
-        {/* Close button */}
-        <View className="absolute top-0 right-0 z-10" style={{ paddingTop: insets.top + 8, paddingRight: 16 }}>
-          <Pressable onPress={handleHome} className="w-11 h-11 items-center justify-center">
-            <Ionicons name="close" size={28} color="white" />
-          </Pressable>
-        </View>
+        <Pressable onPress={handleHome} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+          <Ionicons name="close" size={28} color="white" />
+        </Pressable>
 
-        {/* Main Result */}
-        <View className="flex-1 justify-center px-6">
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}>
           {shootOrPass ? (
             <FieldCallCard
               ageYears={result.ageYears ?? leaseMinimum}
@@ -235,44 +236,66 @@ export const QuickCheckResultScreen = () => {
               fallbackCues={result.topCues ?? [result.explanation]}
             />
           )}
-          <Text style={{ color: "#8B7355", fontSize: 12, textAlign: "center", marginBottom: 12 }}>{result.disclaimer}</Text>
-          {!isInvalidImage ? (
-            <WrongCallCard
-              scanId={result.shotReceipt?.id ?? `quick-${imageUri}`}
-              fieldCall={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
-              photos={[imageUri]}
-              snapshot={{
-                fieldCall: result.fieldCall,
-                ageYears: result.ageYears,
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+            <Image source={{ uri: imageUri }} style={{ width: 64, height: 64, borderRadius: 10 }} />
+            <Text style={{ color: "#8B7355", fontSize: 13, marginLeft: 12, flex: 1 }}>{keyFeatureDisplay}</Text>
+          </View>
+          <Text style={{ color: "#8B7355", fontSize: 12, marginBottom: 8 }}>{result.disclaimer}</Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: 44 }}>
+            {result.canAnalyzeFurther ? (
+              <Pressable onPress={handleFullAnalysis} style={{ minHeight: 44, justifyContent: "center", marginRight: 18 }}>
+                <Text style={{ color: "#E5D4B8", fontSize: 15 }}>Get full age analysis</Text>
+              </Pressable>
+            ) : null}
+            <Pressable onPress={shareRead} style={{ minHeight: 44, justifyContent: "center", marginRight: 18 }}>
+              <Text style={{ color: "#F5F5DC", fontSize: 15, fontWeight: "700" }}>Share</Text>
+            </Pressable>
+            {pendingPaywall ? (
+              <Pressable onPress={() => navigation.navigate("TierPaywall", { reason: "free_limit" })} style={{ minHeight: 44, justifyContent: "center" }}>
+                <Text style={{ color: "#8B7355", fontSize: 15 }}>See plans</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {recordsOn ? (
+            <PreShotBar
+              compact
+              draft={{
+                localId: result.shotReceipt?.id ?? `quick-${imageUri}`,
+                mode: "quick",
+                photoUris: [imageUri],
+                receipt: result.shotReceipt ?? null,
+                ageClass: result.shotReceipt?.summary.ageClass || ageClassLabel,
+                ageRange: result.shotReceipt?.summary.ageRange || result.estimatedAgeClass,
+                confidence: result.confidence,
+                leaseMinimum,
+                fieldCall: result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
+                fieldCallNote: result.fieldCallNote || "",
+                cues: result.cueBullets?.map((cue) => `${cue.area}: ${cue.text}`) ?? result.topCues ?? [],
+                huntLabel: activeHunt(useHunterProfile.getState()).label,
                 fastAge: result.fastAge,
                 mainAge: result.mainAge,
                 bodyOnlyAge: result.bodyOnlyAge,
-                leaseMinimum,
-              }}
+              } satisfies ShotDraft}
+              onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
             />
           ) : null}
-          <PreShotBar
-            draft={isInvalidImage ? null : {
-              localId: result.shotReceipt?.id ?? `quick-${imageUri}`,
-              mode: "quick",
-              photoUris: [imageUri],
-              receipt: result.shotReceipt ?? null,
-              ageClass: result.shotReceipt?.summary.ageClass || ageClassLabel,
-              ageRange: result.shotReceipt?.summary.ageRange || result.estimatedAgeClass,
-              confidence: result.confidence,
-              leaseMinimum,
-              fieldCall: result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
-              fieldCallNote: result.fieldCallNote || "",
-              cues: result.cueBullets?.map((cue) => `${cue.area}: ${cue.text}`) ?? result.topCues ?? [],
-              huntLabel: activeHunt(useHunterProfile.getState()).label,
+          <WrongCallCard
+            scanId={result.shotReceipt?.id ?? `quick-${imageUri}`}
+            fieldCall={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
+            photos={[imageUri]}
+            snapshot={{
+              fieldCall: result.fieldCall,
+              ageYears: result.ageYears,
               fastAge: result.fastAge,
               mainAge: result.mainAge,
               bodyOnlyAge: result.bodyOnlyAge,
-            } satisfies ShotDraft}
-            onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+              leaseMinimum,
+            }}
           />
           <RegionHeadsUp />
-          {!isInvalidImage ? (
+          {leaseRules ? (
             <LeaseManagerButton
               ageClass={ageClassLabel}
               call={result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK")}
@@ -283,77 +306,20 @@ export const QuickCheckResultScreen = () => {
               photoUri={imageUri}
             />
           ) : null}
+        </ScrollView>
 
-          {/* Thumbnail */}
-          <View className="rounded-xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.5, height: SCREEN_WIDTH * 0.5 }}>
-            <Image
-              source={{ uri: imageUri }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-            {/* Key feature badge */}
-            <View className="absolute bottom-2 left-2 bg-black/70 rounded-full px-3 py-1">
-              <Text className="text-white text-xs">
-                Key: {keyFeatureDisplay}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View className="px-6 pb-4">
-          {/* Full Analysis Button - only if photo quality supports it */}
-          {result.canAnalyzeFurther && (
-            <Pressable
-              onPress={handleFullAnalysis}
-              className="mb-3 rounded-xl py-4 items-center"
-              style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
-            >
-              <View className="flex-row items-center">
-                <Ionicons name="analytics" size={20} color="#D4AF37" />
-                <Text className="text-white font-semibold ml-2">Get Full Age Analysis</Text>
-              </View>
-              <Text className="text-white/60 text-xs mt-1">Detailed 7-feature body assessment</Text>
-            </Pressable>
-          )}
-
-          {!isInvalidImage ? (
-            <View className="mb-3">
-              <ShareableResultCard
-                compact
-                data={{
-                  type: "age",
-                  imageUri,
-                  ageEstimate: ageClassLabel,
-                  ageRange: ageClassLabel,
-                  confidence: result.confidence,
-                  decision: result.decision,
-                  call: result.decision === "SHOOT" ? "SHOOTER" : "LET WALK",
-                  leaseMinimum,
-                  topCues: result.topCues ?? [result.explanation],
-                }}
-              />
-            </View>
-          ) : null}
-
-          {/* New Quick Check */}
+        <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
           <Pressable
             onPress={handleNewCheck}
-            className="mb-3 rounded-xl py-4 items-center"
-            style={{ backgroundColor: "#D4AF37" }}
+            style={{ flex: 1, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", alignItems: "center", justifyContent: "center" }}
           >
-            <View className="flex-row items-center">
-              <Ionicons name="camera" size={20} color="#1a1f16" />
-              <Text style={{ color: "#1a1f16", fontWeight: "700", marginLeft: 8 }}>New Quick Check</Text>
-            </View>
+            <Text style={{ color: "#F5F5DC", fontSize: 17, fontWeight: "700" }}>Scan again</Text>
           </Pressable>
-
-          {/* Home */}
           <Pressable
             onPress={handleHome}
-            className="rounded-xl py-3 items-center"
+            style={{ flex: 1, minHeight: 56, borderRadius: 14, backgroundColor: "#D4AF37", alignItems: "center", justifyContent: "center" }}
           >
-            <Text className="text-white/60">Back to Home</Text>
+            <Text style={{ color: "#1a1f16", fontSize: 17, fontWeight: "700" }}>Done</Text>
           </Pressable>
         </View>
       </LinearGradient>

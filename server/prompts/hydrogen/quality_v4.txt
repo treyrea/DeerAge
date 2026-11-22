@@ -1,5 +1,7 @@
 Look only at this photo. Do not age the deer. Do not name an age. Answer these factual questions about whether the body can be judged from this photo. For each question, pick one label. If you are unsure, pick CANT_TELL and give a short reason.
 
+(0) DEER_PRESENT — Is at least one deer visible? Count a whitetail or a mule deer of any sex, including a doe, a fawn, or a buck. YES if any of that deer is in the frame, even when it is partly hidden, cropped, distant, dark, blurry, bedded, or on a night trail camera. NO only when no deer is visible at all, such as a car, a person, a dog, an empty field, or a building. If you are unsure, answer YES. Use CANT_TELL only when the frame is blank. Do not answer NO for a hard-to-see deer.
+
 (1) VIEW_ANGLE — How is the body aimed at the camera?
 BROADSIDE: chest and rump are at about the same distance; the belly is a true side contour. A modest head turn is still BROADSIDE if the body itself is side-on.
 QUARTERING: the chest is clearly closer than the rump, or the rump is clearly closer than the chest, but a side-ish body contour is still visible (not just the chest or just the rump).
@@ -30,6 +32,6 @@ CANT_TELL
 (10) LIGHTING — DAY, NIGHT_IR, NIGHT_OTHER, or CANT_TELL. Record only; do not treat night or infrared as a defect by itself.
 
 Output JSON only, in this exact shape:
-{"view_angle":"BROADSIDE or QUARTERING or HEAD_ON or REAR or CANT_TELL","view_angle_reason":"...","standing_upright":"YES or NO or CANT_TELL","standing_upright_reason":"...","head_position":"UP or SLIGHT_DIP or DOWN_FEEDING or CANT_TELL","head_position_reason":"...","belly_waist_visible":"YES or NO or CANT_TELL","belly_waist_visible_reason":"...","neck_chest_visible":"YES or NO or CANT_TELL","neck_chest_visible_reason":"...","legs_judgeable":"YES or NO or CANT_TELL","legs_judgeable_reason":"...","subject_separable":"YES or NO or CANT_TELL","subject_separable_reason":"...","deer_large_enough":"YES or NO or CANT_TELL","deer_large_enough_reason":"...","contour_readable":"YES or NO or CANT_TELL","contour_readable_reason":"...","lighting":"DAY or NIGHT_IR or NIGHT_OTHER or CANT_TELL","lighting_reason":"..."}
+{"deer_present":"YES or NO or CANT_TELL","deer_present_reason":"...","view_angle":"BROADSIDE or QUARTERING or HEAD_ON or REAR or CANT_TELL","view_angle_reason":"...","standing_upright":"YES or NO or CANT_TELL","standing_upright_reason":"...","head_position":"UP or SLIGHT_DIP or DOWN_FEEDING or CANT_TELL","head_position_reason":"...","belly_waist_visible":"YES or NO or CANT_TELL","belly_waist_visible_reason":"...","neck_chest_visible":"YES or NO or CANT_TELL","neck_chest_visible_reason":"...","legs_judgeable":"YES or NO or CANT_TELL","legs_judgeable_reason":"...","subject_separable":"YES or NO or CANT_TELL","subject_separable_reason":"...","deer_large_enough":"YES or NO or CANT_TELL","deer_large_enough_reason":"...","contour_readable":"YES or NO or CANT_TELL","contour_readable_reason":"...","lighting":"DAY or NIGHT_IR or NIGHT_OTHER or CANT_TELL","lighting_reason":"..."}
 
 Do not add a gate, an age, or a retake decision. Code will apply the rule.

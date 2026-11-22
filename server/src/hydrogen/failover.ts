@@ -40,6 +40,7 @@ export function backupAgeBody(result: Record<string, unknown>, minimum: number, 
 }
 
 export type AgeResolution =
+  | { kind: "no_deer" }
   | { kind: "retake"; message: string }
   | { kind: "stop" }
   | { kind: "age"; result: Record<string, unknown>; backup: boolean }
@@ -66,6 +67,7 @@ export async function resolveHydrogenAge(input: {
   try {
     const outcome = await input.primary();
     await input.note(true);
+    if (outcome.kind === "no_deer") return { kind: "no_deer" };
     if (outcome.kind === "retake") return { kind: "retake", message: outcome.message };
     if (outcome.kind === "age") {
       return {

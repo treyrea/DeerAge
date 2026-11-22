@@ -15,6 +15,8 @@ export const VERDICT_WORDS = {
 
 export const FIELD_READ_NOTE = "A field read from the photo, not a jawbone age.";
 export const SET_MINIMUM_PROMPT = "Set a lease minimum so the next buck is a clear call.";
+export const NO_DEER_TITLE = "No deer found";
+export const NO_DEER_TIP = "Get the whole deer in frame, broadside if you can, and try again.";
 
 export const BLIND = {
   bg: "#121410",

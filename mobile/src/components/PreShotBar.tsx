@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,17 +16,14 @@ export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: Shot
   const enabled = useRemoteConfig((s) => s.flags.preShotRecord);
   const localId = draft?.localId ?? "";
   const record = useShotRecordStore((s) => (localId ? s.records[localId] : undefined));
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
   const [note, setNote] = useState("");
 
-  useEffect(() => {
-    const current = draftRef.current;
-    if (!enabled || !current) return;
-    void saveShotRecord(current);
-  }, [enabled, localId]);
-
   if (!enabled || !draft) return null;
+
+  const save = async () => {
+    const saved = await saveShotRecord(draft);
+    if (!saved) setNote("Couldn't save that on this phone.");
+  };
 
   const share = async () => {
     const saved = await saveShotRecord(draft);
@@ -44,10 +41,20 @@ export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: Shot
   };
 
   if (compact) {
+    if (!record) {
+      return (
+        <View style={{ marginTop: 14 }}>
+          <Pressable testID="record-save" onPress={() => { void save(); }} hitSlop={12} style={{ minHeight: 44, justifyContent: "center" }}>
+            <Text style={{ color: "#E6E0D4", fontSize: 15 }}>Save pre-shot record</Text>
+          </Pressable>
+          {note ? <Text style={{ color: "#9C9486", marginTop: 4 }}>{note}</Text> : null}
+        </View>
+      );
+    }
     return (
       <View style={{ marginTop: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text style={{ color: "#9C9486", fontSize: 15 }}>{record ? "Saved ✓" : "Saving"}</Text>
+          <Text style={{ color: "#9C9486", fontSize: 15 }}>Saved ✓</Text>
           <Text style={{ color: "#9C9486", fontSize: 15 }}>{"  ·  "}</Text>
           <Pressable testID="record-share" onPress={() => { void share(); }} hitSlop={14} style={{ minHeight: 44, justifyContent: "center" }}>
             <Text style={{ color: "#E6E0D4", fontSize: 15, fontWeight: "700" }}>Share</Text>
