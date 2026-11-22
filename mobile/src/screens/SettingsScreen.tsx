@@ -1,9 +1,8 @@
 /**
  * Settings Screen - Configure Property Rules and app preferences
- * Includes distance capture settings and rangefinder integration scaffold
  */
 
-import React, { useCallback, useState, useMemo } from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, Platform, Linking, Switch } from "react-native";
 import Constants from "expo-constants";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +10,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
-import { useDistanceStore } from "../state/distanceStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { allowanceLine } from "../lib/products";
 import { refreshScanCredits, restoreScanPacks } from "../api/scan-credits";
@@ -21,7 +19,6 @@ import { CommunitySettings } from "../components/CommunitySettings";
 import { HelpImproveSettings } from "../components/HelpImproveSettings";
 import { loadMessages } from "../api/call-report";
 import * as Haptics from "expo-haptics";
-import type { DistanceTelemetry } from "../types/distance";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -31,39 +28,6 @@ export const SettingsScreen = () => {
 
   const propertyRules = useDeerScoringStore((s) => s.propertyRules);
   const setPropertyRules = useDeerScoringStore((s) => s.setPropertyRules);
-
-  // Distance settings - use individual selectors to prevent re-render loops
-  const distanceSettings = useDistanceStore((s) => s.settings);
-  const updateDistanceSettings = useDistanceStore((s) => s.updateSettings);
-  const enableRangefinder = useDistanceStore((s) => s.enableBluetoothRangefinder);
-  const rangefinderState = useDistanceStore((s) => s.rangefinderState);
-  const telemetryData = useDistanceStore((s) => s.telemetryData);
-
-  // Compute telemetry stats with useMemo to avoid re-creating on every render
-  const telemetryStats = useMemo(() => {
-    const totalAnalyses = telemetryData.length;
-    const withDistance = telemetryData.filter((t: DistanceTelemetry) => t.hasDistance).length;
-    const percentWithDistance = totalAnalyses > 0 ? (withDistance / totalAnalyses) * 100 : 0;
-
-    // Ranged vs estimated
-    const rangedVsEstimated = { ranged: 0, estimated: 0 };
-    telemetryData.forEach((t: DistanceTelemetry) => {
-      if (t.hasDistance && t.distanceYards) {
-        if (t.source === "rangefinder_bluetooth" || t.source === "rangefinder_manual") {
-          rangedVsEstimated.ranged++;
-        } else {
-          rangedVsEstimated.estimated++;
-        }
-      }
-    });
-
-    return {
-      totalAnalyses,
-      withDistance,
-      percentWithDistance,
-      rangedVsEstimated,
-    };
-  }, [telemetryData]);
 
   const planLabel = useSubscriptionStore((s) => s.planLabel);
   const entitled = useSubscriptionStore((s) => s.entitled);
@@ -410,104 +374,6 @@ export const SettingsScreen = () => {
                 optimized for North American Whitetail Deer.
               </Text>
             </View>
-          </View>
-
-          {/* Distance Capture Settings */}
-          <View className="rounded-2xl p-6 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
-            <View className="flex-row items-center mb-4">
-              <Ionicons name="locate" size={24} color="#D4AF37" />
-              <Text className="text-lg font-bold text-white ml-2">Distance Capture</Text>
-            </View>
-
-            <Text className="text-sm mb-4" style={{ color: "#E5D4B8" }}>
-              Distance to the deer affects perceived scale and measurement accuracy. Providing distance
-              improves confidence in age and rack estimates.
-            </Text>
-
-            {/* Prompt on Every Analysis Toggle */}
-            <View className="flex-row items-center justify-between p-4 mb-3 rounded-lg" style={{ backgroundColor: "#5A6447" }}>
-              <View className="flex-1 mr-4">
-                <Text className="text-white font-semibold">Prompt for distance</Text>
-                <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>
-                  Ask for distance on every analysis
-                </Text>
-              </View>
-              <Switch
-                value={distanceSettings.promptOnEveryAnalysis}
-                onValueChange={(value) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  updateDistanceSettings({ promptOnEveryAnalysis: value });
-                }}
-                trackColor={{ false: "#3D4A2F", true: "#22c55e" }}
-                thumbColor={distanceSettings.promptOnEveryAnalysis ? "#fff" : "#8B7355"}
-              />
-            </View>
-
-            {/* Remember Last Distance Toggle */}
-            <View className="flex-row items-center justify-between p-4 mb-3 rounded-lg" style={{ backgroundColor: "#5A6447" }}>
-              <View className="flex-1 mr-4">
-                <Text className="text-white font-semibold">Remember last distance</Text>
-                <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>
-                  Suggest previous distance for 15 minutes
-                </Text>
-              </View>
-              <Switch
-                value={distanceSettings.rememberLastDistanceMinutes > 0}
-                onValueChange={(value) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  updateDistanceSettings({ rememberLastDistanceMinutes: value ? 15 : 0 });
-                }}
-                trackColor={{ false: "#3D4A2F", true: "#22c55e" }}
-                thumbColor={distanceSettings.rememberLastDistanceMinutes > 0 ? "#fff" : "#8B7355"}
-              />
-            </View>
-
-            {/* Bluetooth Rangefinder (Phase 2 - Coming Soon) */}
-            <Pressable
-              className="flex-row items-center justify-between p-4 mb-3 rounded-lg"
-              style={{ backgroundColor: "#5A6447", opacity: 0.6 }}
-              disabled={true}
-            >
-              <View className="flex-row items-center flex-1">
-                <Ionicons name="bluetooth" size={20} color="#3b82f6" />
-                <View className="ml-3 flex-1">
-                  <Text className="text-white font-semibold">Connect Rangefinder</Text>
-                  <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>
-                    Bluetooth rangefinder integration
-                  </Text>
-                </View>
-              </View>
-              <View className="px-2 py-1 rounded" style={{ backgroundColor: "#3b82f620" }}>
-                <Text className="text-xs font-semibold" style={{ color: "#3b82f6" }}>
-                  Coming Soon
-                </Text>
-              </View>
-            </Pressable>
-
-            {/* Distance Usage Stats */}
-            {telemetryStats.totalAnalyses > 0 && (
-              <View className="p-4 rounded-lg mt-2" style={{ backgroundColor: "#2B3420" }}>
-                <Text className="text-xs font-semibold mb-2" style={{ color: "#D4AF37" }}>
-                  YOUR DISTANCE USAGE
-                </Text>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-xs" style={{ color: "#8B7355" }}>
-                    Analyses with distance:
-                  </Text>
-                  <Text className="text-xs font-semibold" style={{ color: "#E5D4B8" }}>
-                    {telemetryStats.percentWithDistance.toFixed(0)}%
-                  </Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-xs" style={{ color: "#8B7355" }}>
-                    Ranged vs. estimated:
-                  </Text>
-                  <Text className="text-xs font-semibold" style={{ color: "#E5D4B8" }}>
-                    {telemetryStats.rangedVsEstimated.ranged} / {telemetryStats.rangedVsEstimated.estimated}
-                  </Text>
-                </View>
-              </View>
-            )}
           </View>
 
           {/* About / Help */}

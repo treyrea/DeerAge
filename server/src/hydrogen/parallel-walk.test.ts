@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { SEQUENTIAL_WALK, walkHydrogen, type ModelCaller, type WalkSchedule } from "./pipeline.js";
-import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
+import { activeQualityPrompt, buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
 import { PAIRS } from "./rules.js";
 import { ageWithRouter } from "./age-with-router.js";
 import { defaultAgingConfig, normalizeAging } from "./aging.js";
@@ -126,7 +126,9 @@ test("parallel closers start every pair after Step A and cancel the ones not nee
 
 test("no deer: the router answers at once and cancels the plain read and cross-check (no retries)", async () => {
   const prompts = hydrogenPrompts();
-  const answers = new Map<string, Reply>([[prompts.quality, QUALITY.absent], [prompts.babyGate, GATE.adult], [prompts.stepA, STEP_A.text]]);
+  // Default walk uses the live quality prompt (bundled file plus the ignore-reticle sentence).
+  const qualityPrompt = activeQualityPrompt(defaultAgingConfig().ignoreReticle);
+  const answers = new Map<string, Reply>([[qualityPrompt, QUALITY.absent], [prompts.babyGate, GATE.adult], [prompts.stepA, STEP_A.text]]);
   const seen: string[] = [];
   let sideCalls = 0;
   let sideCancelled = 0;

@@ -13,8 +13,8 @@ export const RETAKE_MESSAGES: Record<string, string> = {
   belly_waist_visible: "Try a side-on shot with the belly and waist clear of grass, trees, or other deer.",
   neck_chest_visible: "Try a side-on shot with the neck and chest clear of trees, brush, or other deer.",
   subject_separable: "Try a photo of just one deer, with no other deer overlapping its body.",
-  deer_large_enough: "Try a closer photo where the whole deer fills more of the frame.",
-  contour_readable: "Try a sharper photo where the belly, neck, and back are easy to see.",
+  deer_large_enough: "Get closer or zoom in until the body fills the frame.",
+  contour_readable: "Get closer or zoom in, and hold still, so the belly, neck, and back are sharp.",
 };
 
 /**
@@ -113,6 +113,14 @@ export function parseQuality(text: string): QualityFields | null {
 }
 
 /** v5 rule: legs never retake, and CANT_TELL never retakes. */
+/** A photo-quality retake because the deer is too small or too soft to read body shape. */
+export function isSizeRetake(result: { kind?: string; fails?: string[]; message?: string }): boolean {
+  if (result.kind !== "retake") return false;
+  const fails = result.fails ?? [];
+  if (fails.includes("deer_large_enough") || fails.includes("contour_readable")) return true;
+  return typeof result.message === "string" && /Get closer or zoom in/i.test(result.message);
+}
+
 export function decideQuality(fields: QualityFields): QualityDecision {
   const fails: string[] = [];
   if (fields.view_angle === "HEAD_ON" || fields.view_angle === "REAR") fails.push("view_angle");
@@ -121,8 +129,21 @@ export function decideQuality(fields: QualityFields): QualityDecision {
   for (const key of ["belly_waist_visible", "neck_chest_visible", "subject_separable", "deer_large_enough", "contour_readable"] as const) {
     if (fields[key] === "NO") fails.push(key);
   }
+  // Minimum size: CANT_TELL never retakes on its own, but if we also cannot
+  // clearly read the body contour, do not age a distant speck.
+  if (fields.deer_large_enough !== "YES" && fields.deer_large_enough !== "NO" && fields.contour_readable !== "YES") {
+    fails.push("deer_large_enough");
+  }
   if (fails.length === 0) {
     return { decision: "AGEABLE", fails: [], retake_message: "" };
+  }
+  // A too-small or too-soft deer always gets the get-closer tip, even when other
+  // checks also failed (a distant speck often fails several at once).
+  if (fails.includes("deer_large_enough")) {
+    return { decision: "RETAKE", fails, retake_message: RETAKE_MESSAGES.deer_large_enough };
+  }
+  if (fails.includes("contour_readable")) {
+    return { decision: "RETAKE", fails, retake_message: RETAKE_MESSAGES.contour_readable };
   }
   const tip = RETAKE_MESSAGES[fails[0]] ?? RETAKE_MESSAGE_DEFAULT;
   return {

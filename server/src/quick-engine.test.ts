@@ -14,6 +14,7 @@ import { setKvForTests, type Kv } from "./kv.js";
 import { handleAdminConfigRequest, loadRemoteConfig } from "./remote-config.js";
 import {
   deerLine,
+  deerLargeLine,
   defaultQuickConfig,
   leaseRulesOf,
   normalizeQuick,
@@ -258,3 +259,24 @@ class MemoryKv implements Kv {
     return results;
   }
 }
+
+test("deerLargeLine retakes only on an explicit NO", () => {
+  assert.equal(deerLargeLine("DEER_LARGE_ENOUGH: NO"), "too_small");
+  assert.equal(deerLargeLine("DEER_LARGE_ENOUGH: YES"), "ok");
+  assert.equal(deerLargeLine("DEER_LARGE_ENOUGH: CANT_TELL"), "ok");
+  assert.equal(deerLargeLine("no line"), "unknown");
+  assert.equal(deerLargeLine("DEER_LARGE_ENOUGH: YES\nDEER_LARGE_ENOUGH: NO"), "too_small");
+});
+
+test("a tiny deer on the plain read is a retake, not an age", async () => {
+  const outcome = await runQuickHydrogen({
+    engine: "plain",
+    call: async () => ({ text: "AGE: 2.5\nDEER_PRESENT: YES\nDEER_LARGE_ENOUGH: NO" }),
+    minimum: 3.5,
+    leaseRules: false,
+    config: { engine: "plain", leaseUnknown: "plain", escalateAt: 3.5, prompt: "" },
+    resolveFull: async () => { throw new Error("plain read should not escalate"); },
+  });
+  assert.equal(outcome.kind, "retake");
+  if (outcome.kind === "retake") assert.match(outcome.message, /Get closer or zoom in/);
+});

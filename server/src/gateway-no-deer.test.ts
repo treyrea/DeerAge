@@ -161,7 +161,7 @@ test("quick, age, and score no-deer jobs carry the remote copy and no age", () =
 test("a gateway backup that finds no deer does not come back as an age", async () => {
   const resolved = await resolveHydrogenAge({
     minimum: 4.5,
-    primary: async () => ({ kind: "stop", reason: "unparsed quality" }),
+    primary: async () => ({ kind: "stop", reason: "unparsed 3.5 vs 4.5" }),
     backup: async () => ({ kind: "no_deer" }),
     circuitOpen: async () => false,
     note: async () => undefined,

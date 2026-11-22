@@ -1,6 +1,5 @@
 /**
  * Deer Camera Screen - One-Tap Burst Capture
- * Now includes distance capture for improved accuracy
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -9,16 +8,12 @@ import { Camera, useCameraDevice, useCameraPermission } from "react-native-visio
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
-import { useDistanceStore } from "../state/distanceStore";
 import { useNetworkStore } from "../state/networkStore";
 import { DeerAnalysisFrame } from "../types/deer-scoring";
-import type { DistanceMeasurement } from "../types/distance";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Slider from "@react-native-community/slider";
 import * as Haptics from "expo-haptics";
-import { DistancePicker } from "../components/DistancePicker";
-import { DistanceChip } from "../components/DistanceDisplay";
 import { AntlerSilhouette } from "../components/AntlerSilhouette";
 import { FramingBrackets } from "../components/FramingBrackets";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
@@ -55,10 +50,6 @@ export const DeerCameraScreen = () => {
   const [countdownValue, setCountdownValue] = useState(3);
   const [zoom, setZoom] = useState(1);
 
-  // Distance capture state
-  const [showDistancePicker, setShowDistancePicker] = useState(false);
-  const [capturedDistance, setCapturedDistance] = useState<DistanceMeasurement | null>(null);
-  const [pendingFrames, setPendingFrames] = useState<DeerAnalysisFrame[]>([]);
 
   // Use individual selectors to avoid unnecessary re-renders
   const startCapture = useDeerScoringStore((s) => s.startCapture);
@@ -87,12 +78,6 @@ export const DeerCameraScreen = () => {
   const guideWidth = bodyMode ? width * BODY_BOX_WIDTH : width * 0.85;
   const guideHeight = bodyMode ? guideWidth / BODY_BOX_ASPECT : height * 0.30;
 
-  // Distance store
-  const distanceSettings = useDistanceStore((s) => s.settings);
-  const getSuggestedDistance = useDistanceStore((s) => s.getSuggestedDistance);
-  const setPendingDistance = useDistanceStore((s) => s.setPendingDistance);
-  const setLastDistance = useDistanceStore((s) => s.setLastDistance);
-  const enableRangefinder = useDistanceStore((s) => s.enableBluetoothRangefinder);
 
   // Network state
   const isConnected = useNetworkStore((s) => s.isConnected);
@@ -138,7 +123,6 @@ export const DeerCameraScreen = () => {
     handleBurstCapture();
   };
 
-  // Proceed to analysis after distance capture
   const proceedToAnalysis = async (frames: DeerAnalysisFrame[]) => {
     // Check if we're offline
     const isOffline = !isConnected || isInternetReachable === false;
@@ -168,33 +152,6 @@ export const DeerCameraScreen = () => {
 
     // Wait for processing to complete
     await processPromise;
-  };
-
-  // Handle distance save
-  const handleDistanceSave = (distance: DistanceMeasurement) => {
-    setCapturedDistance(distance);
-    setLastDistance(distance);
-    setPendingDistance(distance);
-    setShowDistancePicker(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    // Proceed to analysis with saved frames
-    if (pendingFrames.length > 0) {
-      proceedToAnalysis(pendingFrames);
-      setPendingFrames([]);
-    }
-  };
-
-  // Handle distance skip
-  const handleDistanceSkip = () => {
-    setPendingDistance(null);
-    setShowDistancePicker(false);
-
-    // Proceed to analysis without distance
-    if (pendingFrames.length > 0) {
-      proceedToAnalysis(pendingFrames);
-      setPendingFrames([]);
-    }
   };
 
   // Handle one-tap burst capture
@@ -278,14 +235,7 @@ export const DeerCameraScreen = () => {
         return;
       }
 
-      // If distance prompting is enabled, show distance picker
-      if (distanceSettings.promptOnEveryAnalysis) {
-        setPendingFrames(capturedFrames);
-        setShowDistancePicker(true);
-      } else {
-        // Proceed directly to analysis
-        await proceedToAnalysis(capturedFrames);
-      }
+      await proceedToAnalysis(capturedFrames);
     } catch (error) {
       console.error("Burst capture error:", error);
       setIsBurstCapturing(false);
@@ -296,8 +246,6 @@ export const DeerCameraScreen = () => {
     }
   };
 
-  // Get suggested distance
-  const suggested = getSuggestedDistance();
 
   if (!huntReady) return <HuntRegionSheet />;
 
@@ -711,16 +659,6 @@ export const DeerCameraScreen = () => {
         </View>
       </View>
 
-      {/* Distance Picker Modal */}
-      <DistancePicker
-        visible={showDistancePicker}
-        onSave={handleDistanceSave}
-        onSkip={handleDistanceSkip}
-        suggestedDistance={suggested?.distance}
-        suggestedDistanceTimestamp={suggested?.timestamp}
-        showBanner={false}
-        enableRangefinderButton={enableRangefinder}
-      />
       </View>
     </View>
   );

@@ -9,6 +9,7 @@
 import { classStep } from "./field-call.js";
 import { formatAgeLabel } from "./hydrogen/router.js";
 import { hydrogenAgeBody } from "./hydrogen/result.js";
+import { RETAKE_MESSAGES } from "./hydrogen/rules.js";
 import { parseAge } from "./hydrogen/plain.js";
 import { activeQuickPrompt } from "./hydrogen/prompts.js";
 import type { AgeResolution } from "./hydrogen/failover.js";
@@ -100,6 +101,15 @@ export function patchQuick(current: QuickConfig, incoming: unknown): QuickConfig
 export function leaseRulesOf(body: { leaseRules?: unknown; context?: { leaseRules?: unknown } | null }): boolean | undefined {
   const value = body.leaseRules ?? body.context?.leaseRules;
   return typeof value === "boolean" ? value : undefined;
+}
+
+/** The last DEER_LARGE_ENOUGH line. Only an explicit NO is "too small". */
+export function deerLargeLine(text: string): "ok" | "too_small" | "unknown" {
+  const found = [...text.matchAll(/DEER_LARGE_ENOUGH\s*:\s*\**\s*(YES|NO|CANT_TELL)\b/gi)];
+  const last = found.at(-1)?.[1]?.toUpperCase();
+  if (last === "NO") return "too_small";
+  if (last === "YES" || last === "CANT_TELL") return "ok";
+  return "unknown";
 }
 
 /** The last DEER_PRESENT line. Only an explicit NO is "no deer". */
@@ -196,6 +206,7 @@ export function plainAgeBody(low: number, high: number, text: string, minimum: n
 
 export type QuickOutcome =
   | { kind: "no_deer" }
+  | { kind: "retake"; message: string }
   | { kind: "fail"; reason: string }
   | { kind: "age"; result: Record<string, unknown>; escalated: boolean; backup: boolean; plainAge: number | null };
 
@@ -230,6 +241,9 @@ export async function runQuickHydrogen(input: {
   }
   const deer = deerLine(text);
   if (deer === "absent") return { kind: "no_deer" };
+  if (deerLargeLine(text) === "too_small") {
+    return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough };
+  }
   const plain = parseAge(text);
   if (!plain) {
     log({ event: "quick_plain_failed", reason: "no_age", deer });
