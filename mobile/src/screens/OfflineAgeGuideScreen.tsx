@@ -15,6 +15,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { TraitPictureCard } from "../components/TraitPictureCard";
+import { softPulse } from "../lib/haptics";
 import { TRAITS, scoreGuide, type ScoreValue, type TraitDef, type TraitId } from "../lib/offline-age-guide";
 import { pictureCaption, type IllustratedTraitId } from "../lib/offline-age-guide-art";
 
@@ -83,7 +84,7 @@ export const OfflineAgeGuideScreen = () => {
   };
 
   const resetAll = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
     setScores({});
   };
 
@@ -94,7 +95,12 @@ export const OfflineAgeGuideScreen = () => {
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View className="px-6 py-4 border-b" style={{ borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+          <Pressable
+            accessibilityLabel="Back"
+            onPress={() => navigation.goBack()}
+            hitSlop={8}
+            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+          >
             <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
           </Pressable>
           <View className="flex-1 items-center">
@@ -105,7 +111,7 @@ export const OfflineAgeGuideScreen = () => {
               Manual Field Estimation
             </Text>
           </View>
-          <View className="w-10" />
+          <View style={{ width: 44 }} />
         </View>
       </View>
 
@@ -213,8 +219,16 @@ export const OfflineAgeGuideScreen = () => {
               </View>
               <Pressable
                 onPress={resetAll}
-                className="px-3 py-2 rounded-lg"
-                style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                accessibilityLabel="Reset"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  minHeight: 44,
+                  minWidth: 44,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 <Text className="text-white text-xs font-semibold">Reset</Text>
               </Pressable>
@@ -236,15 +250,23 @@ export const OfflineAgeGuideScreen = () => {
               <Text className="text-sm" style={{ color: "#E5D4B8" }}>
                 {result.scoredCount > 0 ? result.statusLine : "Score body features to see an age"}
               </Text>
-              <Text className="text-xs mt-1" style={{ color: "#8B7355" }}>
+              <Text className="text-xs mt-1" style={{ color: "#C9B48F" }}>
                 {result.fieldCallNote ?? "Score 3 body traits, or the neck plus 2, to see an age."}
               </Text>
             </View>
             {result.scoredCount > 0 && (
               <Pressable
                 onPress={resetAll}
-                className="px-3 py-1.5 rounded-lg"
-                style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                accessibilityLabel="Reset"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  minHeight: 44,
+                  minWidth: 44,
+                  paddingHorizontal: 12,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 <Text className="text-white text-xs font-semibold">Reset</Text>
               </Pressable>

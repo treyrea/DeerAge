@@ -120,10 +120,12 @@ export const ShotRecordPage = ({
   return (
     <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 12 }}>
-        <Pressable onPress={onBack} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+        <Pressable accessibilityLabel="Back" onPress={onBack} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
         </Pressable>
-        <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>Pre-shot record</Text>
+        <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "700", marginLeft: 8 }}>
+          {record.mode === "quick" ? "Quick Check" : record.mode === "age" ? "Age" : record.mode === "score" ? "Rack" : "Saved record"}
+        </Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
@@ -131,7 +133,7 @@ export const ShotRecordPage = ({
             <Image key={uri} source={{ uri }} style={{ width: 160, height: 160, borderRadius: 12, marginRight: 8, backgroundColor: "#000" }} resizeMode="contain" />
           ))}
         </ScrollView>
-        <Text style={{ color: "#8B7355", fontWeight: "700" }}>Your lease minimum: {record.leaseMinimum}</Text>
+        <Text style={{ color: "#C9B48F", fontWeight: "700" }}>Your lease minimum: {record.leaseMinimum}</Text>
         <Text style={{ color: "#F5F5DC", fontSize: 36, fontWeight: "800", marginTop: 6 }}>{record.ageClass || "Age class unavailable"}</Text>
         <Text style={{ color: "#D4AF37", fontSize: 28, fontWeight: "800" }}>{record.fieldCall}</Text>
         {record.fieldCallNote ? <Text style={{ color: "#E5D4B8", marginTop: 8, lineHeight: 20 }}>{record.fieldCallNote}</Text> : null}
@@ -142,7 +144,7 @@ export const ShotRecordPage = ({
           minimum={record.leaseMinimum}
           photos={record.photoUris}
         />
-        <Text style={{ color: "#8B7355", marginTop: 8, lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
+        <Text style={{ color: "#C9B48F", marginTop: 8, lineHeight: 18 }}>{FAIR_LIMIT_NOTE}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 10 }}>Phone time: {new Date(record.deviceTime).toLocaleString()}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 4 }}>Server time: {record.serverTime ? new Date(record.serverTime).toLocaleString() : "Not signed"}</Text>
         <Text style={{ color: "#E5D4B8", marginTop: 4 }}>

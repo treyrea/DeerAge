@@ -3,13 +3,16 @@
  * Why and More stay collapsed until he asks.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import { Image, Modal, Pressable, ScrollView, StatusBar, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Modal, Pressable, ScrollView, StatusBar, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
+import { ResultLead } from "../components/ResultLead";
+import { extraBodyNotes, regionRows } from "../utils/body-cues";
+import { tapSquare } from "../theme/tap";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import { PreShotBar } from "../components/PreShotBar";
@@ -23,8 +26,6 @@ import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { shownAge } from "../utils/age-class";
-import { BodyFeatureOverlayComponent } from "../components/BodyFeatureOverlay";
-import { extraBodyNotes } from "../utils/body-cues";
 import { PhotoViewer } from "../components/PhotoViewer";
 import { ErrorModal } from "../components/ErrorModal";
 import {
@@ -54,10 +55,7 @@ export const AgeResultScreen = () => {
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
   const [hasSaved, setHasSaved] = useState(false);
-  const [showOverlays, setShowOverlays] = useState(true);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollOffset = useRef(0);
   const [showWhy, setShowWhy] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showModelCard, setShowModelCard] = useState(false);
@@ -105,7 +103,7 @@ export const AgeResultScreen = () => {
 
   useEffect(() => {
     if (!currentResult?.analysisId) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    softPulse();
   }, [currentResult?.analysisId]);
 
   if (!currentResult || !currentResult.explainableAge) {
@@ -139,13 +137,14 @@ export const AgeResultScreen = () => {
   const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
   const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
   const bodyNotes = extraBodyNotes(clues, explainableAge.bodyFeatureOverlays);
+  const moreRows = regionRows(explainableAge.bodyFeatureOverlays).slice(3);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
   const note = copy?.verdictNote?.trim() || FIELD_READ_NOTE;
   const minimumPrompt = copy?.setMinimumPrompt?.trim() || SET_MINIMUM_PROMPT;
   const hunt = activeHunt(useHunterProfile.getState());
 
   const leave = (next: "home" | "scan") => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    softPulse();
     setHasSaved(false);
     if (next === "scan") {
       setAnalysisMode("age");
@@ -207,24 +206,32 @@ export const AgeResultScreen = () => {
       <View style={{ paddingHorizontal: 8 }}>
         <Pressable
           testID="age-close"
+          accessibilityLabel="Close"
           onPress={() => leave("home")}
           hitSlop={8}
-          style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+          style={tapSquare}
         >
           <Ionicons name="close" size={26} color={BLIND.muted} />
         </Pressable>
       </View>
 
       <ScrollView
-        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-        onScroll={(event) => {
-          scrollOffset.current = event.nativeEvent.contentOffset.y;
-        }}
-        scrollEventThrottle={16}
       >
-        {word ? (
+        {imageUri ? (
+          <ResultLead
+            imageUri={imageUri}
+            call={word || undefined}
+            callTestID="age-verdict"
+            callColor={verdictColor(kind)}
+            overlays={explainableAge.bodyFeatureOverlays}
+            onPressPhoto={() => {
+              softPulse();
+              setPhotoOpen(true);
+            }}
+          />
+        ) : word ? (
           <Text
             testID="age-verdict"
             adjustsFontSizeToFit
@@ -236,8 +243,8 @@ export const AgeResultScreen = () => {
           </Text>
         ) : null}
 
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: word ? 12 : 0 }}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ flex: 1 }}>
             <Text style={{ color: BLIND.ink, fontSize: word ? 28 : 40, fontWeight: "800" }}>{ageClassLabel}</Text>
             {hasMinimum ? (
               <Text style={{ color: BLIND.muted, fontSize: 17, marginTop: 4 }}>
@@ -249,22 +256,6 @@ export const AgeResultScreen = () => {
               </Pressable>
             )}
           </View>
-          {imageUri ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="View full size photo"
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-                setPhotoOpen(true);
-              }}
-            >
-              <Image
-                accessible={false}
-                source={{ uri: imageUri }}
-                style={{ width: 64, height: 64, borderRadius: 10, backgroundColor: "#1C1B17" }}
-              />
-            </Pressable>
-          ) : null}
         </View>
 
         <Text style={{ color: BLIND.muted, fontSize: 13, lineHeight: 18, marginTop: 10 }}>{note}</Text>
@@ -319,22 +310,15 @@ export const AgeResultScreen = () => {
         </Pressable>
         {showWhy ? (
           <View style={{ paddingBottom: 8 }}>
-            {imageUri ? (
-              <View style={{ marginTop: 8 }}>
-                <BodyFeatureOverlayComponent
-                  imageUri={imageUri}
-                  overlays={explainableAge.bodyFeatureOverlays}
-                  showOverlays={showOverlays}
-                  onToggleOverlays={() => setShowOverlays((shown) => !shown)}
-                  scrollRef={scrollRef}
-                  scrollOffset={scrollOffset}
-                />
-              </View>
-            ) : null}
+            {moreRows.map((row) => (
+              <Text key={row.featureId} style={{ color: BLIND.ink, fontSize: 16, lineHeight: 23, marginTop: 12 }}>
+                {`${row.number}. ${row.name}${row.cue && row.cue.toLowerCase() !== row.name.toLowerCase() ? ` · ${row.cue}` : ""}`}
+              </Text>
+            ))}
             {bodyNotes.map((line) => (
               <Text key={line} style={{ color: BLIND.ink, fontSize: 16, lineHeight: 23, marginTop: 12 }}>{line}</Text>
             ))}
-            {bodyNotes.length === 0 && explainableAge.bodyFeatureOverlays.length === 0 ? (
+            {bodyNotes.length === 0 && moreRows.length === 0 ? (
               <Text style={{ color: BLIND.muted, fontSize: 16, lineHeight: 23, marginTop: 12 }}>
                 No other body note on this photo.
               </Text>
@@ -404,8 +388,8 @@ export const AgeResultScreen = () => {
           <View style={{ backgroundColor: "#1C1B17", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: "80%" }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <Text style={{ color: BLIND.ink, fontSize: 20, fontWeight: "700", flex: 1 }}>How this works</Text>
-              <Pressable onPress={() => setShowModelCard(false)}>
-                <Ionicons name="close-circle" size={32} color={BLIND.muted} />
+              <Pressable accessibilityLabel="Close" onPress={() => setShowModelCard(false)} hitSlop={8} style={tapSquare}>
+                <Ionicons name="close" size={26} color={BLIND.muted} />
               </Pressable>
             </View>
             <ScrollView>
@@ -425,8 +409,8 @@ export const AgeResultScreen = () => {
           <View style={{ backgroundColor: "#1C1B17", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <Text style={{ color: BLIND.ink, fontSize: 20, fontWeight: "700" }}>Notes</Text>
-              <Pressable onPress={() => setShowNotesModal(false)}>
-                <Ionicons name="close-circle" size={32} color={BLIND.muted} />
+              <Pressable accessibilityLabel="Close" onPress={() => setShowNotesModal(false)} hitSlop={8} style={tapSquare}>
+                <Ionicons name="close" size={26} color={BLIND.muted} />
               </Pressable>
             </View>
             <Text style={{ color: BLIND.muted, marginBottom: 8 }}>

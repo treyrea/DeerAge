@@ -9,6 +9,8 @@ import { useRemoteConfig } from "../state/remoteConfig";
 import { useE2eFlags } from "../e2e/flags";
 import { APP_STORE_URL, liveStoreVersion } from "../lib/store-version";
 import { compareVersions, installedAppVersion } from "../lib/version";
+import { HOME_BANNER_PRIORITY } from "../lib/home-banners";
+import { useBannerShown, useHomeBanner } from "./HomeBannerStack";
 
 export const UpdateAvailableBanner = () => {
   const dismissed = useHunterProfile((s) => s.dismissedUpdateVersion);
@@ -49,7 +51,10 @@ export const UpdateAvailableBanner = () => {
   const candidates = [recommendedVersion, minVersion, storeVersion].filter((item): item is string => Boolean(item));
   const target = candidates.sort((left, right) => compareVersions(left, right)).at(-1) ?? null;
   const newer = Boolean(target) && compareVersions(installed, target ?? installed) < 0 && dismissed !== target;
-  if (!previewUpdate && !newer) return null;
+  const wants = previewUpdate || newer;
+  useHomeBanner("update", HOME_BANNER_PRIORITY.update, wants);
+  const bannerShown = useBannerShown("update");
+  if (!wants || !bannerShown) return null;
   const shown = newer ? target : "the App Store version";
 
   return (

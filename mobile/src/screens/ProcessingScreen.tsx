@@ -11,7 +11,7 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
@@ -109,23 +109,13 @@ export const ProcessingScreen = () => {
   // Haptic feedback on error
   useEffect(() => {
     if (!error) return;
-    if (errorCode === "fair_use") {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
-      return;
-    }
-    const look = errorCode === "retake" || errorCode === "poor_quality" || errorCode === "unreadable" || errorCode === "no_body";
-    if (look && analysisMode === "age") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-      return;
-    }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-  }, [error, errorCode, analysisMode]);
+    softPulse();
+  }, [error]);
 
-  // On the result: fill the bar, one light success tap, then show it.
+  // The result screen gives the one soft pulse. This screen only finishes the bar.
   useEffect(() => {
     if (isProcessing || !currentResult) return undefined;
     useScanProgress.getState().finish();
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     const timer = setTimeout(() => {
       navigation.replace(analysisMode === "age" ? "AgeResults" : "Results");
     }, 350);

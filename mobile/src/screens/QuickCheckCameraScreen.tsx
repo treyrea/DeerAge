@@ -19,8 +19,10 @@ import { FairUseLimitView } from "../components/FairUseLimit";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useNetworkStore } from "../state/networkStore";
 import { useSubscriptionStore } from "../state/subscriptionStore";
-import * as Haptics from "expo-haptics";
-import { FramingBrackets } from "../components/FramingBrackets";
+import { softPulse } from "../lib/haptics";
+import { BUTTON_GREEN, CREAM, GOLD, INK } from "../theme/contrast";
+import { tapSquare } from "../theme/tap";
+import { FramingGuide } from "../components/FramingGuide";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
 import { huntConfirmedToday, useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
@@ -29,13 +31,10 @@ import { useWindowBox } from "../hooks/useWindowBox";
 import { isSubjectFillAvailable } from "../lib/subject-fill";
 import { resultTimeBadge } from "../lib/result-time-badge";
 import {
-  BODY_BOX_ASPECT,
   BODY_BOX_LIFT,
-  BODY_BOX_WIDTH,
-  FRAME_GOLD,
-  FRAME_GREEN,
   frameBodyGoodHintFromCopy,
   frameBodyHintFromCopy,
+  guideFrameSize,
 } from "../lib/frame-fill";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -69,10 +68,7 @@ export const QuickCheckCameraScreen = () => {
     preview: previewLayout.box,
     guide: guideLayout.box,
   });
-  const bracketColor = bodyFilled ? FRAME_GREEN : FRAME_GOLD;
-  // Body box: about 90% of screen width, 3:2 wide, slightly above middle.
-  const guideWidth = width * BODY_BOX_WIDTH;
-  const guideHeight = guideWidth / BODY_BOX_ASPECT;
+  const guideSize = guideFrameSize(width);
 
   // Get min and max zoom from device
   const minZoom = device?.minZoom ?? 1;
@@ -105,13 +101,13 @@ export const QuickCheckCameraScreen = () => {
     }
 
     setIsCapturing(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
 
     try {
-      // Take single photo
+      // Take single photo. The shutter stays silent.
       const photo = await cameraRef.current.takePhoto({
         flash: "off",
-        enableShutterSound: true, // Audible feedback
+        enableShutterSound: false,
       });
 
       // Use the photo directly - the camera zoom already frames the subject
@@ -125,7 +121,6 @@ export const QuickCheckCameraScreen = () => {
       const result = await quickAgeCheck(imageUri, propertyRules.minimumShooterAge);
 
       useScanProgress.getState().finish();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       await new Promise((resolve) => setTimeout(resolve, 300));
       setIsAnalyzing(false);
 
@@ -140,11 +135,11 @@ export const QuickCheckCameraScreen = () => {
       const message = isAnalysisError(error) ? error.message : "Quick Check didn't finish. Check your connection and try again.";
       if (isAnalysisError(error) && error.code === "fair_use") {
         setFairUse({ message, limit: error.limit, offerPacks: error.creditsBypass });
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+        softPulse();
         return;
       }
       console.error("Quick capture error:", error);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      softPulse();
       Alert.alert(isAnalysisError(error) && error.code === "quota" ? "Free analyses used" : isAnalysisError(error) && error.code === "not_configured" ? "Can't reach DeerAge" : "Quick Check failed", message, isAnalysisError(error) && error.code === "quota" ? [
         { text: "Not now", style: "cancel" },
         { text: "See plans", onPress: () => navigation.navigate("TierPaywall", { reason: "free_limit" }) },
@@ -171,19 +166,21 @@ export const QuickCheckCameraScreen = () => {
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
           testID="camera-close"
+          accessibilityLabel="Close"
           onPress={() => navigation.goBack()}
-          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+          hitSlop={8}
+          style={[tapSquare, { marginLeft: 24, marginTop: 16 }]}
         >
-          <Ionicons name="close" size={24} color="white" />
+          <Ionicons name="close" size={26} color="white" />
         </Pressable>
         <View className="flex-1 items-center justify-center">
           <Ionicons name="camera-outline" size={64} color="#666" />
           <Text className="text-white text-lg mt-4">Camera permission required</Text>
           <Pressable
             onPress={requestPermission}
-            className="mt-4 bg-green-600 px-6 py-3 rounded-lg"
+            style={{ marginTop: 16, backgroundColor: BUTTON_GREEN, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 10, minHeight: 44, justifyContent: "center" }}
           >
-            <Text className="text-white font-semibold">Grant Permission</Text>
+            <Text style={{ color: CREAM, fontWeight: "600" }}>Grant Permission</Text>
           </Pressable>
         </View>
       </View>
@@ -195,10 +192,12 @@ export const QuickCheckCameraScreen = () => {
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top }}>
         <Pressable
           testID="camera-close"
+          accessibilityLabel="Close"
           onPress={() => navigation.goBack()}
-          className="w-10 h-10 items-center justify-center ml-6 mt-4"
+          hitSlop={8}
+          style={[tapSquare, { marginLeft: 24, marginTop: 16 }]}
         >
-          <Ionicons name="close" size={24} color="white" />
+          <Ionicons name="close" size={26} color="white" />
         </Pressable>
         <View className="flex-1 items-center justify-center">
           <Ionicons name="camera-outline" size={64} color="#666" />
@@ -237,20 +236,14 @@ export const QuickCheckCameraScreen = () => {
       >
         {/* Top Bar */}
         <View className="flex-row items-center justify-between px-6 py-4">
-          <Pressable
-            testID="camera-close"
-            onPress={() => navigation.goBack()}
-            className="w-10 h-10 items-center justify-center bg-black/50 rounded-full"
-          >
-            <Ionicons name="close" size={24} color="white" />
-          </Pressable>
+          <View style={{ width: 44 }} />
 
-          <View className="bg-amber-500/90 px-4 py-2 rounded-full flex-row items-center">
-            <Ionicons name="flash" size={16} color="white" />
-            <Text className="text-white text-sm font-bold ml-2">QUICK CHECK</Text>
+          <View className="px-4 py-2 rounded-full flex-row items-center" style={{ backgroundColor: GOLD }}>
+            <Ionicons name="flash" size={16} color={INK} />
+            <Text className="text-sm font-bold ml-2" style={{ color: INK }}>QUICK CHECK</Text>
           </View>
 
-          <View className="w-10" />
+          <View style={{ width: 44 }} />
         </View>
 
         {/* Center Guide - Body focused - LARGER */}
@@ -264,28 +257,31 @@ export const QuickCheckCameraScreen = () => {
             <ScanProgressCompact fallbackMode="quick" />
           ) : (
             // Ready to capture - LARGER viewer window
-            <>
-              <View
-                ref={guideLayout.ref}
-                onLayout={guideLayout.onLayout}
-                style={{ width: guideWidth, height: guideHeight }}
-              >
-                <FramingBrackets width={guideWidth} height={guideHeight} color={bracketColor} />
-              </View>
-
-              <View className="mt-4 bg-black/70 px-4 py-2 rounded-xl mx-8">
-                <Text className="text-center font-bold text-base" style={{ color: bracketColor }}>
-                  {bodyFilled ? frameBodyGoodHint : frameBodyHint}
-                </Text>
-              </View>
-            </>
+            <FramingGuide
+              width={guideSize.width}
+              height={guideSize.height}
+              filled={bodyFilled}
+              hint={frameBodyHint}
+              goodHint={frameBodyGoodHint}
+              guideRef={guideLayout.ref}
+              onGuideLayout={guideLayout.onLayout}
+            />
           )}
         </View>
 
         {/* Bottom Controls */}
         <View style={{ paddingBottom: insets.bottom + 16, paddingHorizontal: 24 }}>
           {/* Capture Button */}
-          <View className="items-center mb-4">
+          <View className="flex-row items-center justify-between mb-4">
+            <Pressable
+              testID="camera-close"
+              accessibilityLabel="Close"
+              onPress={() => navigation.goBack()}
+              hitSlop={8}
+              style={[tapSquare, { backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 22 }]}
+            >
+              <Ionicons name="close" size={26} color="white" />
+            </Pressable>
             <Pressable
               onPress={handleQuickCapture}
               disabled={isCapturing || isAnalyzing}
@@ -293,16 +289,16 @@ export const QuickCheckCameraScreen = () => {
             >
               <View
                 className="w-20 h-20 rounded-full items-center justify-center"
-                style={{ backgroundColor: isAnalyzing ? "rgba(245, 158, 11, 0.3)" : "rgba(245, 158, 11, 0.5)" }}
+                style={{ backgroundColor: isAnalyzing ? "rgba(212, 175, 55, 0.3)" : "rgba(212, 175, 55, 0.45)" }}
               >
                 <View
                   className="w-16 h-16 rounded-full items-center justify-center"
-                  style={{ backgroundColor: isAnalyzing ? "#78716c" : "#f59e0b" }}
+                  style={{ backgroundColor: isAnalyzing ? "#78716c" : GOLD }}
                 >
                   {isCapturing ? (
-                    <ActivityIndicator size="large" color="#fff" />
+                    <ActivityIndicator size="large" color={INK} />
                   ) : (
-                    <Ionicons name="flash" size={32} color="#fff" />
+                    <Ionicons name="flash" size={32} color={INK} />
                   )}
                 </View>
               </View>
@@ -310,6 +306,7 @@ export const QuickCheckCameraScreen = () => {
                 {isCapturing ? "Capturing..." : isAnalyzing ? " " : "Quick Check"}
               </Text>
             </Pressable>
+            <View style={{ width: 44 }} />
           </View>
 
           {/* Horizontal Zoom Slider */}
@@ -338,9 +335,9 @@ export const QuickCheckCameraScreen = () => {
           {/* Bottom info row */}
           {!isAnalyzing && (
             <View className="flex-row items-center justify-between">
-              <View className="bg-green-600/80 px-3 py-1.5 rounded-full flex-row items-center">
-                <Ionicons name="timer" size={14} color="white" />
-                <Text className="text-white text-xs font-semibold ml-1.5">{resultTimeBadge("quick")}</Text>
+              <View className="px-3 py-1.5 rounded-full flex-row items-center" style={{ backgroundColor: BUTTON_GREEN }}>
+                <Ionicons name="timer" size={14} color={CREAM} />
+                <Text className="text-xs font-semibold ml-1.5" style={{ color: CREAM }}>{resultTimeBadge("quick")}</Text>
               </View>
               <Text className="text-white/50 text-xs">
                 Threshold: {propertyRules.minimumShooterAge}+ yrs

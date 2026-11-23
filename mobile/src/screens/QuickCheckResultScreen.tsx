@@ -23,9 +23,12 @@ import { RegionHeadsUp } from "../components/HuntRegionSheet";
 import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import type { ShotDraft } from "../types/shot-record";
-import { normalizeFieldCall } from "../utils/field-call";
+import { bulletsFrom, normalizeFieldCall } from "../utils/field-call";
 import { useRemoteConfig } from "../state/remoteConfig";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
+import { ResultLead } from "../components/ResultLead";
+import { INK, SECONDARY } from "../theme/contrast";
+import { tapSquare } from "../theme/tap";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -60,20 +63,13 @@ export const QuickCheckResultScreen = () => {
   const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
   const readAt = React.useMemo(() => new Date().toLocaleString(), []);
 
-  // Haptic feedback on mount
   React.useEffect(() => {
-    if (isInvalidImage) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else if (isShoot) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }
+    softPulse();
   }, [isShoot, isInvalidImage]);
 
   const handleFullAnalysis = () => {
     followUp.markRescan();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
     // Set up for full age analysis with the same image
     setAnalysisMode("age");
     startCapture();
@@ -84,12 +80,12 @@ export const QuickCheckResultScreen = () => {
 
   const handleNewCheck = () => {
     followUp.markRescan();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    softPulse();
     navigation.replace("QuickCheckCamera");
   };
 
   const handleHome = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    softPulse();
     // Pop all screens and go back to HomeMain
     navigation.popToTop();
   };
@@ -106,15 +102,21 @@ export const QuickCheckResultScreen = () => {
           <View style={{ position: "absolute", top: insets.top + 8, right: 16, zIndex: 10 }}>
             <Pressable
               onPress={handleHome}
-              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Close"
+              style={tapSquare}
+              hitSlop={8}
             >
               <Ionicons name="close" size={28} color="white" />
             </Pressable>
           </View>
 
-          {/* Invalid Image Result */}
-          <View className="flex-1 items-center justify-center px-6">
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16 }}>
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: "100%", height: Math.min(SCREEN_WIDTH * 0.9, 360), borderRadius: 16, backgroundColor: "#000" }}
+              resizeMode="contain"
+            />
+          <View className="items-center px-2 mt-6">
             {/* Warning Icon */}
             <View
               className="w-32 h-32 rounded-full items-center justify-center mb-6"
@@ -154,15 +156,8 @@ export const QuickCheckResultScreen = () => {
               <Text className="text-white/70 text-sm">• Avoid mounted heads or antlers only</Text>
             </View>
 
-            {/* Thumbnail */}
-            <View className="rounded-xl overflow-hidden mb-8 bg-black" style={{ width: SCREEN_WIDTH * 0.4, height: SCREEN_WIDTH * 0.4 }}>
-              <Image
-                source={{ uri: imageUri }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
-              />
-            </View>
           </View>
+          </ScrollView>
 
           {/* Action Buttons */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 16 }}>
@@ -211,6 +206,8 @@ export const QuickCheckResultScreen = () => {
     : "";
   // Checked above: a missing age already returned the retake screen.
   const ageYears = result.ageYears as number;
+  const callWord = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
+  const cueLines = bulletsFrom(result.cueBullets, result.topCues ?? (result.explanation ? [result.explanation] : []));
 
   const shareRead = () => {
     const call = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
@@ -223,36 +220,40 @@ export const QuickCheckResultScreen = () => {
         colors={["#2B3420", "#1a1f16"]}
         style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
       >
-        <Pressable onPress={handleHome} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+        <Pressable accessibilityLabel="Close" onPress={handleHome} hitSlop={8} style={[tapSquare, { marginLeft: 8 }]}>
           <Ionicons name="close" size={28} color="white" />
         </Pressable>
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+          <ResultLead
+            imageUri={imageUri}
+            call={callWord}
+            overlays={result.overlays}
+            cues={cueLines}
+          />
           {shootOrPass ? (
             <FieldCallCard
               ageYears={ageYears}
               confidence={result.confidence}
               minimum={leaseMinimum}
-              cueBullets={result.cueBullets}
-              fallbackCues={result.topCues ?? [result.explanation]}
               fieldCall={normalizeFieldCall(result.fieldCall)}
               note={result.fieldCallNote}
               bodyOnlyAge={result.bodyOnlyAge}
               betterAngle={result.betterAngle}
+              hideCall
             />
           ) : (
             <FieldCallCard
               ageYears={ageYears}
               confidence={result.confidence}
               minimum={leaseMinimum}
-              fallbackCues={result.topCues ?? [result.explanation]}
+              hideCall
             />
           )}
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-            <Image source={{ uri: imageUri }} style={{ width: 64, height: 64, borderRadius: 10 }} />
-            <Text style={{ color: "#8B7355", fontSize: 13, marginLeft: 12, flex: 1 }}>{keyFeatureDisplay}</Text>
-          </View>
-          <Text style={{ color: "#8B7355", fontSize: 12, marginBottom: 8 }}>{result.disclaimer}</Text>
+          {keyFeatureDisplay ? (
+            <Text style={{ color: SECONDARY, fontSize: 13, marginBottom: 8 }}>{keyFeatureDisplay}</Text>
+          ) : null}
+          <Text style={{ color: SECONDARY, fontSize: 12, marginBottom: 8 }}>{result.disclaimer}</Text>
 
           <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", minHeight: 44 }}>
             {result.canAnalyzeFurther ? (
@@ -265,7 +266,7 @@ export const QuickCheckResultScreen = () => {
             </Pressable>
             {pendingPaywall ? (
               <Pressable onPress={() => navigation.navigate("TierPaywall", { reason: "free_limit" })} style={{ minHeight: 44, justifyContent: "center" }}>
-                <Text style={{ color: "#8B7355", fontSize: 15 }}>See plans</Text>
+                <Text style={{ color: SECONDARY, fontSize: 15 }}>See plans</Text>
               </Pressable>
             ) : null}
           </View>
@@ -331,7 +332,7 @@ export const QuickCheckResultScreen = () => {
             onPress={handleHome}
             style={{ flex: 1, minHeight: 56, borderRadius: 14, backgroundColor: "#D4AF37", alignItems: "center", justifyContent: "center" }}
           >
-            <Text style={{ color: "#1a1f16", fontSize: 17, fontWeight: "700" }}>Done</Text>
+            <Text style={{ color: INK, fontSize: 17, fontWeight: "700" }}>Done</Text>
           </Pressable>
         </View>
       </LinearGradient>

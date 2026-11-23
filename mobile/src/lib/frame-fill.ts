@@ -20,6 +20,15 @@ export const BODY_BOX_LIFT = 0.08;
 
 export const DEFAULT_FRAME_BODY_HINT = "Zoom until the body fills the box";
 export const DEFAULT_FRAME_BODY_GOOD_HINT = "Good — hold steady";
+/** Rack viewfinder uses the same box and the same green line. Wording only changes. */
+export const DEFAULT_FRAME_ANTLER_HINT = "Zoom until the antlers fill the box";
+export const DEFAULT_FRAME_ANTLER_DETAIL = "Side angle, all tines visible";
+
+/** Shared guide: 90% of screen width, 3:2, used by age, rack, and Quick Check. */
+export function guideFrameSize(screenWidth: number): { width: number; height: number } {
+  const frameWidth = screenWidth * BODY_BOX_WIDTH;
+  return { width: frameWidth, height: frameWidth / BODY_BOX_ASPECT };
+}
 
 export interface NormBox {
   x: number;

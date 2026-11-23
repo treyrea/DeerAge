@@ -8,6 +8,8 @@ import { analyzeImages } from "./proxy";
 import { quickConfidence, quickKeyFeature, requireQuickAge, type QuickKeyFeature } from "./quick-result";
 import { useHunterProfile } from "../state/hunterProfile";
 import { normalizeFieldCall } from "../utils/field-call";
+import { overlaysFrom } from "./body-overlays";
+import type { BodyFeatureOverlay } from "../types/deer-scoring";
 
 export interface QuickAgeResult {
   decision: "SHOOT" | "LET WALK";
@@ -37,6 +39,8 @@ export interface QuickAgeResult {
   mainAge?: number | null;
   bodyOnlyAge?: number | null;
   betterAngle?: string;
+  /** Body boxes, only when the server sent them. */
+  overlays?: BodyFeatureOverlay[];
 }
 
 interface FeatureRead {
@@ -140,5 +144,6 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
     mainAge: numberOrNull(result.mainAge),
     bodyOnlyAge: numberOrNull(result.bodyOnlyAge),
     betterAngle: typeof result.betterAngle === "string" ? result.betterAngle : "",
+    overlays: overlaysFrom(result.overlays),
   };
 }

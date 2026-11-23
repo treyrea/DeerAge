@@ -1,6 +1,6 @@
 /**
  * History Screen - View all analyzed deer
- * Now includes distance display
+ * Age and Rack analyses, plus Quick Check records saved on this phone.
  */
 
 import React, { useMemo, useState } from "react";
@@ -11,20 +11,31 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useShotRecordStore } from "../state/shotRecordStore";
 import type { ShotRecord } from "../types/shot-record";
 import { quickRecordsNewestFirst } from "../lib/quick-records";
+import { analysisKind, historyTabCounts, showsOnTab, timeMs, type HistoryKind, type HistoryTab } from "../lib/history-tabs";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { formatScore } from "../utils/boone-crockett-calculator";
 import { DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
 import { formatAgeClass, shownAge } from "../utils/age-class";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { ErrorModal } from "../components/ErrorModal";
-import { DistanceChip } from "../components/DistanceDisplay";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from "react-native-reanimated";
+import { CARD, CREAM, GOLD, SECONDARY } from "../theme/contrast";
 
 type NavigationProp = NativeStackNavigationProp<any>;
+
+const TYPE: Record<HistoryKind, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  quick: { label: "Quick", icon: "flash" },
+  age: { label: "Age", icon: "body" },
+  score: { label: "Rack", icon: "ribbon" },
+  other: { label: "Saved", icon: "document-text" },
+};
+
+type HistoryRow =
+  | { key: string; kind: "quick"; time: number; record: ShotRecord }
+  | { key: string; kind: Exclude<HistoryKind, "quick">; time: number; result: DeerScoringResult };
 
 export const HistoryScreen = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -35,27 +46,35 @@ export const HistoryScreen = () => {
   // makes zustand 5 re-render forever and crashed this screen.
   const shotRecords = useShotRecordStore((s) => s.records);
   const quickRecords = useMemo(() => quickRecordsNewestFirst(shotRecords), [shotRecords]);
-  const [activeTab, setActiveTab] = useState<"all" | "age" | "score">("all");
+  const [activeTab, setActiveTab] = useState<HistoryTab>("all");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
-  // Filter history based on active tab
-  const filteredHistory = history.filter((result) => {
-    if (activeTab === "all") return true;
-    return result.analysisMode === activeTab;
-  });
-
-  const ageCount = history.filter((r) => r.analysisMode === "age").length;
-  const scoreCount = history.filter((r) => r.analysisMode === "score").length;
+  const counts = historyTabCounts(history.map((result) => result.analysisMode), quickRecords.length);
+  const rows = useMemo(() => {
+    const quickRows: HistoryRow[] = quickRecords.map((record) => ({
+      key: `quick-${record.localId}`,
+      kind: "quick",
+      time: timeMs(record.deviceTime),
+      record,
+    }));
+    const analysisRows: HistoryRow[] = history.map((result) => {
+      const kind = analysisKind(result.analysisMode);
+      return {
+        key: `analysis-${result.analysisId}`,
+        kind: kind === "quick" ? "other" : kind,
+        time: timeMs(result.timestamp),
+        result,
+      };
+    });
+    return [...quickRows, ...analysisRows].sort((a, b) => b.time - a.time);
+  }, [history, quickRecords]);
+  const visible = rows.filter((row) => showsOnTab(activeTab, row.kind));
+  const analysisCount = counts.age + counts.score + counts.other;
 
   const handleViewDetails = (result: DeerScoringResult) => {
     navigation.navigate("HistoryDetail", { result });
-  };
-
-  const handleDelete = (analysisId: string) => {
-    setDeleteTargetId(analysisId);
-    setShowDeleteModal(true);
   };
 
   const confirmDelete = () => {
@@ -65,116 +84,87 @@ export const HistoryScreen = () => {
     }
   };
 
-  const handleClearAll = () => {
-    setShowClearAllModal(true);
-  };
+  const emptyTitle = counts.all === 0
+    ? "No History Yet"
+    : activeTab === "quick"
+      ? "No Quick Checks"
+      : activeTab === "age"
+        ? "No Age Analyses"
+        : activeTab === "score"
+          ? "No Rack Scores"
+          : "No History Yet";
 
   return (
     <View className="flex-1 bg-neutral-900" style={{ paddingTop: insets.top }}>
-      {/* Header */}
-      <View className="px-6 py-4 border-b border-neutral-800">
-        <View className="flex-row items-center justify-between mb-4">
+      <View className="px-4 py-4 border-b border-neutral-800">
+        <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
-            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center mr-2">
+            <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 4 }}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </Pressable>
             <Text className="text-white text-lg font-bold">History</Text>
           </View>
-          {history.length > 0 && (
-            <Pressable onPress={handleClearAll} className="px-4 py-2">
-              <Text className="text-red-500 text-sm font-semibold">Clear All</Text>
+          {analysisCount > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Clear all analyses" onPress={() => setShowClearAllModal(true)} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
+              <Text style={{ color: SECONDARY, fontSize: 14, fontWeight: "600" }}>Clear All</Text>
             </Pressable>
-          )}
+          ) : null}
         </View>
 
-        {/* Tab Selector */}
-        <View className="flex-row bg-neutral-800 rounded-lg p-1">
-          <Pressable
-            onPress={() => setActiveTab("all")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "all" ? "bg-green-600" : ""}`}
-          >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "all" ? "text-white" : "text-gray-400"}`}>
-              All ({history.length + quickRecords.length})
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab("age")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "age" ? "bg-blue-600" : ""}`}
-          >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "age" ? "text-white" : "text-gray-400"}`}>
-              Age ({ageCount})
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab("score")}
-            className={`flex-1 py-2 px-3 rounded-md ${activeTab === "score" ? "bg-orange-600" : ""}`}
-          >
-            <Text className={`text-center text-sm font-semibold ${activeTab === "score" ? "text-white" : "text-gray-400"}`}>
-              Rack ({scoreCount})
-            </Text>
-          </Pressable>
+        <View className="flex-row rounded-lg p-1" style={{ backgroundColor: "#262626" }}>
+          <HistoryTabButton label={`All (${counts.all})`} selected={activeTab === "all"} onPress={() => setActiveTab("all")} />
+          <HistoryTabButton label={`Quick (${counts.quick})`} selected={activeTab === "quick"} onPress={() => setActiveTab("quick")} />
+          <HistoryTabButton label={`Age (${counts.age})`} selected={activeTab === "age"} onPress={() => setActiveTab("age")} />
+          <HistoryTabButton label={`Rack (${counts.score})`} selected={activeTab === "score"} onPress={() => setActiveTab("score")} />
         </View>
       </View>
 
-      {/* Content */}
-      {filteredHistory.length === 0 && (activeTab !== "all" || quickRecords.length === 0) ? (
+      {visible.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <View className="w-24 h-24 bg-neutral-800 rounded-full items-center justify-center mb-6">
             <Ionicons name="file-tray-outline" size={48} color="#666" />
           </View>
-          <Text className="text-white text-xl font-bold mb-2">
-            {history.length === 0 ? "No History Yet" : `No ${activeTab === "age" ? "Age" : "Rack"} Analyses`}
-          </Text>
-          <Text className="text-gray-400 text-center mb-8">
-            {history.length === 0
-              ? "Analyzed deer will appear here. Start by scoring your first deer!"
-              : `Switch to the "${activeTab === "age" ? "Rack" : "Age"}" tab to see other analyses.`}
+          <Text className="text-white text-xl font-bold mb-2">{emptyTitle}</Text>
+          <Text className="text-center mb-8" style={{ color: SECONDARY }}>
+            {counts.all === 0
+              ? "Analyzed deer will appear here."
+              : "The other tabs still have saved reads."}
           </Text>
           <Pressable
             onPress={() => navigation.navigate("Home", { screen: "HomeMain" })}
-            className="bg-green-600 rounded-xl py-3 px-6"
+            style={{ backgroundColor: "#14532D", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 24, minHeight: 44, justifyContent: "center" }}
           >
-            <Text className="text-white text-base font-bold">Score a Deer</Text>
+            <Text className="text-base font-bold" style={{ color: CREAM }}>Back to Home</Text>
           </Pressable>
         </View>
       ) : (
         <ScrollView className="flex-1">
-          <View className="px-6 py-4">
-            <Text className="text-gray-400 text-sm mb-4">
-              {`${filteredHistory.length + (activeTab === "all" ? quickRecords.length : 0)} entries`}
-              {activeTab !== "all" && ` - ${activeTab === "age" ? "Age My Deer" : "Score My Rack"}`}
+          <View className="px-4 py-4">
+            <Text style={{ color: SECONDARY, fontSize: 13, marginBottom: 12 }}>
+              {`${visible.length} ${visible.length === 1 ? "entry" : "entries"}`}
             </Text>
-
-            {activeTab === "all" && quickRecords.map((record) => (
-              <QuickRecordCard
-                key={record.localId}
-                record={record}
-                onPress={() => navigation.navigate("HistoryDetail", { shotId: record.localId })}
+            {visible.map((row) => (
+              <HistoryRowCard
+                key={row.key}
+                row={row}
+                onPress={() => {
+                  if (row.kind === "quick") navigation.navigate("HistoryDetail", { shotId: row.record.localId });
+                  else handleViewDetails(row.result);
+                }}
+                onDelete={row.kind === "quick" ? undefined : () => {
+                  setDeleteTargetId(row.result.analysisId);
+                  setShowDeleteModal(true);
+                }}
               />
             ))}
-            {filteredHistory.length > 0 ? (
-              filteredHistory.map((result, index) => (
-                <HistoryCard
-                  key={`${result.analysisId}-${index}`}
-                  result={result}
-                  onPress={() => handleViewDetails(result)}
-                  onDelete={() => handleDelete(result.analysisId)}
-                />
-              ))
-            ) : (
-              <Text className="text-gray-400 text-center mt-8">
-                No history entries yet
-              </Text>
-            )}
           </View>
         </ScrollView>
       )}
 
-      {/* Delete Confirmation Modal */}
       <ErrorModal
         visible={showDeleteModal}
         title="Delete Entry"
-        message="Are you sure you want to delete this deer analysis?"
+        message="Delete this analysis from this phone? This cannot be undone."
         type="confirm"
         onDismiss={() => {
           setShowDeleteModal(false);
@@ -185,11 +175,10 @@ export const HistoryScreen = () => {
         cancelText="Cancel"
       />
 
-      {/* Clear All Confirmation Modal */}
       <ErrorModal
         visible={showClearAllModal}
-        title="Clear All History"
-        message="Are you sure you want to delete all deer analyses? This cannot be undone."
+        title="Clear analyses"
+        message="This removes every Age and Rack analysis saved on this phone. Quick Check records stay. This cannot be undone."
         type="confirm"
         onDismiss={() => setShowClearAllModal(false)}
         onConfirm={clearHistory}
@@ -200,266 +189,152 @@ export const HistoryScreen = () => {
   );
 };
 
-interface HistoryCardProps {
-  result: DeerScoringResult;
-  onPress: () => void;
-  onDelete: () => void;
+function HistoryTabButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        minHeight: 44,
+        paddingHorizontal: 2,
+        borderRadius: 6,
+        justifyContent: "center",
+        backgroundColor: selected ? CARD : "transparent",
+        borderWidth: selected ? 1 : 0,
+        borderColor: GOLD,
+      }}
+    >
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        style={{ color: selected ? CREAM : SECONDARY, fontSize: 12, fontWeight: "700", textAlign: "center" }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 }
 
-const QuickRecordCard = ({ record, onPress }: { record: ShotRecord; onPress: () => void }) => (
-  <Pressable onPress={onPress} style={{ backgroundColor: "#3D4A2F", borderRadius: 16, padding: 14, marginBottom: 12 }}>
-    <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700" }}>PRE-SHOT RECORD · QUICK</Text>
-    <Text style={{ color: "#F5F5DC", fontSize: 18, fontWeight: "800", marginTop: 4 }}>
-      {record.ageClass || "Age class"} · {record.fieldCall}
-    </Text>
-    <Text style={{ color: "#E5D4B8", marginTop: 4 }}>Your lease minimum: {record.leaseMinimum}</Text>
-    <Text style={{ color: "#8B7355", marginTop: 6 }}>{format(new Date(record.deviceTime), "MMM d, yyyy h:mm a")}</Text>
-    <Text style={{ color: "#D4AF37", marginTop: 8, fontWeight: "700" }}>Mark as harvested</Text>
-  </Pressable>
-);
+function rowHeadline(row: HistoryRow): string {
+  if (row.kind === "quick") {
+    const age = row.record.ageClass || "Age class";
+    return row.record.fieldCall ? `${age} · ${row.record.fieldCall}` : age;
+  }
+  const result = row.result;
+  if (row.kind === "score") {
+    const net = result.score?.recommendedCategory === "Typical" ? result.score?.netTypical : result.score?.netNonTypical;
+    const scoreValue = typeof net === "number" ? net : net?.average;
+    const points = (result.manualOverride && result.manualPointCount)
+      ? result.manualPointCount
+      : (result.score?.measurements?.totalPoints ?? 0) + (result.score?.measurements?.totalAbnormalPoints ?? 0);
+    return typeof scoreValue === "number" ? `${scoreValue.toFixed(1)} in · ${points} pt` : "Rack score";
+  }
+  const age = shownAge(result.explainableAge?.ageLabel, result.explainableAge?.estimatedAge || result.age?.estimatedAge);
+  const minimum = result.explainableAge?.minimumAgeThreshold;
+  const years = result.explainableAge?.estimatedAgeYears ?? 0;
+  const call = normalizeFieldCall(result.explainableAge?.fieldCall)
+    ?? (years && typeof minimum === "number" ? fieldRead(years, result.explainableAge?.overallConfidence ?? 60, minimum).fieldCall : result.explainableAge?.shooterPassLabel);
+  if (row.kind === "other") {
+    return age || formatAgeClass(result.explainableAge?.estimatedAge || result.age?.estimatedAge) || "Saved analysis";
+  }
+  return call ? `${age} · ${call}` : age;
+}
 
-const HistoryCard: React.FC<HistoryCardProps> = ({ result, onPress, onDelete }) => {
-  const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
-  const shot = useShotRecordStore((s) => s.records[result.analysisId]);
-  // Swipe-to-delete gesture - hooks must be called before any conditional returns
+function rowPhoto(row: HistoryRow): string | null {
+  if (row.kind === "quick") return row.record.photoUris?.find((uri) => uri.trim()) ?? null;
+  return row.result.capturedFrames?.[0]?.imageUri ?? null;
+}
+
+function rowWhen(row: HistoryRow): string {
+  const ms = row.time;
+  if (!ms) return "";
+  return format(new Date(ms), "MMM d, yyyy h:mm a");
+}
+
+const HistoryRowCard = ({ row, onPress, onDelete }: { row: HistoryRow; onPress: () => void; onDelete?: () => void }) => {
   const translateX = useSharedValue(0);
-  const DELETE_THRESHOLD = -80;
+  const type = TYPE[row.kind];
+  const photo = rowPhoto(row);
 
-  const triggerHapticAndDelete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    onDelete();
+  const triggerDelete = () => {
+    softPulse();
+    onDelete?.();
   };
 
   const panGesture = Gesture.Pan()
+    .enabled(Boolean(onDelete))
     .activeOffsetX([-10, 10])
     .onUpdate((event) => {
-      // Only allow swipe left
-      if (event.translationX < 0) {
-        translateX.value = Math.max(event.translationX, -120);
-      }
+      if (event.translationX < 0) translateX.value = Math.max(event.translationX, -120);
     })
     .onEnd(() => {
-      if (translateX.value < DELETE_THRESHOLD) {
-        // Trigger delete
-        runOnJS(triggerHapticAndDelete)();
-      }
+      if (translateX.value < -80) runOnJS(triggerDelete)();
       translateX.value = withSpring(0);
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
-
   const deleteBackgroundStyle = useAnimatedStyle(() => ({
     opacity: Math.min(Math.abs(translateX.value) / 80, 1),
   }));
 
-  // Safety check after hooks
-  if (!result || !result.score || !result.age) {
-    return (
-      <View className="bg-neutral-800 rounded-xl mb-4 p-4">
-        <Text className="text-gray-400">Invalid entry</Text>
+  const card = (
+    <Pressable
+      onPress={() => {
+        softPulse();
+        onPress();
+      }}
+      style={{ backgroundColor: CARD, borderRadius: 14, marginBottom: 10, flexDirection: "row", alignItems: "center", overflow: "hidden", minHeight: 76 }}
+    >
+      {photo ? (
+        <Image source={{ uri: photo }} style={{ width: 64, height: 76 }} resizeMode="cover" accessible={false} />
+      ) : (
+        <View style={{ width: 64, height: 76, alignItems: "center", justifyContent: "center", backgroundColor: "#2B3420" }}>
+          <Ionicons name={type.icon} size={22} color={GOLD} />
+        </View>
+      )}
+      <View style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Ionicons name={type.icon} size={14} color={GOLD} />
+          <Text style={{ color: GOLD, fontSize: 12, fontWeight: "700", marginLeft: 4 }}>{type.label}</Text>
+        </View>
+        <Text numberOfLines={1} style={{ color: CREAM, fontSize: 16, fontWeight: "800", marginTop: 2 }}>{rowHeadline(row)}</Text>
+        <Text numberOfLines={1} style={{ color: SECONDARY, fontSize: 12, marginTop: 2 }}>{rowWhen(row)}</Text>
       </View>
-    );
-  }
+      {onDelete ? (
+        <Pressable
+          accessibilityLabel="Delete"
+          onPress={(event) => {
+            event.stopPropagation();
+            softPulse();
+            onDelete();
+          }}
+          hitSlop={4}
+          style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: 4 }}
+        >
+          <Ionicons name="trash-outline" size={20} color={SECONDARY} />
+        </Pressable>
+      ) : null}
+    </Pressable>
+  );
 
-  const thumbnailUri = result.capturedFrames?.[0]?.imageUri ?? null;
-  const isAgeMode = result.analysisMode === "age";
-
-  const netScore = result.score.recommendedCategory === "Typical"
-    ? result.score.netTypical
-    : result.score.netNonTypical;
-
-  const scoreValue = typeof netScore === "number" ? netScore : netScore.average;
-
-  const displayedPointCount = (result.manualOverride && result.manualPointCount)
-    ? result.manualPointCount
-    : (result.score.measurements.totalPoints + result.score.measurements.totalAbnormalPoints);
+  if (!onDelete) return card;
 
   return (
-    <View className="mb-4">
-      {/* Delete background indicator */}
+    <View style={{ marginBottom: 0 }}>
       <Animated.View
-        className="absolute top-0 right-0 bottom-0 w-24 bg-red-600 rounded-r-xl items-center justify-center"
-        style={deleteBackgroundStyle}
+        pointerEvents="none"
+        style={[{ position: "absolute", top: 0, right: 0, bottom: 10, width: 88, borderRadius: 14, backgroundColor: "#4A3C2E", alignItems: "center", justifyContent: "center" }, deleteBackgroundStyle]}
       >
-        <Ionicons name="trash" size={28} color="white" />
-        <Text className="text-white text-xs font-bold mt-1">Delete</Text>
+        <Ionicons name="trash" size={22} color={CREAM} />
       </Animated.View>
-
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={animatedStyle}>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onPress();
-            }}
-            className="bg-neutral-800 rounded-xl overflow-hidden"
-          >
-            <View className="flex-row">
-              {thumbnailUri ? (
-                <Image
-                  source={{ uri: thumbnailUri }}
-                  style={{ width: 100, height: 100 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="w-24 h-24 bg-neutral-700 items-center justify-center">
-                  <Ionicons name="image-outline" size={32} color="#666" />
-                </View>
-              )}
-
-              <View className="flex-1 p-4">
-                <View className="flex-row items-start justify-between mb-2">
-                  <View className="flex-1">
-                    {isAgeMode ? (
-                      <>
-                        <View className="flex-row items-baseline mb-1">
-                          <Text className="text-white text-lg font-bold">
-                            {shownAge(result.explainableAge?.ageLabel, result.explainableAge?.estimatedAge || result.age.estimatedAge)}
-                          </Text>
-                          {result.explainableAge?.overallConfidence ? (
-                            <Text className="text-gray-400 text-sm ml-2">
-                              {result.explainableAge.overallConfidence}% conf
-                            </Text>
-                          ) : null}
-                        </View>
-                        {(() => {
-                          const minimum = result.explainableAge?.minimumAgeThreshold ?? leaseMinimum;
-                          const years = result.explainableAge?.estimatedAgeYears ?? 0;
-                          const call = normalizeFieldCall(result.explainableAge?.fieldCall)
-                            ?? (years ? fieldRead(years, result.explainableAge?.overallConfidence ?? 60, minimum).fieldCall : result.explainableAge?.shooterPassLabel);
-                          if (!call) return null;
-                          return (
-                            <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700", marginTop: 4 }}>
-                              {call} · minimum {minimum}
-                            </Text>
-                          );
-                        })()}
-                        <Text className="text-gray-500 text-xs mt-2">
-                          Quick est: approx {displayedPointCount}pt rack
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <View className="flex-row items-baseline mb-1">
-                          <Text className="text-white text-lg font-bold">
-                            {scoreValue.toFixed(1)} in
-                          </Text>
-                          <Text className="text-gray-400 text-sm ml-2">
-                            {displayedPointCount}pt
-                          </Text>
-                          {result.manualOverride ? (
-                            <View className="ml-2 bg-green-600 px-1.5 py-0.5 rounded">
-                              <Text className="text-white text-xs font-bold">Manual</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text className="text-gray-400 text-sm">
-                          {result.score.recommendedCategory}
-                        </Text>
-                        <Text className="text-gray-500 text-xs mt-1">
-                          Age class: {formatAgeClass(result.explainableAge?.estimatedAge || result.age.estimatedAge)}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                  {/* Larger delete button - 44x44pt minimum touch target */}
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      onDelete();
-                    }}
-                    className="w-11 h-11 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "rgba(239, 68, 68, 0.1)" }}
-                  >
-                    <Ionicons name="trash-outline" size={22} color="#ef4444" />
-                  </Pressable>
-                </View>
-
-                {shot ? (
-                  <Text style={{ color: "#D4AF37", fontSize: 12, fontWeight: "700", marginTop: 6 }}>
-                    Pre-shot record · Mark as harvested
-                  </Text>
-                ) : null}
-                <View className="flex-row items-center mt-2">
-                  <Ionicons name="calendar-outline" size={14} color="#666" />
-                  <Text className="text-gray-500 text-xs ml-1">
-                    {format(new Date(result.timestamp), "MMM d, yyyy h:mm a")}
-                  </Text>
-                  {/* Distance Chip */}
-                  {result.distanceMeasurement && (
-                    <View className="ml-2">
-                      <DistanceChip
-                        distanceYards={result.distanceMeasurement.distanceYards}
-                        confidence={result.distanceMeasurement.confidence}
-                        source={result.distanceMeasurement.source}
-                        size="small"
-                        showIcon={false}
-                      />
-                    </View>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            <View className="absolute top-2 left-2">
-              <View
-                className={`px-2 py-1 rounded ${
-                  isAgeMode && result.explainableAge?.overallConfidence
-                    ? result.explainableAge.overallConfidence >= 75
-                      ? "bg-green-500/90"
-                      : result.explainableAge.overallConfidence >= 50
-                      ? "bg-blue-500/90"
-                      : "bg-yellow-500/90"
-                    : result.score.overallConfidence === "High"
-                    ? "bg-green-500/90"
-                    : result.score.overallConfidence === "Med"
-                    ? "bg-blue-500/90"
-                    : "bg-yellow-500/90"
-                }`}
-              >
-                <Text className="text-white text-xs font-bold">
-                  {isAgeMode && result.explainableAge?.overallConfidence
-                    ? `${result.explainableAge.overallConfidence}%`
-                    : result.score.overallConfidence}
-                </Text>
-              </View>
-            </View>
-
-            <View className="absolute top-2 right-14">
-              <View
-                className={`px-2 py-1 rounded flex-row items-center ${
-                  isAgeMode ? "bg-blue-600/90" : "bg-orange-600/90"
-                }`}
-              >
-                <Ionicons
-                  name={isAgeMode ? "body" : "ribbon"}
-                  size={12}
-                  color="white"
-                  style={{ marginRight: 4 }}
-                />
-                <Text className="text-white text-xs font-bold">
-                  {isAgeMode ? "AGE" : "RACK"}
-                </Text>
-              </View>
-            </View>
-
-            {(isAgeMode && result.explainableAge) || (!isAgeMode && result.explainableRackScore) ? (
-              <View className="absolute bottom-2 right-2">
-                <View className="bg-purple-600/90 px-2 py-1 rounded flex-row items-center">
-                  <Ionicons name="bulb" size={10} color="white" style={{ marginRight: 3 }} />
-                  <Text className="text-white text-xs font-bold">Explained</Text>
-                </View>
-              </View>
-            ) : null}
-          </Pressable>
-        </Animated.View>
+        <Animated.View style={animatedStyle}>{card}</Animated.View>
       </GestureDetector>
-
-      {/* Swipe hint on first card */}
-      <Text className="text-gray-600 text-xs text-center mt-1">Swipe left to delete</Text>
     </View>
   );
 };

@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { DeerAnalysisFrame } from "../types/deer-scoring";
 import { HuntRegionSheet } from "../components/HuntRegionSheet";
@@ -98,7 +98,7 @@ export const PhotoSelectScreen = () => {
     } catch (error) {
       console.error("[PhotoSelect] Analysis error:", error);
       // Haptic feedback for error
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      softPulse();
     }
   };
 
@@ -109,11 +109,11 @@ export const PhotoSelectScreen = () => {
       {/* Header */}
       <View className="px-6 py-4 border-b border-neutral-800">
         <View className="flex-row items-center justify-between">
-          <Pressable testID="photo-back" onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+          <Pressable testID="photo-back" accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </Pressable>
           <Text className="text-white text-lg font-bold">Upload Photo</Text>
-          <View className="w-10" />
+          <View style={{ width: 44 }} />
         </View>
       </View>
 
@@ -134,10 +134,10 @@ export const PhotoSelectScreen = () => {
             <View className="space-y-3">
               <Pressable
                 onPress={handleAnalyzePress}
-                className="bg-green-600 rounded-xl py-4 items-center"
+                style={{ backgroundColor: "#14532D", borderRadius: 12, paddingVertical: 16, alignItems: "center", minHeight: 56 }}
               >
-                <Text className="text-white text-lg font-bold">Analyze Photo</Text>
-                <Text className="text-white/80 text-sm mt-1">Score this deer</Text>
+                <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>Analyze Photo</Text>
+                <Text className="text-sm mt-1" style={{ color: "#E5D4B8" }}>Score this deer</Text>
               </Pressable>
 
               <Pressable
@@ -162,11 +162,11 @@ export const PhotoSelectScreen = () => {
 
             <Pressable
               onPress={handlePickImage}
-              className="bg-green-600 rounded-xl py-4 px-8 items-center"
+              style={{ backgroundColor: "#14532D", borderRadius: 12, paddingVertical: 16, paddingHorizontal: 32, alignItems: "center", minHeight: 56 }}
             >
               <View className="flex-row items-center">
-                <Ionicons name="image" size={24} color="white" />
-                <Text className="text-white text-lg font-bold ml-2">Open Gallery</Text>
+                <Ionicons name="image" size={24} color="#F5F5DC" />
+                <Text className="text-lg font-bold ml-2" style={{ color: "#F5F5DC" }}>Open Gallery</Text>
               </View>
             </Pressable>
             {e2eEnabled ? (

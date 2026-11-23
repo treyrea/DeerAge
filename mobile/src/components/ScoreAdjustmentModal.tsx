@@ -371,13 +371,15 @@ export const ScoreAdjustmentModal: React.FC<ScoreAdjustmentModalProps> = ({
                       <Pressable
                         key={val}
                         onPress={() => setAverageLength(val.toString())}
-                        className={`px-4 py-2 rounded-full ${
-                          averageLength === val.toString()
-                            ? isOverCounted ? "bg-orange-600" : "bg-green-600"
-                            : "bg-neutral-700"
-                        }`}
+                        style={{
+                          paddingHorizontal: 16,
+                          minHeight: 44,
+                          borderRadius: 999,
+                          justifyContent: "center",
+                          backgroundColor: averageLength !== val.toString() ? "#404040" : isOverCounted ? "#9A3412" : "#14532D",
+                        }}
                       >
-                        <Text className="text-white font-medium">{val}&quot;</Text>
+                        <Text className="font-medium" style={{ color: "#F5F5DC" }}>{val}&quot;</Text>
                       </Pressable>
                     ))}
                   </View>
@@ -443,20 +445,22 @@ export const ScoreAdjustmentModal: React.FC<ScoreAdjustmentModalProps> = ({
             <Pressable
               onPress={handleConfirm}
               disabled={numericLength <= 0}
-              className={`rounded-xl py-4 items-center ${
-                numericLength > 0
-                  ? isOverCounted ? "bg-orange-600" : "bg-green-600"
-                  : "bg-neutral-700"
-              }`}
+              style={{
+                borderRadius: 12,
+                paddingVertical: 16,
+                alignItems: "center",
+                minHeight: 52,
+                backgroundColor: numericLength <= 0 ? "#404040" : isOverCounted ? "#9A3412" : "#14532D",
+              }}
             >
               <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle" size={20} color="white" />
-                <Text className="text-white font-bold ml-2">
+                <Ionicons name="checkmark-circle" size={20} color="#F5F5DC" />
+                <Text className="font-bold ml-2" style={{ color: "#F5F5DC" }}>
                   Update to Adjusted Score
                 </Text>
               </View>
               {numericLength > 0 && (
-                <Text className="text-white/80 text-xs mt-1">
+                <Text className="text-xs mt-1" style={{ color: "#E5D4B8" }}>
                   {currentNetScore.toFixed(1)}&quot; → {adjustedScore.toFixed(1)}&quot;
                 </Text>
               )}

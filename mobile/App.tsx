@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { NavigationContainer } from "@react-navigation/native";
+import { createNavigationContainerRef, NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { SplashScreen } from "./src/screens/SplashScreen";
@@ -19,8 +19,22 @@ import { useShotRecordStore } from "./src/state/shotRecordStore";
 import { useHarvestStore } from "./src/state/harvestStore";
 import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefresh } from "./src/lib/push";
 import { useCommunityStore } from "./src/state/communityStore";
-import { View, Text } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Appearance, AppState } from "react-native";
+import { OfflineChip } from "./src/components/OfflineChip";
+
+// React Native 0.81 sets overrideUserInterfaceStyle on the current windows.
+// That darkens alerts, the keyboard, and share sheets without an app.json change.
+const navigationRef = createNavigationContainerRef();
+
+function applyDarkSystemUi() {
+  Appearance.setColorScheme("dark");
+}
+
+function openOfflineGuide() {
+  if (!navigationRef.isReady()) return;
+  const nav = navigationRef as unknown as { navigate: (name: string, params?: { screen: string }) => void };
+  nav.navigate("Home", { screen: "OfflineAgeGuide" });
+}
 
 // AI keys stay on the server. The app only reads the RevenueCat public SDK key and the proxy URL.
 export default MainApp;
@@ -30,6 +44,14 @@ function MainApp() {
   const [routeName, setRouteName] = useState("");
   const isConnected = useNetworkStore((s) => s.isConnected);
   const isInternetReachable = useNetworkStore((s) => s.isInternetReachable);
+
+  useEffect(() => {
+    applyDarkSystemUi();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") applyDarkSystemUi();
+    });
+    return () => sub.remove();
+  }, []);
   const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
   const applyCustomerInfo = useSubscriptionStore((s) => s.applyCustomerInfo);
 
@@ -110,31 +132,8 @@ function MainApp() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        {showOfflineBanner && (
-          <View
-            style={{
-              backgroundColor: "#dc2626",
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons name="cloud-offline-outline" size={16} color="white" />
-            <Text
-              style={{
-                color: "white",
-                fontSize: 13,
-                fontWeight: "600",
-                marginLeft: 6,
-              }}
-            >
-              Limited Connectivity - Some Features Unavailable
-            </Text>
-          </View>
-        )}
-        <NavigationContainer onStateChange={(state) => setRouteName(leafRouteName(state))}>
+        {showOfflineBanner ? <OfflineChip onPress={openOfflineGuide} /> : null}
+        <NavigationContainer ref={navigationRef} onStateChange={(state) => setRouteName(leafRouteName(state))}>
           <RootNavigator />
           <CommunityPrompts routeName={routeName} />
           <UpdateGate />

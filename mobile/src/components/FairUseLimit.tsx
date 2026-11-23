@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StatusBar, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 import { claimScanPack } from "../api/scan-credits";
 import type { FairUseLimit } from "../api/errors";
 import { purchaseNotice } from "../lib/access";
@@ -69,7 +69,7 @@ export function FairUseLimitView({
       setNotice("The App Store finished, but the scans haven't been added yet.");
       return;
     }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    softPulse();
     if (onAdded) {
       onAdded();
       return;

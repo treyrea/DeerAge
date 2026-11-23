@@ -19,6 +19,7 @@ import { CommunitySettings } from "../components/CommunitySettings";
 import { HelpImproveSettings } from "../components/HelpImproveSettings";
 import { loadMessages } from "../api/call-report";
 import * as Haptics from "expo-haptics";
+import { softPulse } from "../lib/haptics";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -77,10 +78,10 @@ export const SettingsScreen = () => {
       <View className="px-6 py-4" style={{ borderBottomWidth: 1, borderBottomColor: "#3D4A2F" }}>
         <View className="flex-row items-center justify-between">
           {navigation.canGoBack() ? (
-            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 items-center justify-center">
+            <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
               <Ionicons name="arrow-back" size={24} color="#F5F5DC" />
             </Pressable>
-          ) : <View className="w-10" />}
+          ) : <View style={{ width: 44 }} />}
           <View className="flex-1 items-center">
             <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
               Settings
@@ -172,7 +173,7 @@ export const SettingsScreen = () => {
             {!isPro ? (
               <Pressable
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  softPulse();
                   // Navigate to Home tab, then to TierPaywall
                   navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "upgrade" } });
                 }}
@@ -238,7 +239,7 @@ export const SettingsScreen = () => {
                   value={managerName}
                   onChangeText={setManagerName}
                   placeholder="Name"
-                  placeholderTextColor="#8B7355"
+                  placeholderTextColor="#F5F5DC"
                   className="rounded-lg p-4 mb-2"
                   style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
                 />
@@ -246,7 +247,7 @@ export const SettingsScreen = () => {
                   value={managerPhone}
                   onChangeText={setManagerPhone}
                   placeholder="Phone number"
-                  placeholderTextColor="#8B7355"
+                  placeholderTextColor="#F5F5DC"
                   keyboardType="phone-pad"
                   className="rounded-lg p-4 mb-3"
                   style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
@@ -317,7 +318,7 @@ export const SettingsScreen = () => {
                     onChangeText={setMinimumAge}
                     keyboardType="decimal-pad"
                     placeholder="3.5"
-                    placeholderTextColor="#8B7355"
+                    placeholderTextColor="#F5F5DC"
                     className="flex-1 rounded-lg p-4 mr-3"
                     style={{ backgroundColor: "#5A6447", color: "#F5F5DC" }}
                   />
@@ -335,9 +336,9 @@ export const SettingsScreen = () => {
 
               {/* Saved Feedback */}
               {savedFeedback && (
-                <View className="flex-row items-center mt-3 p-3 rounded-lg" style={{ backgroundColor: "#22c55e" }}>
-                  <Ionicons name="checkmark-circle" size={20} color="white" />
-                  <Text className="text-white font-semibold ml-2">Saved!</Text>
+                <View className="flex-row items-center mt-3 p-3 rounded-lg" style={{ backgroundColor: "#14532D" }}>
+                  <Ionicons name="checkmark-circle" size={20} color="#F5F5DC" />
+                  <Text className="font-semibold ml-2" style={{ color: "#F5F5DC" }}>Saved!</Text>
                 </View>
               )}
             </View>
@@ -431,11 +432,11 @@ export const SettingsScreen = () => {
           >
             <Ionicons name="mail-outline" size={22} color="#D4AF37" />
             <Text className="text-white font-semibold ml-3 flex-1">Send Feedback</Text>
-            <Ionicons name="chevron-forward" size={18} color="#8B7355" />
+            <Ionicons name="chevron-forward" size={18} color="#C9B48F" />
           </Pressable>
 
           {/* Footer */}
-          <Text className="text-center text-xs mb-6" style={{ color: "#8B7355" }}>
+          <Text className="text-center text-xs mb-6" style={{ color: "#C9B48F" }}>
             DeerAge v{Constants.expoConfig?.version ?? "1.0.9"}{"\n"}
             Powered by RackScore™ AI
           </Text>
