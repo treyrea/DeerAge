@@ -5,6 +5,7 @@ import {
   combineAges,
   fieldCallFor,
   formatAgeRange,
+  TOTAL_TRAITS,
   TRAITS,
 } from "./offline-age-guide";
 import type { ScoreValue, TraitId } from "./offline-age-guide";
@@ -14,11 +15,10 @@ function pick(partial: Partial<Record<TraitId, ScoreValue>>) {
 }
 
 describe("offline age guide scoring", () => {
-  it("does not show an age from the neck or face alone", () => {
+  it("does not show an age from the neck alone", () => {
     expect(hasEnoughTraits(pick({ neck: 3 }))).toBe(false);
     expect(scoreGuide(pick({ neck: 3 })).ready).toBe(false);
-    expect(scoreGuide(pick({ face: 1 })).ready).toBe(false);
-    expect(scoreGuide(pick({ neck: 5, face: 1 })).ready).toBe(false);
+    expect(scoreGuide(pick({ neck: 5 })).ready).toBe(false);
   });
 
   it("needs 3 body traits, or the neck plus 2 body traits", () => {
@@ -41,7 +41,7 @@ describe("offline age guide scoring", () => {
     expect(result.ready).toBe(true);
     expect(result.ageLabel).toBe("3.5");
     expect(result.cuesAgree).toBe(true);
-    expect(result.statusLine).toBe("3 of 7 scored, cues agree");
+    expect(result.statusLine).toBe("3 of 6 scored, cues agree");
     expect(result.fieldCall).toBe("LET WALK"); // default minimum 4.5
   });
 
@@ -49,7 +49,7 @@ describe("offline age guide scoring", () => {
     const result = scoreGuide(pick({ belly: 1, chest: 3, build: 3 }));
     expect(result.ageLabel).toBe("1.5–3.5");
     expect(result.cuesAgree).toBe(false);
-    expect(result.statusLine).toBe("3 of 7 scored, cues disagree");
+    expect(result.statusLine).toBe("3 of 6 scored, cues disagree");
     // Must not be a mean (~2.5).
     expect(result.ageLabel).not.toBe("2.5");
   });
@@ -72,15 +72,20 @@ describe("offline age guide scoring", () => {
     expect(result.fieldCall).toBe("BORDERLINE");
   });
 
-  it("lets a baby face vote 1.5, and ignores any other face choice", () => {
-    const withBaby = scoreGuide(pick({ belly: 3, chest: 3, build: 3, face: 1 }));
-    expect(withBaby.votes).toContain(1.5);
-    expect(withBaby.ageLabel).toBe("1.5–3.5");
-
-    const without = scoreGuide(pick({ belly: 3, chest: 3, build: 3, face: 2 }));
-    expect(without.votes).toEqual([3.5, 3.5, 3.5]);
-    expect(without.ageLabel).toBe("3.5");
-    expect(without.scoredCount).toBe(4);
+  it("scores six traits and does not include a face vote", () => {
+    expect(TOTAL_TRAITS).toBe(6);
+    expect(TRAITS.map((trait) => trait.id)).toEqual(["neck", "chest", "backline", "belly", "legs", "build"]);
+    expect(TRAITS.find((trait) => trait.id === "backline")?.picture).toBe(false);
+    expect(TRAITS.filter((trait) => trait.picture).map((trait) => trait.id)).toEqual([
+      "neck",
+      "chest",
+      "belly",
+      "legs",
+      "build",
+    ]);
+    const agreed = scoreGuide(pick({ belly: 3, chest: 3, build: 3 }));
+    expect(agreed.votes).toEqual([3.5, 3.5, 3.5]);
+    expect(agreed.ageLabel).toBe("3.5");
   });
 
   it("does not let a level back raise a young deer toward 4.5", () => {
@@ -95,12 +100,12 @@ describe("offline age guide scoring", () => {
     expect(result.cuesAgree).toBe(false);
   });
 
-  it("treats a slight dip as 5.5+ and a deeply swayed back as 6.5+", () => {
+  it("treats a sagging back as 5.5+ and a swayed back as 6.5+", () => {
     expect(scoreGuide(pick({ backline: 2, belly: 5, chest: 5 })).ageLabel).toBe("5.5+");
     expect(scoreGuide(pick({ backline: 3, belly: 5, chest: 5 })).ageLabel).toBe("5.5–6.5+");
     expect(scoreGuide(pick({ backline: 3, belly: 5, build: 5, chest: 5 })).low).toBe(5.5);
     const old = scoreGuide(pick({ backline: 3, belly: 5, build: 5, chest: 5 }));
-    // Deeply swayed pulls the high to 6.5+; belly/chest/build vote 5.5.
+    // A swayed back pulls the high to 6.5+; belly/chest/build vote 5.5.
     expect(old.high).toBe(6.5);
     expect(old.ageLabel).toBe("5.5–6.5+");
   });
@@ -125,14 +130,16 @@ describe("offline age guide scoring", () => {
     expect(back.scores[2].age).toBe(6.5);
   });
 
-  it("has a skip choice on legs and only a baby-face vote on face", () => {
+  it("has a skip choice on legs and keeps the 4.5 and 5.5 votes on the renamed rows", () => {
     const legs = TRAITS.find((row) => row.id === "legs")!;
     expect(legs.scores.some((row) => row.value === "skip")).toBe(true);
-    const face = TRAITS.find((row) => row.id === "face")!;
-    expect(face.scores.filter((row) => row.age != null)).toEqual([
-      expect.objectContaining({ label: "Baby face", age: 1.5 }),
-    ]);
-    expect(face.scores.some((row) => /battle scarred/i.test(row.label))).toBe(false);
+    expect(legs.scores.find((row) => row.value === 4)).toEqual(
+      expect.objectContaining({ label: "Legs in proportion", age: 4.5 }),
+    );
+    const belly = TRAITS.find((row) => row.id === "belly")!;
+    expect(belly.scores.find((row) => row.value === 5)).toEqual(
+      expect.objectContaining({ label: "Belly often sags", age: 5.5 }),
+    );
   });
 
   it("renames muscle to Overall build and uses the engine's body words", () => {
@@ -140,12 +147,43 @@ describe("offline age guide scoring", () => {
     expect(build.name).toBe("Overall build");
     const labels = build.scores.map((row) => row.label);
     expect(labels).toEqual([
-      "Doe-like, sleek",
-      "Lean",
-      "Athletic racehorse",
+      "Doe with antlers",
+      "Sleek, lanky",
+      "Racehorse look",
       "Full-bodied",
       "Rounded, “small cow”",
     ]);
+  });
+
+  it("keeps the standard on-the-hoof labels without changing which value votes which age", () => {
+    const labels = Object.fromEntries(TRAITS.map((trait) => [trait.id, trait.scores.map((row) => row.label)]));
+    expect(labels).toEqual({
+      neck: [
+        "Thin, no swelling",
+        "Slight swelling",
+        "Swollen, still distinct from shoulders",
+        "Blends into shoulders",
+        "Neck and brisket appear as one",
+      ],
+      chest: [
+        "Slim",
+        "Some shoulder muscle",
+        "Deep chest, lean waist",
+        "Waist as deep as chest",
+        "Front half one large mass",
+      ],
+      backline: ["Straight and taut", "Sagging back", "Swayed back"],
+      belly: ["Belly tucked up", "Thin waist", "Lean waist", "Full belly, not sagging", "Belly often sags"],
+      legs: [
+        "Long and thin",
+        "Long and lanky",
+        "Right length for body",
+        "Legs in proportion",
+        "Look short for body",
+        "Skip",
+      ],
+      build: ["Doe with antlers", "Sleek, lanky", "Racehorse look", "Full-bodied", "Rounded, “small cow”"],
+    });
   });
 
   it("never invents a percent confidence", () => {

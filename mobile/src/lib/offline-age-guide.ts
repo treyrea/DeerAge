@@ -9,7 +9,7 @@
 export const AGE_STEPS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5] as const;
 export type AgeStep = (typeof AGE_STEPS)[number];
 
-export type TraitId = "neck" | "chest" | "backline" | "belly" | "legs" | "face" | "build";
+export type TraitId = "neck" | "chest" | "backline" | "belly" | "legs" | "build";
 
 export type ScoreValue = number | "skip";
 
@@ -20,7 +20,7 @@ export type TraitChoice = {
   /** Shown on the right of the row. */
   ageIndication: string;
   /**
-   * Point vote for an age class. omitted = no vote (skip, non-baby face, or a cap-only choice).
+   * Point vote for an age class. omitted = no vote (skip, or a cap-only choice).
    */
   age?: AgeStep;
   /** Upper bound this choice allows, e.g. a level back is consistent with 1.5–4.5. */
@@ -36,6 +36,8 @@ export type TraitDef = {
   body: boolean;
   /** Neck is a strong rut cue but cannot set the age alone. */
   neck: boolean;
+  /** A pinned picture. The back line stays text-only so 6.5+ still has a vote. */
+  picture: boolean;
   scores: TraitChoice[];
 };
 
@@ -44,15 +46,46 @@ export const TRAITS: TraitDef[] = [
     id: "neck",
     name: "Neck",
     icon: "fitness",
-    description: "A strong rut cue, but it can't set the age alone. Out of the rut it can mislead.",
+    description: "Neck swelling peaks in the rut. It can't set the age alone, and out of the rut it can mislead.",
     body: false,
     neck: true,
+    picture: true,
     scores: [
-      { value: 1, label: "Thin", description: "Barely wider than the head", ageIndication: "1.5", age: 1.5 },
-      { value: 2, label: "Slight swelling", description: "Some neck, still distinct from the shoulders", ageIndication: "2.5", age: 2.5 },
-      { value: 3, label: "Thick, junction visible", description: "Thick, but you can still see where it meets the shoulders", ageIndication: "3.5", age: 3.5 },
-      { value: 4, label: "Blends into shoulders", description: "The neck and shoulders start to read as one", ageIndication: "4.5", age: 4.5 },
-      { value: 5, label: "Neck and brisket one mass", description: "No break between the neck, shoulders, and brisket", ageIndication: "5.5+", age: 5.5 },
+      {
+        value: 1,
+        label: "Thin, no swelling",
+        description: "Thin neck with a clear line where it meets the shoulders",
+        ageIndication: "1.5",
+        age: 1.5,
+      },
+      {
+        value: 2,
+        label: "Slight swelling",
+        description: "Some rut swelling, still clearly separate from the shoulders",
+        ageIndication: "2.5",
+        age: 2.5,
+      },
+      {
+        value: 3,
+        label: "Swollen, still distinct from shoulders",
+        description: "Heavily muscled, but you can still see where the neck meets the shoulders",
+        ageIndication: "3.5",
+        age: 3.5,
+      },
+      {
+        value: 4,
+        label: "Blends into shoulders",
+        description: "Fully muscled; no clear line where neck meets shoulders",
+        ageIndication: "4.5",
+        age: 4.5,
+      },
+      {
+        value: 5,
+        label: "Neck and brisket appear as one",
+        description: "Neck runs into the brisket with no break",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
     ],
   },
   {
@@ -62,12 +95,37 @@ export const TRAITS: TraitDef[] = [
     description: "Judge the chest together with the waist.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
-      { value: 1, label: "Shallow", description: "Narrow, athletic chest", ageIndication: "1.5", age: 1.5 },
-      { value: 2, label: "Developing", description: "Some depth starting to show", ageIndication: "2.5", age: 2.5 },
-      { value: 3, label: "Deep, lean waist", description: "Deep chest with a lean waist — the racehorse look", ageIndication: "3.5", age: 3.5 },
-      { value: 4, label: "Deep, belly level with it", description: "Full, heavy chest and the belly sits at the same line", ageIndication: "4.5", age: 4.5 },
-      { value: 5, label: "Front half one large mass", description: "Chest, brisket, and shoulders read as one heavy front end", ageIndication: "5.5+", age: 5.5 },
+      { value: 1, label: "Slim", description: "Slim, doe-like chest; little muscle", ageIndication: "1.5", age: 1.5 },
+      {
+        value: 2,
+        label: "Some shoulder muscle",
+        description: "Shoulders filling out; chest still slim",
+        ageIndication: "2.5",
+        age: 2.5,
+      },
+      {
+        value: 3,
+        label: "Deep chest, lean waist",
+        description: "Deep chest with a lean waist — the racehorse look",
+        ageIndication: "3.5",
+        age: 3.5,
+      },
+      {
+        value: 4,
+        label: "Waist as deep as chest",
+        description: "Belly line has dropped level with the chest",
+        ageIndication: "4.5",
+        age: 4.5,
+      },
+      {
+        value: 5,
+        label: "Front half one large mass",
+        description: "Chest, brisket, and shoulders read as one heavy front end",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
     ],
   },
   {
@@ -77,74 +135,158 @@ export const TRAITS: TraitDef[] = [
     description: "The top line from the shoulders to the hips. A level back is normal through 4.5.",
     body: true,
     neck: false,
+    picture: false,
     scores: [
       {
         value: 1,
-        label: "Level / taut",
+        label: "Straight and taut",
         description: "Smooth and level. This is normal from a yearling through 4.5, so it does not pick a single age.",
         ageIndication: "Through 4.5",
         cap: 4.5,
       },
-      { value: 2, label: "Slight dip", description: "A sag starting to show behind the shoulders", ageIndication: "5.5+", age: 5.5 },
-      { value: 3, label: "Deeply swayed", description: "A clear sway. This is an old, past-prime buck.", ageIndication: "6.5+", age: 6.5 },
+      {
+        value: 2,
+        label: "Sagging back",
+        description: "Back starting to sag behind the shoulders",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
+      {
+        value: 3,
+        label: "Swayed back",
+        description: "Clear sway; shoulders look taller than hips. An old buck.",
+        ageIndication: "6.5+",
+        age: 6.5,
+      },
     ],
   },
   {
     id: "belly",
     name: "Belly & waist",
     icon: "ellipse",
-    description: "A gentle taper toward the hind legs is not a tuck.",
+    description:
+      "Look at the belly line from chest to hind legs. A slight upward slope is normal, not a tucked-up belly.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
-      { value: 1, label: "Clear tuck", description: "A tight, athletic waist", ageIndication: "1.5", age: 1.5 },
-      { value: 2, label: "Small tuck", description: "Still tight, with a smaller tuck", ageIndication: "2.5", age: 2.5 },
-      { value: 3, label: "Lean waist", description: "Chest is deeper than the waist, no sag", ageIndication: "3.5", age: 3.5 },
-      { value: 4, label: "Belly level, no tuck, no sag", description: "The belly sits level with the chest", ageIndication: "4.5", age: 4.5 },
-      { value: 5, label: "Sagging / pot belly", description: "The belly hangs. This is a 5.5+ sign.", ageIndication: "5.5+", age: 5.5 },
+      { value: 1, label: "Belly tucked up", description: "Thin waist, high flank", ageIndication: "1.5", age: 1.5 },
+      {
+        value: 2,
+        label: "Thin waist",
+        description: "Waist still thin in front of the hind legs",
+        ageIndication: "2.5",
+        age: 2.5,
+      },
+      {
+        value: 3,
+        label: "Lean waist",
+        description: "Chest deeper than the waist; belly taut",
+        ageIndication: "3.5",
+        age: 3.5,
+      },
+      {
+        value: 4,
+        label: "Full belly, not sagging",
+        description: "Waistline as deep as the chest",
+        ageIndication: "4.5",
+        age: 4.5,
+      },
+      {
+        value: 5,
+        label: "Belly often sags",
+        description: "Belly hangs below the chest line",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
     ],
   },
   {
     id: "legs",
     name: "Legs",
     icon: "pause",
-    description: "Leg length relative to the body. Skip if the lower legs are hidden.",
+    description:
+      "How long the legs look next to the body (they look shorter as the chest deepens). Skip if the lower legs are hidden.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
-      { value: 1, label: "Rangy", description: "Very long legs for the body", ageIndication: "1.5", age: 1.5 },
-      { value: 2, label: "Long", description: "Legs still look long", ageIndication: "2.5", age: 2.5 },
-      { value: 3, label: "Proportionate", description: "The right length for the body", ageIndication: "3.5", age: 3.5 },
-      { value: 4, label: "Slightly short", description: "A deeper body makes the legs look a little short", ageIndication: "4.5", age: 4.5 },
-      { value: 5, label: "Short", description: "A heavy body, short-looking legs", ageIndication: "5.5+", age: 5.5 },
+      {
+        value: 1,
+        label: "Long and thin",
+        description: "Legs look too long for the body",
+        ageIndication: "1.5",
+        age: 1.5,
+      },
+      { value: 2, label: "Long and lanky", description: "Legs still look too long", ageIndication: "2.5", age: 2.5 },
+      {
+        value: 3,
+        label: "Right length for body",
+        description: "The right length for the body",
+        ageIndication: "3.5",
+        age: 3.5,
+      },
+      {
+        value: 4,
+        label: "Legs in proportion",
+        description: "A deeper body makes the legs look a little short",
+        ageIndication: "4.5",
+        age: 4.5,
+      },
+      {
+        value: 5,
+        label: "Look short for body",
+        description: "Deep body makes legs look short",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
       { value: "skip", label: "Skip", description: "Lower legs are hidden. Don't guess.", ageIndication: "Skip" },
-    ],
-  },
-  {
-    id: "face",
-    name: "Face",
-    icon: "happy",
-    description: "Only a baby face is used for age, and only as a yearling check. It can't set the age alone.",
-    body: false,
-    neck: false,
-    scores: [
-      { value: 1, label: "Baby face", description: "Short, narrow, doe-like snout. Likely a yearling.", ageIndication: "Likely 1.5", age: 1.5 },
-      { value: 2, label: "Not a yearling face", description: "Anything else. Face shape past 1.5 is not a reliable age marker, so this is not used for the age.", ageIndication: "Not used" },
     ],
   },
   {
     id: "build",
     name: "Overall build",
     icon: "flash",
-    description: "The whole body, not muscle cuts.",
+    description: "Your first impression of the whole body.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
-      { value: 1, label: "Doe-like, sleek", description: "Sleek, no muscle definition. Looks like a doe with antlers.", ageIndication: "1.5", age: 1.5 },
-      { value: 2, label: "Lean", description: "Still light, starting to fill out", ageIndication: "2.5", age: 2.5 },
-      { value: 3, label: "Athletic racehorse", description: "Fit and tight, deep chest, lean waist", ageIndication: "3.5", age: 3.5 },
-      { value: 4, label: "Full-bodied", description: "Lost the racehorse look. Heavier through the body.", ageIndication: "4.5", age: 4.5 },
-      { value: 5, label: "Rounded, “small cow”", description: "A rounded, heavy body", ageIndication: "5.5+", age: 5.5 },
+      {
+        value: 1,
+        label: "Doe with antlers",
+        description: "Slim and dainty, little muscle definition",
+        ageIndication: "1.5",
+        age: 1.5,
+      },
+      {
+        value: 2,
+        label: "Sleek, lanky",
+        description: "Bigger than a yearling, still not filled out",
+        ageIndication: "2.5",
+        age: 2.5,
+      },
+      {
+        value: 3,
+        label: "Racehorse look",
+        description: "Fit and tight, deep chest, lean waist",
+        ageIndication: "3.5",
+        age: 3.5,
+      },
+      {
+        value: 4,
+        label: "Full-bodied",
+        description: "Lost the racehorse look; near full adult body mass",
+        ageIndication: "4.5",
+        age: 4.5,
+      },
+      {
+        value: 5,
+        label: "Rounded, “small cow”",
+        description: "A rounded, heavy body",
+        ageIndication: "5.5+",
+        age: 5.5,
+      },
     ],
   },
 ];
@@ -284,10 +426,7 @@ export function fieldCallFor(
   };
 }
 
-export function scoreGuide(
-  scores: Partial<Record<TraitId, ScoreValue>>,
-  leaseMinimum = 4.5,
-): GuideResult {
+export function scoreGuide(scores: Partial<Record<TraitId, ScoreValue>>, leaseMinimum = 4.5): GuideResult {
   const { scoredCount, bodyCount, neckScored } = traitCounts(scores);
   const { votes, cap } = collectVotes(scores);
   const ready = hasEnoughTraits(scores) && votes.length > 0;
