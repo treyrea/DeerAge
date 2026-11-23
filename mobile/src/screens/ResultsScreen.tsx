@@ -133,9 +133,11 @@ export const ResultsScreen = () => {
     softPulse();
   }, [currentResult?.analysisId]);
 
-  // Handle missing result - redirect to home
+  // Leave for Home only while this screen is the one on top. A retake clears
+  // the result and opens the next screen. Replacing the route from a screen
+  // that is already covered sends that next screen back home.
   useEffect(() => {
-    if (!currentResult) {
+    if (!currentResult && navigation.isFocused()) {
       navigation.replace("HomeMain");
     }
   }, [currentResult, navigation]);
