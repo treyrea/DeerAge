@@ -9,7 +9,7 @@
 export const AGE_STEPS = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5] as const;
 export type AgeStep = (typeof AGE_STEPS)[number];
 
-export type TraitId = "neck" | "chest" | "backline" | "belly" | "legs" | "face" | "build";
+export type TraitId = "neck" | "chest" | "backline" | "belly" | "legs" | "build";
 
 export type ScoreValue = number | "skip";
 
@@ -20,7 +20,7 @@ export type TraitChoice = {
   /** Shown on the right of the row. */
   ageIndication: string;
   /**
-   * Point vote for an age class. omitted = no vote (skip, non-baby face, or a cap-only choice).
+   * Point vote for an age class. omitted = no vote (skip, or a cap-only choice).
    */
   age?: AgeStep;
   /** Upper bound this choice allows, e.g. a level back is consistent with 1.5–4.5. */
@@ -36,6 +36,8 @@ export type TraitDef = {
   body: boolean;
   /** Neck is a strong rut cue but cannot set the age alone. */
   neck: boolean;
+  /** A pinned picture. The back line stays text-only so 6.5+ still has a vote. */
+  picture: boolean;
   scores: TraitChoice[];
 };
 
@@ -47,6 +49,7 @@ export const TRAITS: TraitDef[] = [
     description: "Neck swelling peaks in the rut. It can't set the age alone, and out of the rut it can mislead.",
     body: false,
     neck: true,
+    picture: true,
     scores: [
       {
         value: 1,
@@ -92,6 +95,7 @@ export const TRAITS: TraitDef[] = [
     description: "Judge the chest together with the waist.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
       { value: 1, label: "Slim", description: "Slim, doe-like chest; little muscle", ageIndication: "1.5", age: 1.5 },
       {
@@ -131,6 +135,7 @@ export const TRAITS: TraitDef[] = [
     description: "The top line from the shoulders to the hips. A level back is normal through 4.5.",
     body: true,
     neck: false,
+    picture: false,
     scores: [
       {
         value: 1,
@@ -163,6 +168,7 @@ export const TRAITS: TraitDef[] = [
       "Look at the belly line from chest to hind legs. A slight upward slope is normal, not a tucked-up belly.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
       { value: 1, label: "Belly tucked up", description: "Thin waist, high flank", ageIndication: "1.5", age: 1.5 },
       {
@@ -188,7 +194,7 @@ export const TRAITS: TraitDef[] = [
       },
       {
         value: 5,
-        label: "Sagging belly / potbelly",
+        label: "Belly often sags",
         description: "Belly hangs below the chest line",
         ageIndication: "5.5+",
         age: 5.5,
@@ -203,6 +209,7 @@ export const TRAITS: TraitDef[] = [
       "How long the legs look next to the body (they look shorter as the chest deepens). Skip if the lower legs are hidden.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
       {
         value: 1,
@@ -221,7 +228,7 @@ export const TRAITS: TraitDef[] = [
       },
       {
         value: 4,
-        label: "Look slightly short",
+        label: "Legs in proportion",
         description: "A deeper body makes the legs look a little short",
         ageIndication: "4.5",
         age: 4.5,
@@ -237,36 +244,13 @@ export const TRAITS: TraitDef[] = [
     ],
   },
   {
-    id: "face",
-    name: "Face",
-    icon: "happy",
-    description: "Only a baby face is used for age, and only as a yearling check. It can't set the age alone.",
-    body: false,
-    neck: false,
-    scores: [
-      {
-        value: 1,
-        label: "Baby face",
-        description: "Dainty, doe-like face. Likely a yearling.",
-        ageIndication: "Likely 1.5",
-        age: 1.5,
-      },
-      {
-        value: 2,
-        label: "Not a baby face",
-        description:
-          "Anything else. Face shape past 1.5 is not a reliable age marker, so this is not used for the age.",
-        ageIndication: "Not used",
-      },
-    ],
-  },
-  {
     id: "build",
     name: "Overall build",
     icon: "flash",
     description: "Your first impression of the whole body.",
     body: true,
     neck: false,
+    picture: true,
     scores: [
       {
         value: 1,

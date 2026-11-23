@@ -15,8 +15,17 @@ import { useDeerScoringStore } from "../state/deerScoringStore";
 import Animated, { FadeIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { TraitPictureCard } from "../components/TraitPictureCard";
-import { TRAITS, scoreGuide, type ScoreValue, type TraitId } from "../lib/offline-age-guide";
-import { GUIDE_PALETTE } from "../lib/trait-drawings";
+import { TRAITS, scoreGuide, type ScoreValue, type TraitDef, type TraitId } from "../lib/offline-age-guide";
+import { pictureCaption, type IllustratedTraitId } from "../lib/offline-age-guide-art";
+
+const GUIDE = {
+  screen: "#2B3420",
+  card: "#3D4A2F",
+  cream: "#F5F5DC",
+  creamMuted: "#E5D4B8",
+  gold: "#D4AF37",
+  button: "#5A6447",
+} as const;
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -44,6 +53,8 @@ const TIPS: { title: string; text: string }[] = [
     title: "Antlers last",
     text: "Don't rely on antler size alone. Nutrition varies by region. Use antlers only as a tie-breaker.",
   },
+  { title: "Don't age by the face; use the body.", text: "" },
+  { title: "5.5+", text: "Guides: eyes may look squinty; look for scars." },
 ];
 
 export const OfflineAgeGuideScreen = () => {
@@ -101,7 +112,7 @@ export const OfflineAgeGuideScreen = () => {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 140 }}
-        stickyHeaderIndices={TRAITS.map((_, index) => 1 + index * 2)}
+        stickyHeaderIndices={stickyHeaderIndices(TRAITS)}
         removeClippedSubviews={false}
       >
         <View className="px-6 pt-6">
@@ -134,7 +145,7 @@ export const OfflineAgeGuideScreen = () => {
                 <Text className="text-blue-300 font-bold text-base mb-2">How to use this guide</Text>
                 <Text className="text-blue-200 text-sm leading-5 mb-2">
                   Score what you can clearly see on a standing, broadside deer. You need about 3 body traits, or the
-                  neck plus 2, before an age is shown. The neck or face alone cannot set it.
+                  neck plus 2, before an age is shown. The neck alone cannot set it.
                 </Text>
                 <Text className="text-blue-200 text-sm leading-5">
                   The harvest call uses your lease minimum in Settings (currently {leaseMinimum}).
@@ -144,65 +155,7 @@ export const OfflineAgeGuideScreen = () => {
           </View>
         </View>
 
-        {TRAITS.flatMap((trait) => {
-          const selected = scores[trait.id];
-          const selectedChoice = trait.scores.find((row) => row.value === selected);
-          return [
-            <View
-              key={`${trait.id}-art`}
-              style={{ backgroundColor: GUIDE_PALETTE.screen, paddingHorizontal: 24, paddingBottom: 8 }}
-            >
-              <TraitPictureCard
-                traitId={trait.id}
-                name={trait.name}
-                icon={trait.icon}
-                selected={selected}
-                caption={selectedChoice?.label ?? "Select the closest match"}
-                onClear={() => clearScore(trait.id)}
-              />
-            </View>,
-            <View key={`${trait.id}-opts`} className="px-6 mb-4">
-              <View className="rounded-2xl p-4" style={{ backgroundColor: GUIDE_PALETTE.card }}>
-                <Text className="text-xs leading-4 mb-3" style={{ color: GUIDE_PALETTE.creamMuted }}>
-                  {trait.description}
-                </Text>
-                <View className="space-y-2">
-                  {trait.scores.map((score) => {
-                    const on = selected === score.value;
-                    const ink = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.cream;
-                    const gold = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.gold;
-                    const body = on ? GUIDE_PALETTE.screen : GUIDE_PALETTE.creamMuted;
-                    return (
-                      <Pressable
-                        key={String(score.value)}
-                        onPress={() => handleScore(trait.id, score.value)}
-                        className="rounded-lg p-3"
-                        style={{ backgroundColor: on ? GUIDE_PALETTE.gold : GUIDE_PALETTE.button }}
-                      >
-                        <View className="flex-row items-center justify-between mb-1">
-                          <Text className="font-bold text-sm flex-1 pr-2" style={{ color: ink }}>
-                            {score.value === "skip" ? score.label : `${score.value}. ${score.label}`}
-                          </Text>
-                          <Text className="text-xs" style={{ color: gold }}>
-                            {score.ageIndication}
-                          </Text>
-                        </View>
-                        <Text className="text-xs" style={{ color: body }}>
-                          {score.description}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {selectedChoice?.value === "skip" && (
-                  <Text className="text-xs mt-2" style={{ color: GUIDE_PALETTE.gold }}>
-                    Legs skipped — they will not count toward the age.
-                  </Text>
-                )}
-              </View>
-            </View>,
-          ];
-        })}
+        {traitBlocks(scores, handleScore, clearScore)}
 
         <View className="px-6">
           <View className="rounded-2xl p-5 mb-6" style={{ backgroundColor: "#3D4A2F" }}>
@@ -213,7 +166,14 @@ export const OfflineAgeGuideScreen = () => {
             <View>
               {TIPS.map((tip) => (
                 <Text key={tip.title} className="text-sm leading-5 mb-2" style={{ color: "#E5D4B8" }}>
-                  • <Text className="font-bold">{tip.title}.</Text> {tip.text}
+                  •{" "}
+                  {tip.text ? (
+                    <>
+                      <Text className="font-bold">{tip.title}.</Text> {tip.text}
+                    </>
+                  ) : (
+                    <Text className="font-bold">{tip.title}</Text>
+                  )}
                 </Text>
               ))}
             </View>
@@ -222,7 +182,7 @@ export const OfflineAgeGuideScreen = () => {
           <View className="rounded-xl p-4 mb-6" style={{ backgroundColor: "#5A6447" }}>
             <View className="flex-row items-start">
               <Ionicons name="alert-circle" size={20} color="#f59e0b" />
-              <Text className="text-xs flex-1 ml-2 leading-5" style={{ color: GUIDE_PALETTE.creamMuted }}>
+              <Text className="text-xs flex-1 ml-2 leading-5" style={{ color: GUIDE.creamMuted }}>
                 This is a field guide for when a scan is not available. It is a guideline, not a jawbone age. Follow
                 local regulations, landowner rules, and your lease minimum.
               </Text>
@@ -295,3 +255,133 @@ export const OfflineAgeGuideScreen = () => {
     </View>
   );
 };
+
+function stickyHeaderIndices(traits: TraitDef[]): number[] {
+  const indices: number[] = [];
+  let index = 1;
+  for (const trait of traits) {
+    if (trait.picture) indices.push(index);
+    index += trait.picture ? 2 : 1;
+  }
+  return indices;
+}
+
+function traitBlocks(
+  scores: Partial<Record<TraitId, ScoreValue>>,
+  onScore: (traitId: TraitId, value: ScoreValue) => void,
+  onClear: (traitId: TraitId) => void,
+) {
+  return TRAITS.flatMap((trait) => {
+    const selected = scores[trait.id];
+    const selectedChoice = trait.scores.find((row) => row.value === selected);
+    const options = (
+      <TraitOptions
+        key={`${trait.id}-opts`}
+        trait={trait}
+        selected={selected}
+        showTitle={!trait.picture}
+        onScore={onScore}
+        onClear={onClear}
+      />
+    );
+    if (!trait.picture) return [options];
+    const tapped = pictureCaption(trait.id as IllustratedTraitId, selected);
+    const caption = tapped ?? (selected == null ? "Select the closest match" : (selectedChoice?.label ?? ""));
+    return [
+      <View key={`${trait.id}-art`} style={{ backgroundColor: GUIDE.screen, paddingHorizontal: 24, paddingBottom: 8 }}>
+        <TraitPictureCard
+          traitId={trait.id as IllustratedTraitId}
+          name={trait.name}
+          icon={trait.icon}
+          selected={selected}
+          caption={caption}
+          onClear={() => onClear(trait.id)}
+        />
+      </View>,
+      options,
+    ];
+  });
+}
+
+function TraitOptions({
+  trait,
+  selected,
+  showTitle,
+  onScore,
+  onClear,
+}: {
+  trait: TraitDef;
+  selected: ScoreValue | undefined;
+  showTitle: boolean;
+  onScore: (traitId: TraitId, value: ScoreValue) => void;
+  onClear: (traitId: TraitId) => void;
+}) {
+  const skipped = selected === "skip";
+  return (
+    <View className="px-6 mb-4">
+      <View className="rounded-2xl p-4" style={{ backgroundColor: GUIDE.card }}>
+        {showTitle && (
+          <View className="flex-row items-center mb-3">
+            <View
+              className="w-10 h-10 rounded-full items-center justify-center"
+              style={{ backgroundColor: GUIDE.button }}
+            >
+              <Ionicons name={trait.icon as keyof typeof Ionicons.glyphMap} size={20} color={GUIDE.gold} />
+            </View>
+            <Text className="flex-1 ml-3 font-bold text-base" style={{ color: GUIDE.cream }}>
+              {trait.name}
+            </Text>
+            {selected != null && (
+              <Pressable
+                onPress={() => onClear(trait.id)}
+                className="w-12 h-12 rounded-full items-center justify-center"
+                style={{ backgroundColor: GUIDE.gold }}
+                accessibilityLabel={`Clear ${trait.name}`}
+              >
+                <Text className="font-bold text-base" style={{ color: GUIDE.screen }}>
+                  {selected === "skip" ? "—" : String(selected)}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+        <Text className="text-xs leading-4 mb-3" style={{ color: GUIDE.creamMuted }}>
+          {trait.description}
+        </Text>
+        <View className="space-y-2">
+          {trait.scores.map((score) => {
+            const on = selected === score.value;
+            const ink = on ? GUIDE.screen : GUIDE.cream;
+            const gold = on ? GUIDE.screen : GUIDE.gold;
+            const body = on ? GUIDE.screen : GUIDE.creamMuted;
+            return (
+              <Pressable
+                key={String(score.value)}
+                onPress={() => onScore(trait.id, score.value)}
+                className="rounded-lg p-3"
+                style={{ backgroundColor: on ? GUIDE.gold : GUIDE.button }}
+              >
+                <View className="flex-row items-center justify-between mb-1">
+                  <Text className="font-bold text-sm flex-1 pr-2" style={{ color: ink }}>
+                    {score.value === "skip" ? score.label : `${score.value}. ${score.label}`}
+                  </Text>
+                  <Text className="text-xs" style={{ color: gold }}>
+                    {score.ageIndication}
+                  </Text>
+                </View>
+                <Text className="text-xs" style={{ color: body }}>
+                  {score.description}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {skipped && (
+          <Text className="text-xs mt-2" style={{ color: GUIDE.gold }}>
+            Legs skipped — they will not count toward the age.
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
