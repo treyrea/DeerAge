@@ -4,10 +4,13 @@
  */
 
 export const RETAKE_CONFLICT_OLD =
-  "The body looks like an older buck, but the rack is narrow and light, inside the ears, like a young buck's. A rut-swollen neck can make a young buck look older. Try a side-on photo of the whole deer with the head up.";
+  "The body looks like an older buck, but the rack is narrow and light, inside the ears, like a young buck's. A rut-swollen neck can make a young buck look older.";
 
 export const RETAKE_CONFLICT_YOUNG =
-  "The body looks young, but the rack is wide, heavy and long-tined like an older buck's. Try a side-on photo of the whole deer with the head up.";
+  "The body looks young, but the rack is wide, heavy and long-tined like an older buck's.";
+
+/** Shown with a rack-conflict note only when the pose check said the deer is not broadside. */
+export const SIDE_ON_TIP = "Try a side-on photo of the whole deer with the head up.";
 
 const ALLOWED: Record<string, ReadonlySet<string>> = {
   legs_vs_chest: new Set(["LEGS_LONGER", "ABOUT_EQUAL", "LEGS_SHORTER", "CANT_TELL"]),

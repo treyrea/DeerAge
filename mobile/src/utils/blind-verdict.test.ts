@@ -51,4 +51,13 @@ describe("blind verdict", () => {
     });
     expect(empty.clues).toEqual([]);
   });
+
+  it("keeps a cue bullet when the age came back with no look-for line and no reasons", () => {
+    const read = bodyRead({
+      reasons: [],
+      cueBullets: [{ area: "Body", text: "The belly tucks up." }],
+    });
+    expect(read.lookFor).toBe("");
+    expect(read.clues).toEqual(["The belly tucks up."]);
+  });
 });

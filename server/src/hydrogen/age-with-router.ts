@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import type { AgingConfig } from "./aging.js";
 import { ScanDeadlineError } from "./budget.js";
 import { applyRules, parseCc, type CrossCheck, type RuleDecision } from "./crosscheck.js";
+import { applySideOnTip, crossCheckCues, showSideOnTip } from "./cues.js";
 import { parseAge } from "./plain.js";
 import { walkHydrogen, type ModelCaller, type WalkResult, type WalkSchedule, type WalkStepListener } from "./pipeline.js";
 import { activeCrossCheckPrompt, activePlainPrompt, activeQualityPrompt } from "./prompts.js";
@@ -70,7 +71,18 @@ async function readCrossCheck(call: ModelCaller, prompt: string, signal?: AbortS
   }
 }
 
-function shownAge(result: RouteResult, walk: WalkResult | null, rule: RuleDecision | null): WalkResult {
+function poseOf(walk: WalkResult | null): { viewAngle?: string; fails?: string[] } {
+  if (walk?.kind === "age") return { viewAngle: walk.viewAngle };
+  if (walk?.kind === "retake") return { fails: walk.fails };
+  return {};
+}
+
+function withPoseTip(text: string, rule: RuleDecision | null, walk: WalkResult | null): string {
+  const pose = poseOf(walk);
+  return applySideOnTip(text, showSideOnTip(rule?.rule, pose.viewAngle, pose.fails));
+}
+
+function shownAge(result: RouteResult, walk: WalkResult | null, rule: RuleDecision | null, crossCheck: CrossCheck | null): WalkResult {
   if (result.source === "retake" || result.label === "RETAKE") {
     const message = rule?.kind === "retake" && rule.reason
       ? rule.reason
@@ -78,7 +90,7 @@ function shownAge(result: RouteResult, walk: WalkResult | null, rule: RuleDecisi
         ? walk.message
         : "Try another photo of the whole deer.";
     const fails = walk?.kind === "retake" ? walk.fails : [];
-    return { kind: "retake", message, fails };
+    return { kind: "retake", message: withPoseTip(message, rule, walk), fails };
   }
   if (result.lo == null || result.hi == null || !result.label) {
     return { kind: "stop", reason: result.branch || "no answer" };
@@ -86,14 +98,22 @@ function shownAge(result: RouteResult, walk: WalkResult | null, rule: RuleDecisi
   const fromWalk = walk?.kind === "age" ? walk : null;
   const sameNumbers = fromWalk != null && result.lo === fromWalk.low && result.hi === fromWalk.high;
   const ruleReason = rule && rule.rule !== "none" && rule.rule !== "none_no_crosscheck" ? rule.reason : "";
+  const observations = fromWalk?.observations?.trim() || crossCheckCues(crossCheck);
+  let hunterCue = sameNumbers && fromWalk ? fromWalk.hunterCue : "";
+  let reason = ruleReason || (sameNumbers && fromWalk ? fromWalk.reason : "");
+  if (!reason.trim() && !hunterCue.trim()) {
+    reason = observations || (fromWalk?.reason ?? "");
+  }
   return {
     kind: "age",
     label: result.label,
     low: result.lo,
     high: result.hi,
     isRange: result.is_range,
-    hunterCue: sameNumbers ? fromWalk.hunterCue : "",
-    reason: ruleReason || (sameNumbers ? fromWalk.reason : ""),
+    hunterCue,
+    reason: withPoseTip(reason, rule, walk),
+    observations,
+    viewAngle: fromWalk?.viewAngle,
     viaBabyGate: fromWalk?.viaBabyGate,
   };
 }
@@ -225,7 +245,9 @@ export async function ageWithRouter(input: {
   if (!routerOn) {
     if (!walkBox.ok) throw walkBox.error;
     if (!walkResult || walkResult.kind === "stop") return walkResult ?? { kind: "stop", reason: "no answer" };
-    if (rule?.kind === "retake") return { kind: "retake", message: rule.reason, fails: [] };
+    if (rule?.kind === "retake") {
+      return { kind: "retake", message: withPoseTip(rule.reason, rule, walkResult), fails: [] };
+    }
     if (walkResult.kind === "retake") return walkResult;
     return shownAge(
       {
@@ -238,10 +260,11 @@ export async function ageWithRouter(input: {
       },
       walkResult,
       rule,
+      crossCheck,
     );
   }
 
-  const shown = shownAge(decided!, walkResult, rule);
+  const shown = shownAge(decided!, walkResult, rule, crossCheck);
   if (shown.kind === "stop" && !walkBox.ok && !(walkBox.error instanceof ScanDeadlineError)) {
     throw walkBox.error;
   }

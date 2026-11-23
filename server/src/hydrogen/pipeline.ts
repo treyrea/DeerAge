@@ -51,6 +51,10 @@ export type WalkResult =
       isRange: boolean;
       hunterCue: string;
       reason: string;
+      /** Step A body notes, or the baby-gate facts. Cue text only. */
+      observations?: string;
+      /** Photo-quality view_angle. Cue tip only. */
+      viewAngle?: string;
       /** True only for the baby-gate yearling. R4a needs it. */
       viaBabyGate?: boolean;
     }
@@ -147,7 +151,18 @@ export async function walkHydrogen(
   }
   if (gate === "BABY") {
     stepA$?.cancel();
-    return { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true };
+    return {
+      kind: "age",
+      label: "1.5",
+      low: 1.5,
+      high: 1.5,
+      isRange: false,
+      hunterCue: "",
+      reason: "",
+      observations: "Thin body and a young face.",
+      viewAngle: quality.view_angle,
+      viaBabyGate: true,
+    };
   }
 
   step({ step: "stepA", parallel: schedule.parallelStart });
@@ -219,5 +234,7 @@ export async function walkHydrogen(
     isRange,
     hunterCue,
     reason,
+    observations: description,
+    viewAngle: quality.view_angle,
   };
 }

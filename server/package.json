@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx src/dev-server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/content.test.ts src/field-call.test.ts src/record.test.ts src/qr.test.ts src/regions.test.ts src/lease-text.test.ts src/scan.test.ts src/proof.test.ts src/scan-credits.test.ts src/fair-use-credit.test.ts src/edge.test.ts src/rate-limit.test.ts src/hydrogen/pipeline.test.ts src/hydrogen/failover.test.ts src/hydrogen/router.test.ts src/hydrogen/no-deer.test.ts src/gateway-no-deer.test.ts src/quick-failure.test.ts src/quick-engine.test.ts src/quick-scan.test.ts src/body-boxes.test.ts src/contributions.test.ts src/progress.test.ts src/hydrogen/parallel-walk.test.ts src/vignette-crop.test.ts",
+    "test": "tsx --test src/content.test.ts src/field-call.test.ts src/record.test.ts src/qr.test.ts src/regions.test.ts src/lease-text.test.ts src/scan.test.ts src/proof.test.ts src/scan-credits.test.ts src/fair-use-credit.test.ts src/edge.test.ts src/rate-limit.test.ts src/hydrogen/cues.test.ts src/hydrogen/pipeline.test.ts src/hydrogen/failover.test.ts src/hydrogen/router.test.ts src/hydrogen/no-deer.test.ts src/gateway-no-deer.test.ts src/quick-failure.test.ts src/quick-engine.test.ts src/quick-scan.test.ts src/body-boxes.test.ts src/contributions.test.ts src/progress.test.ts src/hydrogen/parallel-walk.test.ts src/vignette-crop.test.ts",
     "eval": "tsx eval/run.ts",
     "admin": "tsx src/admin-cli.ts"
   },
