@@ -126,9 +126,13 @@ export function bodyRead(input: {
   detectedCues?: { displayName?: string; detectedPattern?: string; explanation?: string }[] | null;
 }): { lookFor: string; clues: string[] } {
   const lookFor = clean(input.lookFor) || clean(input.hunterCue);
-  if (Array.isArray(input.reasons)) {
-    const lines = input.reasons.filter((line): line is string => typeof line === "string");
-    return { lookFor, clues: uniqueClues(lines, lookFor) };
+  const reasonLines = Array.isArray(input.reasons)
+    ? input.reasons.filter((line): line is string => typeof line === "string" && line.trim().length > 0)
+    : null;
+  // An empty reasons array means "no extra clues" only when a look-for line is already showing.
+  // With no line at all, a cue bullet is the written reason and must not be dropped.
+  if (reasonLines && (reasonLines.length > 0 || lookFor)) {
+    return { lookFor, clues: uniqueClues(reasonLines, lookFor) };
   }
   const fromBullets = (input.cueBullets ?? []).map((bullet) => withArea(clean(bullet.area), clean(bullet.text)));
   const fromDetected = (input.detectedCues ?? []).flatMap((cue) => {

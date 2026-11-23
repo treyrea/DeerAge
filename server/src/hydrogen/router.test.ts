@@ -13,6 +13,7 @@ import { ScanDeadlineError } from "./budget.js";
 import {
   RETAKE_CONFLICT_OLD,
   RETAKE_CONFLICT_YOUNG,
+  SIDE_ON_TIP,
   applyRules,
   parseCc,
   type CrossCheck,
@@ -293,6 +294,46 @@ test("the scan uses the plain age for a quality retake and for a rules retake", 
   assert.equal(ruled.log.rule, "R1_old_call_young_rack");
   if (ruled.result.kind === "age") assert.equal(ruled.result.label, "2.5");
   assert.equal(ruled.log.retakeReason, RETAKE_CONFLICT_OLD);
+});
+
+test("a broadside photo does not get the side-on tip, and a flagged pose does", async () => {
+  const broadside = await run({
+    walk: age(4.5, 4.5, { viewAngle: "BROADSIDE", observations: "Deep chest." }),
+    plain: "the **2.5-year-old** class",
+    cross: JSON.stringify({ spread_vs_ears: "INSIDE", beam_mass: "THIN" }),
+  });
+  assert.equal(broadside.result.kind, "age");
+  if (broadside.result.kind === "age") {
+    assert.equal(broadside.result.label, "2.5");
+    assert.equal(broadside.result.reason, RETAKE_CONFLICT_OLD);
+    assert.equal(broadside.result.reason.includes(SIDE_ON_TIP), false);
+  }
+
+  const quartering = await run({
+    walk: age(4.5, 4.5, { viewAngle: "QUARTERING" }),
+    plain: "the **2.5-year-old** class",
+    cross: JSON.stringify({ spread_vs_ears: "INSIDE", beam_mass: "THIN" }),
+  });
+  if (quartering.result.kind === "age") {
+    assert.equal(quartering.result.label, "2.5");
+    assert.equal(quartering.result.reason, `${RETAKE_CONFLICT_OLD} ${SIDE_ON_TIP}`);
+  }
+});
+
+test("a router age that is not the walk age still keeps the recorded body notes", async () => {
+  const moved = await run({
+    walk: age(2.5, 2.5, { hunterCue: "", reason: "", observations: "Belly tucks up.", viewAngle: "BROADSIDE" }),
+    plain: "a **3.5-year-old**",
+    cross: "{}",
+  });
+  assert.equal(moved.log.branch, "D1_one_class_apart_range");
+  if (moved.result.kind === "age") {
+    assert.equal(moved.result.label, "2.5\u20133.5");
+    assert.equal(moved.result.low, 2.5);
+    assert.equal(moved.result.high, 3.5);
+    assert.equal(moved.result.reason, "Belly tucks up.");
+    assert.equal(moved.result.reason.includes(SIDE_ON_TIP), false);
+  }
 });
 
 test("a too-small deer stays a get-closer retake and does not show the plain age", async () => {

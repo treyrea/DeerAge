@@ -5,6 +5,7 @@
 
 import { classLabel, classStep, type FieldCall } from "../field-call.js";
 import { fillRangeNote } from "./aging.js";
+import { observationCues } from "./cues.js";
 import { readCopy } from "./read-copy.js";
 
 export function hydrogenAgeBody(input: {
@@ -16,6 +17,8 @@ export function hydrogenAgeBody(input: {
   reason: string;
   minimum: number;
   rangeNote?: string;
+  /** Step A notes, or cross-check body facts. Used only when the model sent no cue text. */
+  observations?: string;
 }): Record<string, unknown> {
   const leaseMinimum = classStep(input.minimum);
   const minimumLabel = classLabel(leaseMinimum);
@@ -36,15 +39,30 @@ export function hydrogenAgeBody(input: {
         : `${rangeSentence} Your minimum is ${minimumLabel}. Don't risk the fine.`;
   const why = input.reason.trim();
   const copy = readCopy(input.hunterCue, why);
+  let lookFor = copy.lookFor;
+  let reasons = copy.reasons;
+  if (!lookFor && reasons.length === 0) {
+    const fallback = observationCues(input.observations);
+    if (fallback.length > 0) {
+      lookFor = fallback[0];
+      reasons = fallback.slice(1);
+    }
+  } else if (!lookFor && reasons.length > 0) {
+    // A single-class closer often sends a body sentence and no look-for line.
+    // Put the first sentence on the card. The rest stay under "Why this age".
+    lookFor = reasons[0];
+    reasons = reasons.slice(1);
+  }
   // Reasons only. The look-for line stays in hunterCue so 1.0.9 does not
   // print a second, cut-off copy of it under "WHY THIS AGE CLASS".
-  const cueBullets = copy.reasons.map((text) => ({ area: "Body", text }));
+  const cueBullets = reasons.map((text) => ({ area: "Body", text }));
   // When the only sentence is the look-for line, 1.0.9's detail section still
   // needs one full cue or it shows a false "no body features" warning.
-  const detail = copy.reasons.length > 0 ? copy.reasons : copy.lookFor ? [copy.lookFor] : [];
+  const detail = reasons.length > 0 ? reasons : lookFor ? [lookFor] : [];
+  const fromObservations = !copy.lookFor && copy.reasons.length === 0 && Boolean(lookFor);
   const cues = detail.map((text) => ({
     name: "chest_depth",
-    displayName: copy.reasons.length > 0 ? "Body" : "What to look for",
+    displayName: copy.reasons.length > 0 || fromObservations ? "Body" : "What to look for",
     pattern: text,
   }));
   return {
@@ -54,9 +72,9 @@ export function hydrogenAgeBody(input: {
     estimatedAge: input.label,
     ageLabel: input.label,
     isRange: input.isRange,
-    hunterCue: copy.lookFor,
-    lookFor: copy.lookFor,
-    reasons: copy.reasons,
+    hunterCue: lookFor,
+    lookFor,
+    reasons,
     ageReason: why,
     pipeline: "hydrogen",
     confidence: 0,

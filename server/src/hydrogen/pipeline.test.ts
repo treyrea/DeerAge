@@ -160,7 +160,18 @@ test("retake stops before the gate and shows the single-fail message", async () 
 test("baby gate stops at 1.5 and does not describe or compare", async () => {
   const script = scripted([quality(), gate("YES", "YES")]);
   const result = await walkHydrogen(script.call);
-  assert.deepEqual(result, { kind: "age", label: "1.5", low: 1.5, high: 1.5, isRange: false, hunterCue: "", reason: "", viaBabyGate: true });
+  assert.deepEqual(result, {
+    kind: "age",
+    label: "1.5",
+    low: 1.5,
+    high: 1.5,
+    isRange: false,
+    hunterCue: "",
+    reason: "",
+    observations: "Thin body and a young face.",
+    viewAngle: "BROADSIDE",
+    viaBabyGate: true,
+  });
   assert.equal(script.prompts.length, 2);
 });
 
