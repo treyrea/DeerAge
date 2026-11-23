@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
-import { recordGoodResult } from "../lib/review";
+import { maybeRequestReview, recordGoodResult } from "../lib/review";
+import { shouldRequestReviewAfterLeaving } from "../lib/review-leave";
 import { scheduleCommunityPrompt } from "../state/communityStore";
 
 /**
  * A finished read stays on screen. Plans, ratings, push, and email wait
  * until he leaves, so nothing covers the call in the stand.
  */
-export function useResultFollowUp(enabled: boolean) {
+export function useResultFollowUp(enabled: boolean, fieldCall?: string | null) {
   const ran = useRef(false);
   const rescan = useRef(false);
 
@@ -23,8 +24,16 @@ export function useResultFollowUp(enabled: boolean) {
       if (rescan.current) return;
       if (Date.now() - started < 800) return;
       scheduleCommunityPrompt();
+      if (shouldRequestReviewAfterLeaving({
+        enabled: true,
+        rescan: false,
+        visibleMs: Date.now() - started,
+        fieldCall,
+      })) {
+        void maybeRequestReview(fieldCall as string);
+      }
     };
-  }, [enabled]);
+  }, [enabled, fieldCall]);
 
   return {
     markRescan: () => {
