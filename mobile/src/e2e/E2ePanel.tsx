@@ -92,7 +92,7 @@ export const E2ePanel = () => {
       <Pressable testID="e2e-paywall" onPress={() => navigation.navigate("TierPaywall", { reason: "e2e" })} style={row}>
         <Text style={label}>Open paywall</Text>
       </Pressable>
-      <Pressable testID="e2e-messages" onPress={() => navigation.getParent()?.navigate("Settings", { screen: "Messages" })} style={row}>
+      <Pressable testID="e2e-messages" onPress={() => navigation.getParent()?.navigate("Settings", { screen: "Messages", initial: false })} style={row}>
         <Text style={label}>Open messages</Text>
       </Pressable>
       <Pressable testID="e2e-feed" onPress={() => navigation.navigate("Feed")} style={row}>
