@@ -71,7 +71,7 @@ export const AgeResultScreen = () => {
   const leaseRules = useHunterProfile((s) => s.leaseRules);
   const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
-  const followUp = useResultFollowUp(Boolean(explainable));
+  const followUp = useResultFollowUp(Boolean(explainable), explainable?.fieldCall);
 
   useEffect(() => {
     if (currentResult && !hasSaved) {

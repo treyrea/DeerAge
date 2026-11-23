@@ -23,8 +23,6 @@ import {
   trackPaywallImpression,
 } from "../lib/revenuecatClient";
 import {
-  LEGACY_OFFERING_ID,
-  LEGACY_PRODUCT_IDS,
   SCAN_PACK_10_ID,
   SCAN_PACK_30_ID,
   SCAN_PACK_IDS,
@@ -72,15 +70,6 @@ function trialCopy(pkg: PurchasesPackage, priceLabel: string): string | null {
   return `${intro.priceString} to start, then ${priceLabel}`;
 }
 
-function uniquePackages(packages: PurchasesPackage[]): PurchasesPackage[] {
-  const seen = new Set<string>();
-  return packages.filter((pkg) => {
-    if (seen.has(pkg.product.identifier)) return false;
-    seen.add(pkg.product.identifier);
-    return true;
-  });
-}
-
 export const TierPaywallScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaywallRoute>();
@@ -96,8 +85,6 @@ export const TierPaywallScreen = () => {
 
   const [season, setSeason] = useState<PlanCard | null>(null);
   const [monthly, setMonthly] = useState<PlanCard | null>(null);
-  const [legacy, setLegacy] = useState<PurchasesPackage[]>([]);
-  const [showLegacy, setShowLegacy] = useState(false);
   const [selected, setSelected] = useState<"season" | "monthly">("season");
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
@@ -182,11 +169,6 @@ export const TierPaywallScreen = () => {
         package: monthlyPackage,
       });
       if (!seasonPackage && monthlyPackage) setSelected("monthly");
-      const legacyPool = uniquePackages([
-        ...current.availablePackages,
-        ...(offerings.data.all[LEGACY_OFFERING_ID]?.availablePackages ?? []),
-      ]).filter((pkg) => (LEGACY_PRODUCT_IDS as readonly string[]).includes(pkg.product.identifier));
-      setLegacy(legacyPool);
       const storeProducts = await getStoreProducts([...SCAN_PACK_IDS]);
       if (!active) return;
       if (storeProducts.ok) {
@@ -391,21 +373,8 @@ export const TierPaywallScreen = () => {
             </View>
           ) : null}
 
-          {legacy.length > 0 ? (
-            <Pressable onPress={() => setShowLegacy((open) => !open)} style={{ marginTop: 18, alignItems: "center" }}>
-              <Text style={{ color: "#E5D4B8" }}>{showLegacy ? "Hide other plans" : "More plans"}</Text>
-            </Pressable>
-          ) : null}
-          {showLegacy ? legacy.map((pkg) => (
-            <Pressable
-              key={pkg.product.identifier}
-              onPress={() => void buy(pkg)}
-              style={{ marginTop: 10, padding: 12, borderRadius: 12, backgroundColor: "#24301c" }}
-            >
-              <Text style={{ color: "#F5F5DC", fontWeight: "700" }}>{pkg.product.title || pkg.product.identifier}</Text>
-              <Text style={{ color: "#D4AF37" }}>{pkg.product.priceString}</Text>
-            </Pressable>
-          )) : null}
+          {/* Old Scout / Hunter / Trophy / Outfitter plans stay on sale and
+              restorable, but they are no longer merchandised on this paywall. */}
         </ScrollView>
       </LinearGradient>
     </View>

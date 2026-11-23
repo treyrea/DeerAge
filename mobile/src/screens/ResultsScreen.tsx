@@ -158,7 +158,7 @@ export const ResultsScreen = () => {
   const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const leaseRules = useHunterProfile((s) => s.leaseRules);
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
-  const followUp = useResultFollowUp(Boolean(currentResult));
+  const followUp = useResultFollowUp(Boolean(currentResult), currentResult?.explainableAge?.fieldCall);
 
   if (!currentResult) {
     return null;

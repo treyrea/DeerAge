@@ -55,7 +55,10 @@ export const QuickCheckResultScreen = () => {
   const isInvalidImage = result.isValidImage === false || missingAge;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
-  const followUp = useResultFollowUp(!isInvalidImage);
+  const followUp = useResultFollowUp(
+    !isInvalidImage,
+    result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
+  );
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
   const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const leaseRules = useHunterProfile((s) => s.leaseRules);
