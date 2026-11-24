@@ -81,7 +81,7 @@ test("subject facts: only a clear carcass or a clearly bare head stops", () => {
   assert.equal(parseSubject('{"posture":"STANDING","antlers":"YES"}')?.body, null);
 });
 
-test("a mount, decoy, screen, or drawing stops, and a live buck does not", () => {
+test("a mount, decoy, or drawing stops; a screen or print and a live buck do not", () => {
   const stop = (scene: string, body = "HEAD") => subjectHalt(parseSubject(
     `{"posture":"CANT_TELL","antlers":"YES","scene":"${scene}","body":"${body}"}`,
   ));
@@ -89,7 +89,8 @@ test("a mount, decoy, screen, or drawing stops, and a live buck does not", () =>
   assert.equal(stop("MOUNT")?.message, notLiveMessage("MOUNT"));
   assert.match(stop("MOUNT")?.message ?? "", /looks like a mount/);
   assert.equal(stop("DECOY")?.message, notLiveMessage("DECOY"));
-  assert.match(stop("PICTURE")?.message ?? "", /screen or a print/);
+  assert.equal(stop("PICTURE", "FULL"), null);
+  assert.equal(stop("PICTURE", "HEAD")?.kind, "no_body");
   assert.match(stop("DRAWING")?.message ?? "", /drawing/);
   assert.equal(stop("LIVE", "FULL"), null);
   assert.equal(stop("CANT_TELL", "FULL"), null);
@@ -323,7 +324,7 @@ test("quick check stops a dead deer and a doe from the same read, and a spike st
   const decoy = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: DECOY\nBODY_VISIBLE: FULL");
   assert.equal(decoy.kind, "not_live");
   const screen = await run("POSTURE: CANT_TELL\nANTLERS: CANT_TELL\nSCENE: PICTURE\nBODY_VISIBLE: CANT_TELL");
-  assert.equal(screen.kind, "not_live");
+  assert.equal(screen.kind, "age");
   const drawing = await run("POSTURE: CANT_TELL\nANTLERS: YES\nSCENE: DRAWING\nBODY_VISIBLE: FULL");
   assert.equal(drawing.kind, "not_live");
   const head = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: LIVE\nBODY_VISIBLE: HEAD");

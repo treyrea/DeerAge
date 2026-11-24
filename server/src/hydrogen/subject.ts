@@ -1,7 +1,7 @@
 /**
  * Live-buck gate. DeerAge ages a standing buck in the field, with his body in the frame.
  * One look, before any age call, stops a harvested deer, a deer with no antlers,
- * something that is not a live deer, or a head-only / neck-only photo.
+ * a mount, decoy, or drawing, or a head-only / neck-only photo. A photo of a screen or print is still aged.
  * A spike, buttons, velvet, or a head that is hidden stays on the normal path.
  * A missing or unsure answer does not stop.
  *
@@ -124,14 +124,15 @@ export function parseSubject(text: string): SubjectFacts | null {
 }
 
 /**
- * A mount, decoy, screen, or drawing stops before a carcass or a doe.
+ * A mount, decoy, or drawing stops before a carcass or a doe. A screen or print (PICTURE) does not stop.
  * Antlers NO stops only a deer that is still a live animal.
  * Head-only or neck-only stops only after those, so a doe or a mount keeps its own message.
  * CANT_TELL and a missing field do not stop.
  */
 export function subjectStop(facts: SubjectFacts | null): SubjectStop | null {
   if (!facts) return null;
-  if (facts.scene === "MOUNT" || facts.scene === "DECOY" || facts.scene === "PICTURE" || facts.scene === "DRAWING") return "not_live";
+  // PICTURE (a photo of a screen or a print) does not stop: printed photos of live bucks read as PICTURE too.
+  if (facts.scene === "MOUNT" || facts.scene === "DECOY" || facts.scene === "DRAWING") return "not_live";
   if (facts.posture === "DEAD" || facts.posture === "HANGING") return "harvested";
   if (facts.antlers === "NO") return "no_antlers";
   if (facts.body === "HEAD" || facts.body === "NECK") return "no_body";
