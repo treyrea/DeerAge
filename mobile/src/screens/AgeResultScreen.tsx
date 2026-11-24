@@ -11,7 +11,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
-import { extraBodyNotes, regionRows } from "../utils/body-cues";
+import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues";
 import { tapSquare } from "../theme/tap";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
@@ -115,7 +115,6 @@ export const AgeResultScreen = () => {
 
   const explainableAge = currentResult.explainableAge;
   const frames = currentResult.capturedFrames ?? [];
-  const overlays = explainableAge.bodyFeatureOverlays ?? [];
   const imageUri = frames[0]?.imageUri;
   const read = bodyRead({
     lookFor: explainableAge.lookFor,
@@ -141,6 +140,13 @@ export const AgeResultScreen = () => {
     || "";
   const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
   const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
+  const describeSource = [
+    explainableAge.lookFor,
+    explainableAge.hunterCue,
+    ...(explainableAge.reasons ?? []),
+    ...(explainableAge.cueBullets ?? []).map((bullet) => bullet.text),
+  ].filter((line): line is string => typeof line === "string" && line.trim().length > 0).join("\n");
+  const overlays = withDescribeCues(explainableAge.bodyFeatureOverlays ?? [], describeSource);
   const bodyNotes = extraBodyNotes(clues, overlays);
   const moreRows = regionRows(overlays).slice(3);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);

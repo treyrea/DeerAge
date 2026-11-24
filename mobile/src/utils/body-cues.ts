@@ -4,6 +4,7 @@
  * A newer payload may add optional shortCue, detail, lean, ageWeight, or anchor.
  */
 
+import { snippetsForTraits, stripMarkdown, withoutOpenParen } from "../../../shared/trait-text";
 import type { BodyFeatureOverlay } from "../types/deer-scoring";
 
 export type AgeLean = "older" | "younger" | "neutral";
@@ -66,7 +67,7 @@ export function stripFiller(text: string): string {
 }
 
 export function plainExplanation(text: string): string {
-  return stripFiller(clean(text).replace(/[…]+$/g, ""));
+  return stripFiller(stripMarkdown(clean(text)).replace(/[…]+$/g, "").replace(/\s+/g, " ").trim());
 }
 
 /** A plain cue of at most `maxWords` words. Trailing joining words are dropped. */
@@ -74,12 +75,12 @@ export function shortCue(text: string, maxWords = 8): string {
   const plain = plainExplanation(text);
   if (!plain) return "";
   const words = plain.split(" ");
-  if (words.length <= maxWords) return plain.replace(/[.,;:]+$/g, "");
+  if (words.length <= maxWords) return withoutOpenParen(plain.replace(/[.,;:]+$/g, ""));
   const kept = words.slice(0, maxWords);
   while (kept.length > 1 && DANGLING.test(kept[kept.length - 1].replace(/[.,;:]+$/g, ""))) {
     kept.pop();
   }
-  return kept.join(" ").replace(/[.,;:]+$/g, "");
+  return withoutOpenParen(kept.join(" ").replace(/[.,;:]+$/g, ""));
 }
 
 export function ageLean(row: {
@@ -127,18 +128,49 @@ function anchorOf(row: BodyRegionInput): { x: number; y: number } {
  * A shortened on-photo label does not hide a longer note.
  */
 export function extraBodyNotes(notes: string[], overlays: BodyRegionInput[]): string[] {
-  const shown = regionRows(overlays).flatMap((row) =>
-    [row.detail, row.cue].filter(Boolean).map((line) => line.toLowerCase()),
-  );
+  // The short line under the photo. A longer explanation is a different line and stays.
+  const shown = regionRows(overlays).flatMap((row) => (row.cue ? [foldLine(row.cue)] : []));
   const out: string[] = [];
   for (const note of notes) {
     const plain = plainExplanation(note);
     if (!plain) continue;
-    const key = plain.toLowerCase();
-    const covered = shown.some((line) => line === key || (line.length >= key.length && line.startsWith(key)));
-    if (!covered && !out.some((line) => line.toLowerCase() === key)) out.push(plain);
+    const key = foldLine(plain);
+    if (!key || shown.includes(key) || out.some((line) => foldLine(line) === key)) continue;
+    out.push(plain);
   }
   return out;
+}
+
+function foldLine(value: string): string {
+  return value.toLowerCase().replace(/[.!?]+$/g, "");
+}
+
+/**
+ * When the read is a describe-once note, replace each dot's cue with that
+ * trait's own observation. A trait the note does not mention keeps its name
+ * and drops a cue that belonged to a different trait.
+ */
+export function withDescribeCues<T extends BodyRegionInput>(overlays: T[], source: string): T[] {
+  const snippets = snippetsForTraits(source);
+  if (snippets.length === 0) {
+    return overlays.map((row) => ({
+      ...row,
+      ...(row.label ? { label: plain(row.label) } : {}),
+      ...(row.shortCue ? { shortCue: plain(row.shortCue) } : {}),
+      ...(row.detail ? { detail: plain(row.detail) } : {}),
+    }));
+  }
+  const byId = new Map(snippets.map((item) => [item.id, item]));
+  return overlays.map((row) => {
+    const found = byId.get(row.featureId);
+    const name = clean(row.name) || row.featureId;
+    if (!found) return { ...row, label: name, shortCue: undefined, detail: undefined };
+    return { ...row, label: `${name}: ${found.cue}`, shortCue: found.cue, detail: found.detail };
+  });
+}
+
+function plain(value: string): string {
+  return stripMarkdown(value).replace(/\s+/g, " ").trim();
 }
 
 /** One numbered row per overlay, in payload order. The anchor is the box center unless one was sent. */
