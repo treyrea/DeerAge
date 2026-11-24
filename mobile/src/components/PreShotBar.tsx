@@ -12,7 +12,13 @@ import { recordExportAllowed, saveShotRecord, useShotRecordStore } from "../stat
 import { sharePreShotRecord } from "../lib/preShotPdf";
 import type { ShotDraft } from "../types/shot-record";
 
-export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: ShotDraft | null; onNeedPlan: () => void; compact?: boolean }) => {
+export const PreShotBar = ({ draft, onNeedPlan, onKept, compact = false }: {
+  draft: ShotDraft | null;
+  onNeedPlan: () => void;
+  /** A successful save or share of this read. Not called when a plan is required. */
+  onKept?: () => void;
+  compact?: boolean;
+}) => {
   const enabled = useRemoteConfig((s) => s.flags.preShotRecord);
   const localId = draft?.localId ?? "";
   const record = useShotRecordStore((s) => (localId ? s.records[localId] : undefined));
@@ -22,7 +28,11 @@ export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: Shot
 
   const save = async () => {
     const saved = await saveShotRecord(draft);
-    if (!saved) setNote("Couldn't save that on this phone.");
+    if (!saved) {
+      setNote("Couldn't save that on this phone.");
+      return;
+    }
+    onKept?.();
   };
 
   const share = async () => {
@@ -35,6 +45,7 @@ export const PreShotBar = ({ draft, onNeedPlan, compact = false }: { draft: Shot
     try {
       await sharePreShotRecord(saved.localId);
       setNote("");
+      onKept?.();
     } catch {
       setNote("The record couldn't be shared. It is still saved on this phone.");
     }

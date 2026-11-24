@@ -15,6 +15,7 @@ import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues
 import { tapSquare } from "../theme/tap";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import type { ReviewSubject } from "../lib/reviewPrompt";
 import { PreShotBar } from "../components/PreShotBar";
 import { WrongCallCard } from "../components/WrongCallCard";
 import { RegionHeadsUp } from "../components/HuntRegionSheet";
@@ -72,7 +73,16 @@ export const AgeResultScreen = () => {
   const leaseRules = useHunterProfile((s) => s.leaseRules);
   const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
-  const followUp = useResultFollowUp(Boolean(explainable), explainable?.fieldCall);
+  const reviewSubject: ReviewSubject | null = explainable ? {
+    moment: "scan",
+    resultId: currentResult?.analysisId ?? null,
+    fieldCall: explainable.fieldCall,
+    confidence: explainable.overallConfidence,
+    imageQuality: explainable.imageQuality,
+    isRange: explainable.isRange,
+    outcome: pendingPaywall ? "paywall" : explainable.betterAngle || null,
+  } : null;
+  const followUp = useResultFollowUp(Boolean(explainable) && !pendingPaywall, reviewSubject);
 
   useEffect(() => {
     if (currentResult && !hasSaved) {
@@ -299,6 +309,7 @@ export const AgeResultScreen = () => {
             bodyOnlyAge: explainableAge.bodyOnlyAge,
           }}
           onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+          onKept={() => followUp.noteSavedOrShared("save")}
         />
           ) : null}
           {pendingPaywall ? (
@@ -351,7 +362,7 @@ export const AgeResultScreen = () => {
             <MoreRow label={manualNotes ? "Notes" : "Add notes"} onPress={() => setShowNotesModal(true)} />
             {leaseRules ? (
             <View style={{ marginTop: 8 }}>
-              <LeaseManagerButton {...readNote} />
+              <LeaseManagerButton {...readNote} onShared={() => followUp.noteSavedOrShared("share")} />
             </View>
             ) : null}
             <MoreRow label="How this works" onPress={() => setShowModelCard(true)} />

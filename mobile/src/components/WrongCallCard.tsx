@@ -3,7 +3,6 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-nativ
 import * as ImageManipulator from "expo-image-manipulator";
 import { followUpEmailOrNull, postCallReport } from "../api/call-report";
 import { FAIR_LIMIT_NOTE } from "../lib/fair-limit";
-import { maybeRequestReview } from "../lib/review";
 import { useHunterProfile } from "../state/hunterProfile";
 
 const METHODS: { id: "lab_tooth" | "jawbone" | "other"; label: string }[] = [
@@ -47,7 +46,6 @@ export const WrongCallCard = ({
       return;
     }
     setMessage("Thanks. Glad that call matched what you saw.");
-    if (fieldCall !== "BORDERLINE") void maybeRequestReview(fieldCall);
   };
 
   const sendWrong = async () => {

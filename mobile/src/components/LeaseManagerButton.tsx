@@ -41,26 +41,28 @@ function messageFor(note: LeaseNote, template: string): string {
   }, template);
 }
 
-export async function shareRead(note: LeaseNote, target: "lease" | "anyone"): Promise<void> {
+export async function shareRead(note: LeaseNote, target: "lease" | "anyone"): Promise<boolean> {
   const template = useRemoteConfig.getState().copy.leaseManagerText;
   const message = messageFor(note, template);
   const photo = note.photoUri?.trim() ?? "";
+  const payload = photo ? { message, url: photo } : { message };
   if (target === "anyone") {
-    await Share.share(photo ? { message, url: photo } : { message });
-    return;
+    const shared = await Share.share(payload);
+    return shared.action !== Share.dismissedAction;
   }
   const phone = useHunterProfile.getState().leaseManagerPhone.trim();
   const available = await SMS.isAvailableAsync();
   if (available) {
-    await SMS.sendSMSAsync(phone ? [phone] : [], message, photo ? {
+    const sent = await SMS.sendSMSAsync(phone ? [phone] : [], message, photo ? {
       attachments: { uri: photo, mimeType: "image/jpeg", filename: "deerage-read.jpg" },
     } : undefined);
-    return;
+    return sent.result !== "cancelled";
   }
-  await Share.share(photo ? { message, url: photo } : { message });
+  const shared = await Share.share(payload);
+  return shared.action !== Share.dismissedAction;
 }
 
-export const LeaseManagerButton = (note: LeaseNote) => {
+export const LeaseManagerButton = ({ onShared, ...note }: LeaseNote & { onShared?: () => void }) => {
   const remoteLabel = useRemoteConfig((s) => s.copy.leaseManagerButton);
   const managerName = useHunterProfile((s) => s.leaseManagerName);
   const managerPhone = useHunterProfile((s) => s.leaseManagerPhone);
@@ -74,7 +76,8 @@ export const LeaseManagerButton = (note: LeaseNote) => {
     if (busy) return;
     setBusy(true);
     try {
-      await shareRead(note, target);
+      const sent = await shareRead(note, target);
+      if (sent) onShared?.();
     } catch {
       // He closed the sheet. Nothing was sent.
     } finally {
