@@ -4,7 +4,7 @@
  * The side-on tip is added only when the pose check said the deer is not broadside.
  */
 
-import { stripMarkdown } from "../../../shared/trait-text.js";
+import { stripMarkdown } from "../trait-text.js";
 import { SIDE_ON_TIP, type CrossCheck } from "./crosscheck.js";
 
 const NOT_BROADSIDE = new Set(["QUARTERING", "HEAD_ON", "REAR"]);

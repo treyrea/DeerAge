@@ -4,7 +4,7 @@
  * and cues. It ignores lookFor and reasons.
  */
 
-import { stripMarkdown } from "../../../shared/trait-text.js";
+import { stripMarkdown } from "../trait-text.js";
 
 export function cleanSentence(value: string): string {
   return stripMarkdown(value).replace(/\s+/g, " ").trim();

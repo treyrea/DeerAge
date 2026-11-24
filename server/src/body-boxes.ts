@@ -7,7 +7,7 @@
  * empty call just leaves the photo without outlines.
  */
 
-import { shortObservation, snippetsForTraits, stripMarkdown } from "../../shared/trait-text.js";
+import { shortObservation, snippetsForTraits, stripMarkdown } from "./trait-text.js";
 import type { ModelCall } from "./gateway.js";
 
 export const BODY_PARTS = [
