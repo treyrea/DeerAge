@@ -13,6 +13,7 @@
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
 import type { WalkStep } from "../progress.js";
 import { RETAKE_MESSAGES, PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
+import { HARVESTED_MESSAGE, NO_ANTLERS_MESSAGE, parseSubject, subjectPrompt, subjectStop, type SubjectFacts } from "./subject.js";
 
 export interface ModelReply {
   text: string;
@@ -36,12 +37,19 @@ export type ModelCaller = (prompt: string, accept?: (text: string) => boolean, s
 export interface WalkSchedule {
   parallelStart: boolean;
   parallelClosers: boolean;
+  /**
+   * Live scans only. Left off in tests so a scripted call list keeps its old order.
+   * Asks whether the deer is harvested or has no antlers, in parallel with the photo check.
+   */
+  subjectCheck?: boolean;
 }
 
 export const SEQUENTIAL_WALK: WalkSchedule = { parallelStart: false, parallelClosers: false };
 
 export type WalkResult =
   | { kind: "no_deer" }
+  | { kind: "harvested"; message: string }
+  | { kind: "no_antlers"; message: string }
   | { kind: "retake"; message: string; fails: string[] }
   | {
       kind: "age";
@@ -100,11 +108,23 @@ export async function walkHydrogen(
 
   step({ step: "quality", parallel: schedule.parallelStart });
   const quality$ = launch(call, qualityPrompt ?? prompts.quality, acceptQuality);
+  const subject$ = schedule.subjectCheck
+    ? launch(call, subjectPrompt(), (text) => parseSubject(text) != null)
+    : null;
   let gate$: Pending | null = schedule.parallelStart ? launch(call, prompts.babyGate, acceptGate) : null;
   let stepA$: Pending | null = schedule.parallelStart ? launch(call, prompts.stepA, acceptStepA) : null;
   const cancelRest = () => {
     gate$?.cancel();
     stepA$?.cancel();
+    subject$?.cancel();
+  };
+  const readSubject = async (): Promise<SubjectFacts | null> => {
+    if (!subject$) return null;
+    try {
+      return parseSubject((await subject$.promise).text);
+    } catch {
+      return null;
+    }
   };
 
   let qualityText: string;
@@ -120,16 +140,30 @@ export async function walkHydrogen(
   }
   const quality = parseQuality(qualityText);
   if (!quality) {
+    const stop = subjectStop(await readSubject());
     cancelRest();
     // A speck or unreadable frame often comes back as unstructured text.
     // Retake instead of stopping and falling through to a gateway backup
-    // that then fails as "couldn't finish this photo."
+    // that then fails as "couldn't finish this photo." A clear carcass still stops.
+    if (stop === "harvested") return { kind: "harvested", message: HARVESTED_MESSAGE };
     return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough, fails: ["deer_large_enough"] };
   }
+  const facts = await readSubject();
+  const stop = subjectStop(facts);
   const photo = decideQuality(quality);
+  const tooSmall = photo.fails.includes("deer_large_enough") || photo.fails.includes("contour_readable");
+  // Lying dead often fails "standing". That retake used to be replaced by a plain age.
+  if (stop === "harvested" && !tooSmall) {
+    cancelRest();
+    return { kind: "harvested", message: HARVESTED_MESSAGE };
+  }
   if (photo.decision === "RETAKE") {
     cancelRest();
     return { kind: "retake", message: photo.retake_message, fails: photo.fails };
+  }
+  if (stop === "no_antlers") {
+    cancelRest();
+    return { kind: "no_antlers", message: NO_ANTLERS_MESSAGE };
   }
 
   step({ step: "gate", parallel: schedule.parallelStart });

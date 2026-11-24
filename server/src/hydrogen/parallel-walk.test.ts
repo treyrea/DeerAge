@@ -151,9 +151,10 @@ test("no deer: the router answers at once and cancels the plain read and cross-c
   assert.ok(Date.now() - started < 150, "did not wait for the side calls");
   assert.equal(logs[0]?.branch, "no_deer");
   assert.equal(logs[0]?.early, true);
-  await new Promise((resolve) => setTimeout(resolve, 250));
-  assert.equal(sideCalls, 2);
-  assert.equal(sideCancelled, 2);
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  // Plain, cross-check, and the subject check. All three are cancelled. Quality, gate, and Step A are answered from the map.
+  assert.equal(sideCalls, 3);
+  assert.equal(sideCancelled, 3);
 });
 
 test("the live switches default on and can be turned off", () => {

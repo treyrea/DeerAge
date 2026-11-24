@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { QUICK_SUBJECT_TAIL } from "./subject.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -149,6 +150,7 @@ export function buildCloserPrompt(younger: number, older: number, description: s
 /** Quick Check's one read: the plain question plus a last DEER_PRESENT line. A non-empty override wins. */
 export function activeQuickPrompt(override?: string): string {
   const custom = override?.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim() ?? "";
-  if (custom) return custom;
-  return hydrogenPrompts().plainDeer;
+  const base = custom || hydrogenPrompts().plainDeer;
+  if (/\bPOSTURE\s*:/.test(base)) return base;
+  return `${base.trim()}\n${QUICK_SUBJECT_TAIL}\n`;
 }

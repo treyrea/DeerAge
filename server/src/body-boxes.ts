@@ -32,6 +32,10 @@ export interface BodyOverlay {
    * Full reason, when this outline came from one. Old apps ignore it and still read `label`.
    */
   detail?: string;
+  /**
+   * Complete cue of at most 8 words. Installed apps show this instead of cutting detail.
+   */
+  shortCue?: string;
 }
 
 export function bodyBoxPrompt(): string {
@@ -86,12 +90,40 @@ function shortLabel(name: string, reason: string | undefined): string {
   return `${name}: ${cut}`;
 }
 
+function sentencesOf(line: string): string[] {
+  const text = line.replace(/\s+/g, " ").trim();
+  if (!text) return [];
+  const parts = text.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : [text];
+}
+
+const CUE_WORDS = 8;
+const DANGLING = /^(a|an|the|and|or|of|to|with|into|as|in|on|for|from)$/i;
+
+/**
+ * One complete cue for the installed app. That app shows shortCue, and if it
+ * is missing it keeps only the first 8 words of detail, which cuts a paragraph
+ * mid-sentence. This stays at or under 8 words and does not cross a sentence.
+ */
+export function installedCue(text: string): string {
+  const sentence = (sentencesOf(text)[0] ?? "").replace(/[.!?]+$/g, "").trim();
+  if (!sentence) return "";
+  const words = sentence.split(" ").filter(Boolean);
+  if (words.length <= CUE_WORDS) return sentence;
+  const clause = sentence.split(/[;:]|\s+—\s+|,(?=\s)/)[0]?.trim().replace(/[.!?]+$/g, "") ?? sentence;
+  const clauseWords = clause.split(" ").filter(Boolean);
+  if (clauseWords.length >= 2 && clauseWords.length <= CUE_WORDS && clause.length < sentence.length) return clause;
+  const kept = words.slice(0, CUE_WORDS);
+  while (kept.length > 1 && DANGLING.test(kept[kept.length - 1].replace(/[.,;:]+$/g, ""))) kept.pop();
+  return kept.join(" ").replace(/[.,;:]+$/g, "");
+}
+
 /**
  * Outlines only the parts the reasons talk about, each labelled with its reason.
  * When no reason names a part, it outlines every part found with its plain name.
  */
 export function bodyOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: string[]): BodyOverlay[] {
-  const lines = reasons.filter((line) => typeof line === "string" && line.trim().length > 0);
+  const lines = reasons.flatMap((line) => (typeof line === "string" ? sentencesOf(line) : []));
   const named = BODY_PARTS.filter((part) => boxes[part.id] && lines.some((line) => part.words.test(line)));
   const parts = named.length > 0 ? named : BODY_PARTS.filter((part) => boxes[part.id]);
   return parts.map((part) => {
@@ -99,6 +131,7 @@ export function bodyOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: s
     const pct = (n: number) => Math.round(n * 1000) / 10;
     const reason = named.length > 0 ? lines.find((line) => part.words.test(line)) : undefined;
     const detail = reason?.replace(/\s+/g, " ").trim();
+    const cue = detail ? installedCue(detail) : "";
     return {
       featureId: part.id,
       name: part.name,
@@ -106,6 +139,7 @@ export function bodyOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: s
       label: named.length > 0 ? shortLabel(part.name, reason) : part.name,
       confidence: 0,
       ...(detail ? { detail } : {}),
+      ...(cue ? { shortCue: cue } : {}),
     };
   });
 }

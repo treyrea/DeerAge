@@ -25,6 +25,7 @@ import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { ageWithRouter } from "./hydrogen/age-with-router.js";
 import { hydrogenFinishPlan, noDeerCopy, noDeerJobError, noDeerJobForMode } from "./hydrogen/no-deer.js";
+import { subjectJobError } from "./hydrogen/subject.js";
 import { createScanBudget } from "./hydrogen/budget.js";
 import { loadRemoteConfig } from "./remote-config.js";
 import { leaseRulesOf, quickReserveUsd, runQuickHydrogen, toQuickShape, type QuickConfig, type QuickEngine } from "./quick-engine.js";
@@ -462,13 +463,15 @@ async function finishJob(input: {
         }
         const error = resolved.kind === "no_deer"
           ? noDeerJobError(noDeerCopy(remote.copy))
-          : resolved.kind === "retake"
-            ? { code: "retake", message: resolved.message }
-            : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." };
+          : resolved.kind === "harvested" || resolved.kind === "no_antlers"
+            ? subjectJobError(resolved.kind)
+            : resolved.kind === "retake"
+              ? { code: "retake", message: resolved.message }
+              : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." };
         await saveJob({
           ...input.job,
           status: "error",
-          provisional: resolved.kind === "no_deer" ? null : input.job.provisional,
+          provisional: resolved.kind === "no_deer" || resolved.kind === "harvested" || resolved.kind === "no_antlers" ? null : input.job.provisional,
           error,
         });
         return;
@@ -533,13 +536,16 @@ async function finishJob(input: {
       await input.releaseFairUse();
       const code = age.stop ?? "unreadable";
       const remote = code === "not_deer" ? await loadRemoteConfig().catch(() => null) : null;
+      const stopped = code === "harvested" || code === "no_antlers";
       await saveJob({
         ...input.job,
         status: "error",
-        provisional: code === "not_deer" ? null : input.job.provisional,
+        provisional: code === "not_deer" || stopped ? null : input.job.provisional,
         error: code === "not_deer"
           ? noDeerJobForMode(input.mode === "quick" ? "quick" : "age", noDeerCopy(remote?.copy))
-          : { code, message: STOP_MESSAGE[code] },
+          : stopped
+            ? subjectJobError(code)
+            : { code, message: STOP_MESSAGE[code] },
       });
       return;
     }
@@ -644,6 +650,12 @@ async function finishQuickHydrogen(
     await input.refund();
     await input.releaseFairUse();
     await saveJob({ ...input.job, status: "error", provisional: null, error: noDeerJobForMode("quick", noDeerCopy(remote.copy)) });
+    return true;
+  }
+  if (outcome.kind === "harvested" || outcome.kind === "no_antlers") {
+    await input.refund();
+    await input.releaseFairUse();
+    await saveJob({ ...input.job, status: "error", provisional: null, error: subjectJobError(outcome.kind) });
     return true;
   }
   if (outcome.kind === "retake") {

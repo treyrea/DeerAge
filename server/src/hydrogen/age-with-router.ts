@@ -151,6 +151,7 @@ export async function ageWithRouter(input: {
   const schedule: WalkSchedule = {
     parallelStart: input.settings.parallelStart !== false,
     parallelClosers: input.settings.parallelClosers !== false,
+    subjectCheck: true,
   };
   // Cancels the plain read and the cross-check when the walk finds no deer.
   const side = new AbortController();
@@ -168,6 +169,25 @@ export async function ageWithRouter(input: {
     : Promise.resolve(null);
   const walkBox = await walkTask;
   const walkResult = walkBox.ok ? walkBox.result : null;
+  if (walkResult?.kind === "harvested" || walkResult?.kind === "no_antlers") {
+    // Do not let a plain age replace this. A dead deer or a doe is not a buck to let walk.
+    side.abort();
+    log({
+      event: "age_router",
+      branch: walkResult.kind,
+      plainLabel: "",
+      oursLabel: "",
+      finalLabel: "",
+      plainOk: false,
+      ccOk: false,
+      early: true,
+      ms: Math.max(0, now() - started),
+      ...(plainPrompt ? { plainPromptSha: sha256(plainPrompt) } : {}),
+      ...(crossPrompt ? { crossCheckPromptSha: sha256(crossPrompt) } : {}),
+      retakeReason: walkResult.message,
+    });
+    return walkResult;
+  }
   if (walkResult?.kind === "retake" && isSizeRetake(walkResult)) {
     // A too-small deer is a retake. Do not let C4nr replace it with a plain age
     // (R1_ours_retake_use_plain), which is how a distant speck can still get a 4.5.

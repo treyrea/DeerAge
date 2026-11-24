@@ -12,6 +12,7 @@ import { hydrogenAgeBody } from "./hydrogen/result.js";
 import { RETAKE_MESSAGES } from "./hydrogen/rules.js";
 import { parseAge } from "./hydrogen/plain.js";
 import { activeQuickPrompt } from "./hydrogen/prompts.js";
+import { HARVESTED_MESSAGE, NO_ANTLERS_MESSAGE, subjectFromQuickText, subjectStop } from "./hydrogen/subject.js";
 import type { AgeResolution } from "./hydrogen/failover.js";
 import type { ModelCaller } from "./hydrogen/pipeline.js";
 import type { DeerPresentAnswer } from "./hydrogen/no-deer.js";
@@ -206,6 +207,8 @@ export function plainAgeBody(low: number, high: number, text: string, minimum: n
 
 export type QuickOutcome =
   | { kind: "no_deer" }
+  | { kind: "harvested"; message: string }
+  | { kind: "no_antlers"; message: string }
   | { kind: "retake"; message: string }
   | { kind: "fail"; reason: string }
   | { kind: "age"; result: Record<string, unknown>; escalated: boolean; backup: boolean; plainAge: number | null };
@@ -244,6 +247,9 @@ export async function runQuickHydrogen(input: {
   if (deerLargeLine(text) === "too_small") {
     return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough };
   }
+  const stop = subjectStop(subjectFromQuickText(text));
+  if (stop === "harvested") return { kind: "harvested", message: HARVESTED_MESSAGE };
+  if (stop === "no_antlers") return { kind: "no_antlers", message: NO_ANTLERS_MESSAGE };
   const plain = parseAge(text);
   if (!plain) {
     log({ event: "quick_plain_failed", reason: "no_age", deer });
@@ -283,6 +289,7 @@ export async function runQuickHydrogen(input: {
 
 function fromFull(full: AgeResolution, escalated: boolean, plainAge: number | null): QuickOutcome {
   if (full.kind === "no_deer") return { kind: "no_deer" };
+  if (full.kind === "harvested" || full.kind === "no_antlers") return { kind: full.kind, message: full.message };
   if (full.kind === "age") {
     const label = String(full.result.ageLabel ?? "");
     const high = highFromLabel(label, Number(full.result.ageYears));
