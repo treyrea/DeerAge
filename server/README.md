@@ -204,3 +204,7 @@ npm run dev
 The dev server listens on port 3000. `npm run typecheck` typechecks the proxy without calling OpenAI.
 
 Timeouts are about 10 seconds per frame, with one retry on Quick Check and on a retryable upstream error. Age and score fan out in parallel so a burst stays inside the 20 second release bar when the model responds.
+
+## Deploys
+
+Production deploys of `deerage-api` are Git-triggered: every push to `main` that touches `server/` builds and promotes a new Vercel production deployment (root directory `server`). Pull requests get a Vercel preview deployment. Roll back by promoting the previous READY production deployment in Vercel.
