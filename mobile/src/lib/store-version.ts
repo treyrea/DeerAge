@@ -1,7 +1,20 @@
+import { Platform } from "react-native";
+
 /** Live App Store version for id 6755117006. Cached for six hours in this process. */
 
 export const APP_STORE_ID = "6755117006";
 export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
+export const PLAY_STORE_PACKAGE = "com.secondgen.buckage";
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE}`;
+
+export function storeListingUrl(platform: string = Platform.OS): string {
+  return platform === "android" ? PLAY_STORE_URL : APP_STORE_URL;
+}
+
+export function storeName(platform: string = Platform.OS): string {
+  return platform === "android" ? "Google Play" : "the App Store";
+}
+
 const CACHE_MS = 6 * 60 * 60 * 1000;
 
 let cached: { version: string; at: number } | null = null;
