@@ -1,4 +1,15 @@
-import { ageLean, extraBodyNotes, plainExplanation, regionRows, shortCue, stripFiller } from "./body-cues";
+import { ageLean, extraBodyNotes, plainExplanation, regionRows, shortCue, stripFiller, withDescribeCues } from "./body-cues";
+
+const DESCRIBE_ONCE = [
+  "- **Waist/belly depth vs chest depth:** The chest is slightly deeper than the rear flank, though the midsection is fairly full and only tapers modestly toward the waist.",
+  "- **Belly line (tucked, straight, or sagging):** The belly line is tucked slightly but the midsection stays fairly full.",
+  "- **Back line:** The back line is level from the withers to the hips.",
+  "- **Neck vs shoulder junction, and neck thickness:** The neck meets the shoulder at a visible junction and is not swollen.",
+  "- **Shoulders vs hindquarters mass:** Well-balanced overall; both the shoulders and hindquarters appear solid and filled out, with the hindquarters looking slightly fuller from this rear-quartering angle.",
+  "- **Leg length vs body depth:** Tall grass hides the lower legs, so full length is not visible, but the exposed upper legs look proportionate to the depth of the torso.",
+  "- **Overall build:** Sturdy, compact, and well-filled-out with smooth contours rather than sharp bony angles.",
+  "- **Season cues (velvet, rut, vegetation):** Full velvet on the antlers, no extreme rut neck swelling, and green leafy foliage and tall weeds surrounding the deer.",
+].join("\n");
 
 describe("stripFiller", () => {
   it("drops the recorded-is-described-as prefix", () => {
@@ -29,6 +40,13 @@ describe("stripFiller", () => {
 });
 
 describe("shortCue", () => {
+  it("drops bold markers and a parenthesis that was cut off", () => {
+    expect(shortCue("**Belly line (tucked")).toBe("Belly line");
+    expect(plainExplanation("- **Waist/belly depth vs chest depth:** The chest is slightly deeper.")).toBe(
+      "Waist/belly depth vs chest depth: The chest is slightly deeper.",
+    );
+  });
+
   it("keeps a cue that is already short", () => {
     expect(shortCue("thick, blends into shoulders")).toBe("thick, blends into shoulders");
     expect(shortCue("thick, blends into shoulders").split(" ").length).toBeLessThanOrEqual(8);
@@ -49,6 +67,52 @@ describe("shortCue", () => {
       "sagging well below the chest and nearly level with the back line on this buck.",
     );
     expect(shortCue(full).length).toBeLessThan(plainExplanation(full).length);
+  });
+});
+
+describe("withDescribeCues", () => {
+  const box = { x: 10, y: 10, width: 20, height: 20 };
+  const named = (featureId: string, name: string, cue: string) => ({
+    featureId,
+    name,
+    label: `${name}: ${cue}`,
+    shortCue: cue,
+    detail: cue,
+    boundingBox: box,
+  });
+
+  it("gives each dot its own observation from the screenshot note", () => {
+    const repaired = withDescribeCues(
+      [
+        named("neck", "Neck", "**Neck vs shoulder junction"),
+        named("chest", "Chest & brisket", "**Back line"),
+        named("belly", "Belly & waist", "**Belly line (tucked"),
+        named("back", "Back line", "**Back line"),
+        named("legs", "Legs", "**Belly line (tucked"),
+        named("face", "Face", "**Belly line (tucked"),
+      ],
+      DESCRIBE_ONCE,
+    );
+    const cue = (id: string) => repaired.find((row) => row.featureId === id)?.shortCue ?? "";
+    expect(cue("neck")).toMatch(/neck meets the shoulder/);
+    expect(cue("chest")).toBe("Well-balanced overall");
+    expect(cue("belly")).toMatch(/tucked slightly/);
+    expect(cue("back")).toMatch(/back line is level/);
+    expect(cue("legs")).toMatch(/Tall grass hides the lower legs/);
+    expect(cue("face")).toBe("");
+    expect(cue("legs")).not.toBe(cue("belly"));
+    for (const row of repaired) {
+      expect(row.shortCue ?? "").not.toContain("**");
+      expect(row.detail ?? "").not.toContain("**");
+    }
+    const rows = regionRows(repaired);
+    expect(rows.find((row) => row.featureId === "face")?.cue).toBe("");
+    expect(
+      extraBodyNotes(
+        ["Well-balanced overall; both the shoulders and hindquarters appear solid and filled out."],
+        repaired,
+      ).length,
+    ).toBe(1);
   });
 });
 

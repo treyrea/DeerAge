@@ -180,6 +180,9 @@
     "testMatch": [
       "**/*.test.ts",
       "**/*.test.tsx"
+    ],
+    "modulePaths": [
+      "<rootDir>/node_modules"
     ]
   },
   "expo": {

@@ -5,6 +5,8 @@
  * Missing fields fall back to the age, with no command word.
  */
 
+import { stripMarkdown } from "../../../shared/trait-text";
+
 export type VerdictKind = "take" | "walk" | "look" | "age";
 
 export const VERDICT_WORDS = {
@@ -74,7 +76,8 @@ export function verdictColor(kind: VerdictKind): string {
 }
 
 function clean(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  if (typeof value !== "string") return "";
+  return stripMarkdown(value).replace(/\s+/g, " ").trim();
 }
 
 function fold(value: string): string {

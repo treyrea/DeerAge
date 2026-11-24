@@ -4,6 +4,7 @@
  * The side-on tip is added only when the pose check said the deer is not broadside.
  */
 
+import { stripMarkdown } from "../../../shared/trait-text.js";
 import { SIDE_ON_TIP, type CrossCheck } from "./crosscheck.js";
 
 const NOT_BROADSIDE = new Set(["QUARTERING", "HEAD_ON", "REAR"]);
@@ -28,7 +29,7 @@ export function applySideOnTip(text: string, show: boolean): string {
 
 /** Short sentences from a Step A note. Blank and duplicate lines are dropped. */
 export function observationCues(text: string | undefined, limit = 4): string[] {
-  const raw = (text ?? "").replace(/\r/g, "").trim();
+  const raw = stripMarkdown(text ?? "").replace(/\r/g, "").trim();
   if (!raw) return [];
   const pieces = raw.split(/\n+/).flatMap((line) => {
     const cleaned = line.replace(/^[\s*\-•]+/, "").replace(/\s+/g, " ").trim();

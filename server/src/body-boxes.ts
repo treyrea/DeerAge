@@ -7,6 +7,7 @@
  * empty call just leaves the photo without outlines.
  */
 
+import { shortObservation, snippetsForTraits, stripMarkdown } from "../../shared/trait-text.js";
 import type { ModelCall } from "./gateway.js";
 
 export const BODY_PARTS = [
@@ -90,6 +91,34 @@ function shortLabel(name: string, reason: string | undefined): string {
   return `${name}: ${cut}`;
 }
 
+/**
+ * Describe-once notes name each trait in its own heading. Use that heading,
+ * not the first sentence that happens to share a word. A trait with no heading
+ * is left off so it does not inherit another trait's line.
+ */
+function headingOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: string[]): BodyOverlay[] | null {
+  const snippets = snippetsForTraits(reasons.filter((line) => typeof line === "string").join("\n"));
+  if (snippets.length === 0) return null;
+  const byId = new Map(snippets.map((item) => [item.id, item]));
+  const parts = BODY_PARTS.filter((part) => boxes[part.id] && byId.has(part.id));
+  if (parts.length === 0) return null;
+  return parts.map((part) => {
+    const [x0, y0, x1, y1] = boxes[part.id]!;
+    const pct = (n: number) => Math.round(n * 1000) / 10;
+    const found = byId.get(part.id)!;
+    const cue = found.cue;
+    return {
+      featureId: part.id,
+      name: part.name,
+      boundingBox: { x: pct(x0), y: pct(y0), width: pct(x1 - x0), height: pct(y1 - y0) },
+      label: shortLabel(part.name, cue),
+      confidence: 0,
+      detail: found.detail,
+      ...(cue ? { shortCue: cue } : {}),
+    };
+  });
+}
+
 function sentencesOf(line: string): string[] {
   const text = line.replace(/\s+/g, " ").trim();
   if (!text) return [];
@@ -97,25 +126,13 @@ function sentencesOf(line: string): string[] {
   return parts.length > 0 ? parts : [text];
 }
 
-const CUE_WORDS = 8;
-const DANGLING = /^(a|an|the|and|or|of|to|with|into|as|in|on|for|from)$/i;
-
 /**
  * One complete cue for the installed app. That app shows shortCue, and if it
  * is missing it keeps only the first 8 words of detail, which cuts a paragraph
  * mid-sentence. This stays at or under 8 words and does not cross a sentence.
  */
 export function installedCue(text: string): string {
-  const sentence = (sentencesOf(text)[0] ?? "").replace(/[.!?]+$/g, "").trim();
-  if (!sentence) return "";
-  const words = sentence.split(" ").filter(Boolean);
-  if (words.length <= CUE_WORDS) return sentence;
-  const clause = sentence.split(/[;:]|\s+—\s+|,(?=\s)/)[0]?.trim().replace(/[.!?]+$/g, "") ?? sentence;
-  const clauseWords = clause.split(" ").filter(Boolean);
-  if (clauseWords.length >= 2 && clauseWords.length <= CUE_WORDS && clause.length < sentence.length) return clause;
-  const kept = words.slice(0, CUE_WORDS);
-  while (kept.length > 1 && DANGLING.test(kept[kept.length - 1].replace(/[.,;:]+$/g, ""))) kept.pop();
-  return kept.join(" ").replace(/[.,;:]+$/g, "");
+  return shortObservation(text);
 }
 
 /**
@@ -123,7 +140,9 @@ export function installedCue(text: string): string {
  * When no reason names a part, it outlines every part found with its plain name.
  */
 export function bodyOverlays(boxes: Partial<Record<BodyPartId, Box>>, reasons: string[]): BodyOverlay[] {
-  const lines = reasons.flatMap((line) => (typeof line === "string" ? sentencesOf(line) : []));
+  const fromHeadings = headingOverlays(boxes, reasons);
+  if (fromHeadings) return fromHeadings;
+  const lines = reasons.flatMap((line) => (typeof line === "string" ? sentencesOf(stripMarkdown(line)) : []));
   const named = BODY_PARTS.filter((part) => boxes[part.id] && lines.some((line) => part.words.test(line)));
   const parts = named.length > 0 ? named : BODY_PARTS.filter((part) => boxes[part.id]);
   return parts.map((part) => {

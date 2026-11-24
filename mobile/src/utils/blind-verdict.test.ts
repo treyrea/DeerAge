@@ -52,6 +52,22 @@ describe("blind verdict", () => {
     expect(empty.clues).toEqual([]);
   });
 
+  it("shows a describe-once note without bold markers", () => {
+    const read = bodyRead({
+      lookFor: "- **Waist/belly depth vs chest depth:** The chest is slightly deeper than the rear flank.",
+      reasons: [
+        "**Shoulders vs hindquarters mass:** Well-balanced overall; both the shoulders and hindquarters appear solid.",
+      ],
+    });
+    expect(read.lookFor).toBe(
+      "Waist/belly depth vs chest depth: The chest is slightly deeper than the rear flank.",
+    );
+    expect(read.clues[0]).toBe(
+      "Shoulders vs hindquarters mass: Well-balanced overall; both the shoulders and hindquarters appear solid.",
+    );
+    expect(read.lookFor.includes("**")).toBe(false);
+  });
+
   it("keeps a cue bullet when the age came back with no look-for line and no reasons", () => {
     const read = bodyRead({
       reasons: [],
