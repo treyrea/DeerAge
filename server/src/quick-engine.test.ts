@@ -131,6 +131,29 @@ test("a plain read that would already be a shooter at a low minimum gets the dee
   assert.equal(shouldEscalate({ ...base, leaseRules: false, plainLow: 5.5, minimum: 4.5 }), false);
 });
 
+test("quick check stops a mount and a head-only photo before the age, and does not hand them to the full pipeline", async () => {
+  const mount = await quick(`${BUCK_45}\nPOSTURE: CANT_TELL\nANTLERS: YES\nSCENE: MOUNT\nBODY_VISIBLE: NECK`, { leaseRules: true });
+  assert.equal(mount.fullCalls.length, 0);
+  assert.equal(mount.outcome.kind, "not_live");
+  if (mount.outcome.kind === "not_live") assert.match(mount.outcome.message, /looks like a mount/);
+  const head = await quick(`${BUCK_15}\nPOSTURE: STANDING\nANTLERS: YES\nSCENE: LIVE\nBODY_VISIBLE: HEAD`);
+  assert.equal(head.fullCalls.length, 0);
+  assert.equal(head.outcome.kind, "no_body");
+});
+
+test("a full-walk mount or head-only stop is not replaced by the plain age", async () => {
+  const mount = await quick(BUCK_45, {
+    leaseRules: true,
+    full: { kind: "not_live", message: "This looks like a mount, not a live deer. Point DeerAge at a live buck standing broadside." },
+  });
+  assert.equal(mount.outcome.kind, "not_live");
+  const head = await quick(BUCK_45, {
+    leaseRules: true,
+    full: { kind: "no_body", message: "Wait for him to stand broadside. A head-only or neck-only photo does not get an age." },
+  });
+  assert.equal(head.outcome.kind, "no_body");
+});
+
 test("when the full pipeline cannot finish, the plain read shows as a range ending at it, never a shooter", async () => {
   for (const full of [{ kind: "fail" } as AgeResolution, { kind: "stop" } as AgeResolution, { kind: "retake", message: "Head up, please." } as AgeResolution, { kind: "no_deer" } as AgeResolution]) {
     const { outcome } = await quick(BUCK_45, { leaseRules: true, full });

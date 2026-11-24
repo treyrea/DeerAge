@@ -215,6 +215,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         errorLimit: null,
         errorCreditsBypass: false,
         isProcessing: false,
+        currentResult: null,
       });
       return;
     }
@@ -230,6 +231,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         errorLimit: null,
         errorCreditsBypass: false,
         isProcessing: false,
+        currentResult: null,
       });
       return;
     }
@@ -242,6 +244,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         errorLimit: null,
         errorCreditsBypass: false,
         isProcessing: false,
+        currentResult: null,
       });
       return;
     }
@@ -461,6 +464,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         errorLimit: analysisError?.limit ?? null,
         errorCreditsBypass: analysisError?.creditsBypass === true,
         isProcessing: false,
+        currentResult: null,
       });
     }
     } finally {

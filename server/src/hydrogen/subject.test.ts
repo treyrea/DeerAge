@@ -18,7 +18,11 @@ import { RETAKE_MESSAGES } from "./rules.js";
 import {
   HARVESTED_MESSAGE,
   NO_ANTLERS_MESSAGE,
+  NO_BODY_MESSAGE,
+  notLiveMessage,
   parseSubject,
+  QUICK_SUBJECT_TAIL,
+  subjectHalt,
   subjectJobError,
   subjectPrompt,
   subjectStop,
@@ -66,6 +70,47 @@ test("subject facts: only a clear carcass or a clearly bare head stops", () => {
   assert.match(subjectJobError("no_antlers").message, /live bucks/);
   assert.match(subjectPrompt(), /spikes/i);
   assert.match(subjectPrompt(), /tailgate/i);
+  assert.match(subjectPrompt(), /European skull/);
+  assert.match(subjectPrompt(), /decoy/i);
+  assert.match(subjectPrompt(), /screen/i);
+  assert.match(subjectPrompt(), /cartoon/i);
+  assert.match(QUICK_SUBJECT_TAIL, /BODY_VISIBLE/);
+  assert.match(QUICK_SUBJECT_TAIL, /SCENE:/);
+  assert.equal(subjectStop(parseSubject('{"posture":"STANDING","antlers":"YES"}')), null);
+  assert.equal(parseSubject('{"posture":"STANDING","antlers":"YES"}')?.scene, null);
+  assert.equal(parseSubject('{"posture":"STANDING","antlers":"YES"}')?.body, null);
+});
+
+test("a mount, decoy, screen, or drawing stops, and a live buck does not", () => {
+  const stop = (scene: string, body = "HEAD") => subjectHalt(parseSubject(
+    `{"posture":"CANT_TELL","antlers":"YES","scene":"${scene}","body":"${body}"}`,
+  ));
+  assert.equal(stop("MOUNT")?.kind, "not_live");
+  assert.equal(stop("MOUNT")?.message, notLiveMessage("MOUNT"));
+  assert.match(stop("MOUNT")?.message ?? "", /looks like a mount/);
+  assert.equal(stop("DECOY")?.message, notLiveMessage("DECOY"));
+  assert.match(stop("PICTURE")?.message ?? "", /screen or a print/);
+  assert.match(stop("DRAWING")?.message ?? "", /drawing/);
+  assert.equal(stop("LIVE", "FULL"), null);
+  assert.equal(stop("CANT_TELL", "FULL"), null);
+  assert.equal(subjectStop(parseSubject('{"posture":"STANDING","antlers":"YES",scene:MOUNT,body:HEAD}')), "not_live");
+  assert.equal(subjectJobError("not_live").code, "retake");
+  assert.match(subjectJobError("not_live", notLiveMessage("DECOY")).message, /decoy/);
+  assert.equal(subjectJobError("no_body").code, "no_body");
+  assert.match(subjectJobError("no_body").message, /broadside/);
+});
+
+test("a head or neck stops, and a doe or a mount keeps its own message", () => {
+  const facts = (body: string, extra = "") => parseSubject(
+    `{"posture":"STANDING","antlers":"YES","scene":"LIVE","body":"${body}"${extra}}`,
+  );
+  assert.equal(subjectStop(facts("HEAD")), "no_body");
+  assert.equal(subjectStop(facts("NECK")), "no_body");
+  assert.equal(subjectStop(facts("FULL")), null);
+  assert.equal(subjectStop(facts("CANT_TELL")), null);
+  assert.equal(subjectHalt(parseSubject('{"posture":"STANDING","antlers":"NO","scene":"LIVE","body":"HEAD"}'))?.kind, "no_antlers");
+  assert.equal(subjectHalt(parseSubject('{"posture":"CANT_TELL","antlers":"YES","scene":"MOUNT","body":"HEAD"}'))?.kind, "not_live");
+  assert.equal(subjectHalt(facts("HEAD"))?.message, NO_BODY_MESSAGE);
 });
 
 test("the gateway prompts tell a dead deer and a doe to stop, and still age a spike", () => {
@@ -172,6 +217,42 @@ test("a tiny deer stays get-closer, and a failed subject check does not block a 
   if (down.kind === "age") assert.equal(down.label, "1.5");
 });
 
+test("a shoulder mount stops before any age call, and a live broadside buck still ages", async () => {
+  const mount = await walkHydrogen(
+    scripted({
+      subject: '{"posture":"CANT_TELL","antlers":"YES","scene":"MOUNT","body":"NECK"}',
+      quality: quality(),
+    }),
+    undefined,
+    { parallelStart: false, parallelClosers: false, subjectCheck: true },
+  );
+  assert.equal(mount.kind, "not_live");
+  if (mount.kind === "not_live") assert.match(mount.message, /live buck standing broadside/);
+
+  const head = await walkHydrogen(
+    scripted({
+      subject: '{"posture":"STANDING","antlers":"YES","scene":"LIVE","body":"HEAD"}',
+      quality: quality({ belly_waist_visible: "NO" }),
+    }),
+    undefined,
+    { parallelStart: false, parallelClosers: false, subjectCheck: true },
+  );
+  assert.equal(head.kind, "no_body");
+  if (head.kind === "no_body") assert.match(head.message, /Wait for him to stand broadside/);
+
+  const buck = await walkHydrogen(
+    scripted({
+      subject: '{"posture":"STANDING","antlers":"YES","scene":"LIVE","body":"FULL"}',
+      quality: quality(),
+      gate: BABY,
+    }),
+    undefined,
+    { parallelStart: false, parallelClosers: false, subjectCheck: true },
+  );
+  assert.equal(buck.kind, "age");
+  if (buck.kind === "age") assert.equal(buck.label, "1.5");
+});
+
 test("the router does not replace a harvested stop or a doe with the plain age", async () => {
   const settings = { ...defaultAgingConfig(), plainPrompt: "PLAIN", crossCheckPrompt: "CROSS" };
   const harvested = await ageWithRouter({
@@ -197,6 +278,22 @@ test("the router does not replace a harvested stop or a doe with the plain age",
   });
   assert.equal(resolved.kind, "no_antlers");
   assert.equal(backups, 0);
+
+  let mountBackups = 0;
+  const mount = await resolveHydrogenAge({
+    minimum: 4.5,
+    primary: async () => ({ kind: "not_live", message: notLiveMessage("MOUNT") }),
+    backup: async () => {
+      mountBackups += 1;
+      return { estimatedAgeYears: 2.5 };
+    },
+    circuitOpen: async () => false,
+    note: async () => undefined,
+    log: () => undefined,
+    backupOnStop: true,
+  });
+  assert.equal(mount.kind, "not_live");
+  assert.equal(mountBackups, 0);
 });
 
 test("quick check stops a dead deer and a doe from the same read, and a spike still ages", async () => {
@@ -220,6 +317,21 @@ test("quick check stops a dead deer and a doe from the same read, and a spike st
   if (spike.kind === "age") assert.equal(spike.result.ageYears, 1.5);
   const omitted = await run("");
   assert.equal(omitted.kind, "age");
+  const mount = await run("POSTURE: CANT_TELL\nANTLERS: YES\nSCENE: MOUNT\nBODY_VISIBLE: NECK");
+  assert.equal(mount.kind, "not_live");
+  if (mount.kind === "not_live") assert.match(mount.message, /looks like a mount/);
+  const decoy = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: DECOY\nBODY_VISIBLE: FULL");
+  assert.equal(decoy.kind, "not_live");
+  const screen = await run("POSTURE: CANT_TELL\nANTLERS: CANT_TELL\nSCENE: PICTURE\nBODY_VISIBLE: CANT_TELL");
+  assert.equal(screen.kind, "not_live");
+  const drawing = await run("POSTURE: CANT_TELL\nANTLERS: YES\nSCENE: DRAWING\nBODY_VISIBLE: FULL");
+  assert.equal(drawing.kind, "not_live");
+  const head = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: LIVE\nBODY_VISIBLE: HEAD");
+  assert.equal(head.kind, "no_body");
+  const neck = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: LIVE\nBODY_VISIBLE: NECK");
+  assert.equal(neck.kind, "no_body");
+  const live = await run("POSTURE: STANDING\nANTLERS: YES\nSCENE: LIVE\nBODY_VISIBLE: FULL");
+  assert.equal(live.kind, "age");
 });
 
 test("a young fast age no longer bypasses no_antlers, and a spike with an age still passes", async () => {

@@ -44,6 +44,8 @@ export type AgeResolution =
   | { kind: "no_deer" }
   | { kind: "harvested"; message: string }
   | { kind: "no_antlers"; message: string }
+  | { kind: "not_live"; message: string }
+  | { kind: "no_body"; message: string }
   | { kind: "retake"; message: string }
   | { kind: "stop" }
   | { kind: "age"; result: Record<string, unknown>; backup: boolean }
@@ -71,8 +73,9 @@ export async function resolveHydrogenAge(input: {
     const outcome = await input.primary();
     await input.note(true);
     if (outcome.kind === "no_deer") return { kind: "no_deer" };
-    if (outcome.kind === "harvested") return { kind: "harvested", message: outcome.message };
-    if (outcome.kind === "no_antlers") return { kind: "no_antlers", message: outcome.message };
+    if (outcome.kind === "harvested" || outcome.kind === "no_antlers" || outcome.kind === "not_live" || outcome.kind === "no_body") {
+      return { kind: outcome.kind, message: outcome.message };
+    }
     if (outcome.kind === "retake") return { kind: "retake", message: outcome.message };
     if (outcome.kind === "stop" && outcome.reason === "unparsed quality") {
       // Do not send a photo we could not quality-check to the gateway backup;

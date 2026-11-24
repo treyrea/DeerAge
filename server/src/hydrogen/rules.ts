@@ -73,7 +73,7 @@ export function extractJsonObject(text: string): Record<string, unknown> | null 
   if (parsed) return parsed;
   const loose = slice
     .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g, "$1\"$2\":")
-    .replace(/:\s*(YOUNGER|OLDER|RANGE|YES|NO|BABY|NOT_BABY|BROADSIDE|QUARTERING|HEAD_ON|REAR|CANT_TELL|UP|SLIGHT_DIP|DOWN_FEEDING|DAY|NIGHT_IR|NIGHT_OTHER)\b/g, ": \"$1\"");
+    .replace(/:\s*(YOUNGER|OLDER|RANGE|YES|NO|BABY|NOT_BABY|BROADSIDE|QUARTERING|HEAD_ON|REAR|CANT_TELL|UP|SLIGHT_DIP|DOWN_FEEDING|DAY|NIGHT_IR|NIGHT_OTHER|LIVE|MOUNT|DECOY|PICTURE|DRAWING|FULL|HEAD|NECK)\b/g, ": \"$1\"");
   return tryParse(loose);
 }
 

@@ -15,6 +15,7 @@ import { softPulse } from "../lib/haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
+import { shouldAdvanceToResult } from "../lib/result-navigation";
 import { FairUseLimitView } from "../components/FairUseLimit";
 import { ScanProgressView } from "../components/ScanProgressView";
 import { useScanProgress } from "../state/scanProgress";
@@ -114,13 +115,16 @@ export const ProcessingScreen = () => {
 
   // The result screen gives the one soft pulse. This screen only finishes the bar.
   useEffect(() => {
-    if (isProcessing || !currentResult) return undefined;
+    // A stop (need a better look, no deer, no body) sets the error and must stay
+    // on this screen. A previous result left in memory used to open the result
+    // 350ms later, on its own, and that screen then rendered blank.
+    if (!shouldAdvanceToResult({ isProcessing, hasResult: Boolean(currentResult), hasError: Boolean(error) })) return undefined;
     useScanProgress.getState().finish();
     const timer = setTimeout(() => {
       navigation.replace(analysisMode === "age" ? "AgeResults" : "Results");
     }, 350);
     return () => clearTimeout(timer);
-  }, [isProcessing, currentResult, analysisMode, navigation]);
+  }, [isProcessing, currentResult, error, analysisMode, navigation]);
 
   // Modified safety check - don't redirect if we just had an error
   useEffect(() => {

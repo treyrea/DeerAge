@@ -39,6 +39,7 @@ import {
   verdictKind,
   verdictWord,
 } from "../utils/blind-verdict";
+import { RecoveryScreen } from "../components/RecoveryScreen";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -93,25 +94,29 @@ export const AgeResultScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
+  const showable = Boolean(currentResult?.explainableAge);
   // Leave only while this screen is on top. A retake clears the result and
   // opens Processing. Replacing the route from a covered screen sends that
-  // Processing screen home.
+  // Processing screen home. A result with no age is the same blank screen:
+  // returning null paints nothing, and Android shows the white window.
   useEffect(() => {
-    if (currentResult || !navigation.isFocused()) return;
+    if (showable || !navigation.isFocused()) return;
     navigation.replace("HomeMain");
-  }, [currentResult, navigation]);
+  }, [showable, navigation]);
 
   useEffect(() => {
     if (!currentResult?.analysisId) return;
     softPulse();
   }, [currentResult?.analysisId]);
 
-  if (!currentResult || !currentResult.explainableAge) {
-    return null;
+  if (!currentResult?.explainableAge) {
+    return <RecoveryScreen onHome={() => navigation.navigate("HomeMain")} />;
   }
 
   const explainableAge = currentResult.explainableAge;
-  const imageUri = currentResult.capturedFrames[0]?.imageUri;
+  const frames = currentResult.capturedFrames ?? [];
+  const overlays = explainableAge.bodyFeatureOverlays ?? [];
+  const imageUri = frames[0]?.imageUri;
   const read = bodyRead({
     lookFor: explainableAge.lookFor,
     hunterCue: explainableAge.hunterCue,
@@ -136,8 +141,8 @@ export const AgeResultScreen = () => {
     || "";
   const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
   const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
-  const bodyNotes = extraBodyNotes(clues, explainableAge.bodyFeatureOverlays);
-  const moreRows = regionRows(explainableAge.bodyFeatureOverlays).slice(3);
+  const bodyNotes = extraBodyNotes(clues, overlays);
+  const moreRows = regionRows(overlays).slice(3);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
   const note = copy?.verdictNote?.trim() || FIELD_READ_NOTE;
   const minimumPrompt = copy?.setMinimumPrompt?.trim() || SET_MINIMUM_PROMPT;
@@ -177,7 +182,7 @@ export const AgeResultScreen = () => {
     setAnalysisMode("score");
     await new Promise((resolve) => setTimeout(resolve, 100));
     startCapture();
-    currentResult.capturedFrames.forEach((frame) => {
+    frames.forEach((frame) => {
       addFrame(frame);
     });
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -225,7 +230,7 @@ export const AgeResultScreen = () => {
             call={word || undefined}
             callTestID="age-verdict"
             callColor={verdictColor(kind)}
-            overlays={explainableAge.bodyFeatureOverlays}
+            overlays={overlays}
             onPressPhoto={() => {
               softPulse();
               setPhotoOpen(true);
@@ -273,7 +278,7 @@ export const AgeResultScreen = () => {
           draft={{
             localId: currentResult.analysisId,
             mode: "age",
-            photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+            photoUris: frames.map((frame) => frame.imageUri),
             receipt: currentResult.shotReceipt ?? null,
             ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
             ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
@@ -350,7 +355,7 @@ export const AgeResultScreen = () => {
                 scanId={currentResult.analysisId}
                 fieldCall={explainableAge.fieldCall || ""}
                 minimum={explainableAge.minimumAgeThreshold}
-                photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+                photos={frames.map((frame) => frame.imageUri)}
                 snapshot={{
                   fieldCall: explainableAge.fieldCall,
                   ageYears: explainableAge.estimatedAgeYears,
