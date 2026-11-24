@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bodyOverlays, findBodyBoxes, parseBodyBoxes, withOverlays } from "./body-boxes.js";
+import { bodyOverlays, findBodyBoxes, installedCue, parseBodyBoxes, withOverlays } from "./body-boxes.js";
 import { normalizeAging } from "./hydrogen/aging.js";
 import { patchAging } from "./remote-config.js";
 
@@ -46,6 +46,21 @@ test("detail keeps the full reason when the on-photo label is shortened", () => 
   assert.match(belly.label, /^Belly & waist: /);
   assert.ok(belly.label.endsWith("…"));
   assert.ok(belly.detail.length > belly.label.length);
+});
+
+test("a paragraph is one sentence per part, and the installed cue is not cut mid-sentence", () => {
+  const paragraph = "Legs look longer than the chest. The belly line is straight. The back line is level.";
+  const overlays = bodyOverlays(parseBodyBoxes(reply), [paragraph]);
+  const chest = overlays.find((overlay) => overlay.featureId === "chest");
+  const belly = overlays.find((overlay) => overlay.featureId === "belly");
+  const back = overlays.find((overlay) => overlay.featureId === "back");
+  assert.equal(chest?.detail, "Legs look longer than the chest.");
+  assert.equal(chest?.shortCue, "Legs look longer than the chest");
+  assert.equal(chest?.shortCue?.split(" ").length, 6);
+  assert.equal(chest?.shortCue?.includes("The belly"), false);
+  assert.equal(belly?.shortCue, "The belly line is straight");
+  assert.equal(back?.shortCue, "The back line is level");
+  assert.equal(installedCue(paragraph), "Legs look longer than the chest");
 });
 
 test("withOverlays adds overlays only when there is something to draw", () => {

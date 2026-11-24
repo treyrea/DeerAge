@@ -16,7 +16,7 @@ export interface AgeReading {
   betterAngle: string;
   cues: string[];
   labeled: { area: string; text: string }[];
-  stop: "not_deer" | "no_antlers" | "unreadable" | null;
+  stop: "not_deer" | "no_antlers" | "unreadable" | "harvested" | null;
   deerPresent: DeerPresentAnswer;
   backup: boolean;
 }
@@ -46,7 +46,7 @@ const EMPTY: AgeReading = {
 export function readingFrom(text: string, backup = false): AgeReading {
   const parsed = parseFinal(text);
   if (!parsed) return { ...EMPTY, backup };
-  const stop = parsed.stop === "not_deer" || parsed.stop === "no_antlers" || parsed.stop === "unreadable" ? parsed.stop : null;
+  const stop = parsed.stop === "not_deer" || parsed.stop === "no_antlers" || parsed.stop === "unreadable" || parsed.stop === "harvested" ? parsed.stop : null;
   const age = Number(parsed.age);
   const parts = Array.isArray(parsed.visibleParts) ? parsed.visibleParts.filter((part): part is string => typeof part === "string") : [];
   const labeled = labeledCues(parsed.cues);
@@ -128,6 +128,18 @@ export function mainModelIds(): string[] {
   if (ensemble.length > 0) return ensemble;
   const single = process.env.MAIN_MODEL?.trim();
   return single ? [single] : [];
+}
+
+/**
+ * Harvested wins over a filled-in age on that same read.
+ * no_antlers sticks unless another read aged the deer without that stop,
+ * which is how a spike the model can see keeps its age.
+ */
+export function hardStop(readings: AgeReading[]): "harvested" | "no_antlers" | null {
+  const cleanAge = readings.some((reading) => reading.age != null && reading.stop !== "harvested" && reading.stop !== "no_antlers");
+  if (readings.some((reading) => reading.stop === "harvested") && !cleanAge) return "harvested";
+  if (readings.some((reading) => reading.stop === "no_antlers") && !cleanAge) return "no_antlers";
+  return null;
 }
 
 /** Any young body, a young majority, or no usable body read blocks a shooter. */
@@ -228,9 +240,16 @@ export async function runAgeCall(
     }
   }
   if (groupIsNoDeer(mains)) return finishNoDeer();
-  const youngFast = fast?.age != null && classStep(fast.age) <= 2.5;
-  const stopped = mains.find((reading) => reading.stop && !reading.age);
-  if (stopped?.stop && !(stopped.stop === "no_antlers" && youngFast)) {
+  // A young fast age used to skip no_antlers. The fast read is 1.5 or 2.5 on almost every photo,
+  // including a doe, so that skip turned "no antlers" into a 1.5 buck. It does not skip anymore.
+  // A real spike still ages when the main read returns an age and does not set no_antlers.
+  const forced = hardStop(mains) ?? (mains.every((reading) => reading.age == null) ? hardStop(fast ? [fast] : []) : null);
+  if (forced) {
+    const reading = mains.find((item) => item.stop === forced) ?? fast;
+    return { stop: forced, provisional, readings: { fast, main: reading, bodyOnly: null }, costs, result: null };
+  }
+  const stopped = mains.find((reading) => reading.stop && reading.age == null);
+  if (stopped?.stop) {
     return { stop: stopped.stop, provisional, readings: { fast, main: stopped, bodyOnly: null }, costs, result: null };
   }
   const blind = await blindPromise;

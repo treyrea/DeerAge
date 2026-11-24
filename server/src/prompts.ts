@@ -5,6 +5,9 @@
  * A person, a room, or a car does not.
  */
 
+const LIVE_BUCK_STOPS = `Set stop to harvested and age to null when the deer is clearly dead or already harvested: lying dead on its side, on the ground, on a tailgate or truck bed, field-dressed, or hanging from a gambrel or pole. A deer that is standing or bedded and alive is not harvested.
+Set stop to no_antlers and age to null only when the deer is alive and the head is visible with no antlers at all. Spikes, buttons, velvet, broken beams, and one antler still count as antlers: set stop to null and age that buck. If the head is cropped, hidden, or turned away, do not use no_antlers.`;
+
 const DEER_PRESENT_RULES = `First, is a deer in this photo? Put the answer in deer_present before any age.
 NO only when no whitetail and no mule deer is visible at all. A person, a child, someone watching television, a living room, a car, a dog, an empty field, or a building is NO. A person's neck, chest, or legs are not a deer's. Do not give that photo an age.
 YES when any whitetail or mule deer is visible, including a doe, a fawn, or a buck, even if it is partly hidden, cropped, distant, dark, blurry, bedded, or on a night trail camera. If you are unsure, answer YES. Use CANT_TELL only when the frame is blank.
@@ -19,7 +22,8 @@ First describe only the body you can actually see: throat and neck, where the ne
 
 Then treat the antlers as weak evidence. A well-fed 1.5 or 2.5 can carry a 130-class rack. If the rack looks older than the body, trust the body.
 
-Do not refuse a partial photo of a deer. Answer whenever any of the deer is visible. Set stop to not_deer only when deer_present is NO. Set stop to no_antlers when a deer is visible but no antlered buck is. Set stop to unreadable when the frame is so dark or blurry that nothing can be seen.
+Do not refuse a partial photo of a deer. Answer whenever any of the deer is visible. Set stop to not_deer only when deer_present is NO. Set stop to unreadable when the frame is so dark or blurry that nothing can be seen.
+${LIVE_BUCK_STOPS}
 
 Otherwise set stop to null, set deer_present to YES or CANT_TELL, give an age class midpoint (1.5, 2.5, 3.5, 4.5, 5.5, or 6.5), name the parts you could see, and if the angle is poor add a short betterAngle tip.
 
@@ -64,6 +68,7 @@ export function fastAgePrompt(minimum: number): string {
   return `${DEER_PRESENT_RULES}
 
 Give a fast age class for this buck only when deer_present is YES or CANT_TELL. The hunter's lease minimum is ${minimum}. Use only 1.5, 2.5, 3.5, 4.5, 5.5, or 6.5. This is a first look, not the final call.
+${LIVE_BUCK_STOPS}
 
 The example below is for a deer. A person, a room, or a car must not use it.
 End with one line and nothing after it:
