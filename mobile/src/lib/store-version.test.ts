@@ -1,4 +1,4 @@
-import { liveStoreVersion, resetStoreVersionCache } from "./store-version";
+import { APP_STORE_URL, PLAY_STORE_URL, liveStoreVersion, resetStoreVersionCache, storeListingUrl, storeName } from "./store-version";
 
 describe("live store version", () => {
   beforeEach(() => resetStoreVersionCache());
@@ -24,5 +24,15 @@ describe("live store version", () => {
       throw new Error("offline");
     }) as typeof fetch;
     await expect(liveStoreVersion({ fetchImpl: fail, now: 10_000_000_000 })).resolves.toBe("1.2.0");
+  });
+});
+
+describe("store listing helpers", () => {
+  it("points Android to Google Play and iOS to the App Store", () => {
+    expect(storeListingUrl("android")).toBe(PLAY_STORE_URL);
+    expect(storeListingUrl("ios")).toBe(APP_STORE_URL);
+    expect(PLAY_STORE_URL).toBe("https://play.google.com/store/apps/details?id=com.secondgen.buckage");
+    expect(storeName("android")).toBe("Google Play");
+    expect(storeName("ios")).toBe("the App Store");
   });
 });

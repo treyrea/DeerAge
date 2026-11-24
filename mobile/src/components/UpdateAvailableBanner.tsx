@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
@@ -7,7 +7,7 @@ import { apiBaseUrl } from "../api/proxy";
 import { useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { useE2eFlags } from "../e2e/flags";
-import { APP_STORE_URL, liveStoreVersion } from "../lib/store-version";
+import { liveStoreVersion, storeListingUrl, storeName } from "../lib/store-version";
 import { compareVersions, installedAppVersion } from "../lib/version";
 import { HOME_BANNER_PRIORITY } from "../lib/home-banners";
 import { useBannerShown, useHomeBanner } from "./HomeBannerStack";
@@ -38,6 +38,7 @@ export const UpdateAvailableBanner = () => {
   }, []);
 
   useEffect(() => {
+    if (Platform.OS !== "ios") return;
     let active = true;
     void liveStoreVersion().then((version) => {
       if (active && version) setStoreVersion(version);
@@ -55,13 +56,13 @@ export const UpdateAvailableBanner = () => {
   useHomeBanner("update", HOME_BANNER_PRIORITY.update, wants);
   const bannerShown = useBannerShown("update");
   if (!wants || !bannerShown) return null;
-  const shown = newer ? target : "the App Store version";
+  const shown = newer ? target : `${storeName()} version`;
 
   return (
     <Pressable
       testID="update-available"
       onPress={() => {
-        void Linking.openURL(APP_STORE_URL);
+        void Linking.openURL(storeListingUrl());
       }}
       style={{
         backgroundColor: "#3D4A2F",

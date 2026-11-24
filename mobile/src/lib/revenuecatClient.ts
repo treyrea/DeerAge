@@ -6,8 +6,10 @@
  *
  * Environment variables (public client values only):
  * - EXPO_PUBLIC_REVENUECAT_APPLE_KEY: RevenueCat Apple public SDK key
+ * - EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY: RevenueCat Google Play public SDK key
  *
- * The same public key is used for local and store builds. Sandbox purchases use it too.
+ * Use the key that matches the store. The same public key for that store is used
+ * for local and store builds. Sandbox purchases use it too.
  * Never put the RevenueCat secret key or an OpenAI key in the app.
  * 
  * This module is used to get the current customer info, offerings, and purchase packages.
@@ -28,7 +30,12 @@ type StoreProduct = Awaited<ReturnType<typeof Purchases.getProducts>>[number];
 // Check if running on web
 const isWeb = Platform.OS === "web";
 
-const apiKey = isWeb ? undefined : process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY?.trim() || undefined;
+const apiKey = isWeb
+  ? undefined
+  : (Platform.OS === "android"
+      ? process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY
+      : process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY
+    )?.trim() || undefined;
 
 // Track if RevenueCat is enabled
 const isEnabled = !!apiKey && !isWeb;
@@ -403,12 +410,16 @@ export const getPackage = async (
   return { ok: true, data: pkg };
 };
 
-/** Opens Apple's subscription page. DeerAge does not cancel the plan itself. */
+/** Opens the store subscription page. DeerAge does not cancel the plan itself. */
 export async function openAppleSubscriptions(): Promise<void> {
   const shown = await guardRevenueCatUsage("showManageSubscriptions", () => Purchases.showManageSubscriptions());
   if (shown.ok) return;
   const { Linking } = await import("react-native");
-  await Linking.openURL("https://apps.apple.com/account/subscriptions");
+  const url =
+    Platform.OS === "android"
+      ? "https://play.google.com/store/account/subscriptions"
+      : "https://apps.apple.com/account/subscriptions";
+  await Linking.openURL(url);
 }
 
 /**

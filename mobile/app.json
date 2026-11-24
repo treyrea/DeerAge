@@ -27,7 +27,18 @@
       }
     },
     "android": {
-      "edgeToEdgeEnabled": true
+      "package": "com.secondgen.buckage",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#2B3420"
+      },
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "extra": {
       "eas": {
@@ -45,7 +56,45 @@
       "expo-sqlite",
       "expo-video",
       "expo-web-browser",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#2B3420",
+          "image": "./icon.png",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "DeerAge opens trail-camera and harvest photos you pick so it can estimate age and score.",
+          "savePhotosPermission": "DeerAge saves the result card you share into your photo library.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DeerAge can use your location while you are using the app to suggest where you are hunting and to attach the stand to a pre-shot record on this phone. Location is optional, stays with your own records, and is not used to track you."
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "DeerAge uses the camera to photograph deer so it can estimate age and score the rack.",
+          "enableMicrophonePermission": false,
+          "enableLocation": false,
+          "enableFrameProcessors": false,
+          "enableCodeScanner": false
+        }
+      ]
     ],
     "owner": "treyrea"
   }
