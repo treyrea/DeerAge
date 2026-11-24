@@ -437,8 +437,7 @@ export const SettingsScreen = () => {
 
           {/* Footer */}
           <Text className="text-center text-xs mb-6" style={{ color: "#C9B48F" }}>
-            DeerAge v{Constants.expoConfig?.version ?? "1.0.9"}{"\n"}
-            Powered by RackScore™ AI
+            DeerAge v{Constants.expoConfig?.version ?? "1.0.9"}
           </Text>
         </View>
       </ScrollView>

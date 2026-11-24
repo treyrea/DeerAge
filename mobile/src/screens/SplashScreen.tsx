@@ -125,24 +125,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               KNOW BEFORE YOU PULL THE TRIGGER
             </Text>
 
-            {/* RackScore™ AI Branding */}
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: "600",
-                color: "#D4AF37",
-                letterSpacing: 1.5,
-                marginTop: 10,
-                textAlign: "center",
-                textShadowColor: "rgba(0,0,0,0.9)",
-                textShadowOffset: { width: 1, height: 1 },
-                textShadowRadius: 3,
-                paddingHorizontal: 20,
-              }}
-            >
-              Scoring powered by RackScore™ AI
-            </Text>
-
             {/* Loading indicator in hunter orange */}
             <View style={{ marginTop: 44 }}>
               <ActivityIndicator size="large" color="#FF6600" />

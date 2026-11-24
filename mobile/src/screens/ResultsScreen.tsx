@@ -257,9 +257,6 @@ export const ResultsScreen = () => {
             <Text className="text-lg font-bold" style={{ color: "#F5F5DC" }}>
               {analysisMode === "age" ? "Age My Deer" : "Score My Rack"}
             </Text>
-            <Text className="text-xs mt-0.5" style={{ color: "#D4AF37" }}>
-              RackScore™ AI
-            </Text>
           </View>
           <Pressable
             onPress={() => {
