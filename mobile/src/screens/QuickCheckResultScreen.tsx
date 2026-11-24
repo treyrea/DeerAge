@@ -27,6 +27,7 @@ import { bulletsFrom, normalizeFieldCall } from "../utils/field-call";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
+import { withDescribeCues } from "../utils/body-cues";
 import { INK, SECONDARY } from "../theme/contrast";
 import { tapSquare } from "../theme/tap";
 
@@ -211,6 +212,12 @@ export const QuickCheckResultScreen = () => {
   const ageYears = result.ageYears as number;
   const callWord = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
   const cueLines = bulletsFrom(result.cueBullets, result.topCues ?? (result.explanation ? [result.explanation] : []));
+  const describeSource = [
+    result.explanation,
+    ...(result.topCues ?? []),
+    ...cueLines.map((cue) => cue.text),
+  ].filter((line): line is string => typeof line === "string" && line.trim().length > 0).join("\n");
+  const overlays = withDescribeCues(result.overlays ?? [], describeSource);
 
   const shareRead = () => {
     const call = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
@@ -231,7 +238,7 @@ export const QuickCheckResultScreen = () => {
           <ResultLead
             imageUri={imageUri}
             call={callWord}
-            overlays={result.overlays}
+            overlays={overlays}
             cues={cueLines}
           />
           {shootOrPass ? (

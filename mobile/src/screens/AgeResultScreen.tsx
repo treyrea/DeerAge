@@ -11,7 +11,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
-import { extraBodyNotes, regionRows } from "../utils/body-cues";
+import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues";
 import { tapSquare } from "../theme/tap";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
@@ -136,8 +136,15 @@ export const AgeResultScreen = () => {
     || "";
   const surface = (kind === "look" ? photoTip || read.lookFor : read.lookFor).trim();
   const clues = read.clues.filter((line) => line.trim().toLowerCase() !== surface.toLowerCase());
-  const bodyNotes = extraBodyNotes(clues, explainableAge.bodyFeatureOverlays);
-  const moreRows = regionRows(explainableAge.bodyFeatureOverlays).slice(3);
+  const describeSource = [
+    explainableAge.lookFor,
+    explainableAge.hunterCue,
+    ...(explainableAge.reasons ?? []),
+    ...(explainableAge.cueBullets ?? []).map((bullet) => bullet.text),
+  ].filter((line): line is string => typeof line === "string" && line.trim().length > 0).join("\n");
+  const overlays = withDescribeCues(explainableAge.bodyFeatureOverlays, describeSource);
+  const bodyNotes = extraBodyNotes(clues, overlays);
+  const moreRows = regionRows(overlays).slice(3);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
   const note = copy?.verdictNote?.trim() || FIELD_READ_NOTE;
   const minimumPrompt = copy?.setMinimumPrompt?.trim() || SET_MINIMUM_PROMPT;
@@ -225,7 +232,7 @@ export const AgeResultScreen = () => {
             call={word || undefined}
             callTestID="age-verdict"
             callColor={verdictColor(kind)}
-            overlays={explainableAge.bodyFeatureOverlays}
+            overlays={overlays}
             onPressPhoto={() => {
               softPulse();
               setPhotoOpen(true);

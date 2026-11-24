@@ -14,6 +14,9 @@ test("recorded observations become a few short body cues", () => {
     "The neck is still thin.",
   ]);
   assert.equal(observationCues("   ").length, 0);
+  const marked = observationCues("- **Neck vs shoulder junction:** The neck meets the shoulder and is not swollen.");
+  assert.equal(marked[0]?.includes("**"), false);
+  assert.match(marked[0] ?? "", /neck meets the shoulder/);
 });
 
 test("cross-check body facts become cues and skip a cant-tell", () => {

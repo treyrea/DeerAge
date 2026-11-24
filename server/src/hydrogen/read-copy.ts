@@ -4,8 +4,10 @@
  * and cues. It ignores lookFor and reasons.
  */
 
+import { stripMarkdown } from "../../../shared/trait-text.js";
+
 export function cleanSentence(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return stripMarkdown(value).replace(/\s+/g, " ").trim();
 }
 
 function fold(value: string): string {
