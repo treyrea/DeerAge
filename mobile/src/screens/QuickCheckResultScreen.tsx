@@ -13,6 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { QuickAgeResult } from "../api/quick-age-check";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import type { ReviewSubject } from "../lib/reviewPrompt";
 import { formatAgeClass } from "../utils/age-class";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { useSubscriptionStore } from "../state/subscriptionStore";
@@ -56,15 +57,24 @@ export const QuickCheckResultScreen = () => {
   const isInvalidImage = result.isValidImage === false || missingAge;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
-  const followUp = useResultFollowUp(
-    !isInvalidImage,
-    result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
-  );
+  const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
+  const reviewSubject: ReviewSubject = {
+    moment: "scan",
+    resultId: result.shotReceipt?.id ?? imageUri,
+    fieldCall: result.fieldCall || (isInvalidImage ? null : result.decision === "SHOOT" ? "SHOOTER" : "LET WALK"),
+    confidence: result.confidence,
+    imageQuality: result.imageQuality,
+    outcome: isInvalidImage
+      ? (result.invalidImageReason ?? "error")
+      : pendingPaywall
+        ? "paywall"
+        : result.betterAngle || null,
+  };
+  const followUp = useResultFollowUp(!isInvalidImage && !pendingPaywall, reviewSubject);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
   const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const leaseRules = useHunterProfile((s) => s.leaseRules);
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
-  const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
   const readAt = React.useMemo(() => new Date().toLocaleString(), []);
 
   React.useEffect(() => {
@@ -221,7 +231,10 @@ export const QuickCheckResultScreen = () => {
 
   const shareRead = () => {
     const call = result.fieldCall || (result.decision === "SHOOT" ? "SHOOTER" : "LET WALK");
-    void Share.share({ message: `${call} · ${ageClassLabel} · minimum ${leaseMinimum}` }).catch(() => undefined);
+    void Share.share({ message: `${call} · ${ageClassLabel} · minimum ${leaseMinimum}` }).then((shared) => {
+      if (shared.action === Share.dismissedAction) return;
+      followUp.noteSavedOrShared("share");
+    }).catch(() => undefined);
   };
 
   return (
@@ -302,6 +315,7 @@ export const QuickCheckResultScreen = () => {
                 bodyOnlyAge: result.bodyOnlyAge,
               } satisfies ShotDraft}
               onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+              onKept={() => followUp.noteSavedOrShared("save")}
             />
           ) : null}
           <WrongCallCard
@@ -327,6 +341,7 @@ export const QuickCheckResultScreen = () => {
               time={readAt}
               receiptId={result.shotReceipt?.id}
               photoUri={imageUri}
+              onShared={() => followUp.noteSavedOrShared("share")}
             />
           ) : null}
         </ScrollView>

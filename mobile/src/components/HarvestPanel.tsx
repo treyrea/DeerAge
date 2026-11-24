@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { useHarvestStore, type HarvestMethod } from "../state/harvestStore";
-import { maybeRequestReview } from "../lib/review";
-import { confirmedAgeMatchesCall, harvestComparedToMinimum } from "../utils/field-call";
+import { harvestComparedToMinimum } from "../utils/field-call";
 import { WrongCallCard } from "./WrongCallCard";
 
 const METHODS: { id: HarvestMethod; label: string }[] = [
@@ -88,7 +87,6 @@ export const HarvestPanel = ({
             onPress={() => {
               const confirmed = age.trim();
               save({ scanId, harvested: true, confirmedAge: confirmed, method, notes: notes.trim() });
-              if (confirmedAgeMatchesCall(fieldCall, confirmed, leaseMinimum)) void maybeRequestReview(fieldCall);
             }}
             style={{ marginTop: 12, backgroundColor: "#D4AF37", borderRadius: 10, paddingVertical: 12, alignItems: "center" }}
           >

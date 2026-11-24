@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
+import type { ReviewSubject } from "../lib/reviewPrompt";
+import { useSubscriptionStore } from "../state/subscriptionStore";
 import { FieldCallCard } from "../components/FieldCallCard";
 import { PreShotBar } from "../components/PreShotBar";
 import { WrongCallCard } from "../components/WrongCallCard";
@@ -161,7 +163,20 @@ export const ResultsScreen = () => {
   const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const leaseRules = useHunterProfile((s) => s.leaseRules);
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
-  const followUp = useResultFollowUp(Boolean(currentResult), currentResult?.explainableAge?.fieldCall);
+  const pendingPaywall = useSubscriptionStore((s) => s.pendingPaywall);
+  const ageRead = currentResult?.explainableAge;
+  const receiptCall = currentResult?.shotReceipt?.summary;
+  const showResult = Boolean(currentResult?.score && currentResult.age);
+  const reviewSubject: ReviewSubject | null = showResult ? {
+    moment: "scan",
+    resultId: currentResult?.analysisId ?? null,
+    fieldCall: ageRead?.fieldCall || receiptCall?.fieldCall || null,
+    confidence: ageRead ? ageRead.overallConfidence : receiptCall?.confidence ?? 0,
+    imageQuality: ageRead?.imageQuality,
+    isRange: ageRead?.isRange,
+    outcome: pendingPaywall ? "paywall" : ageRead?.betterAngle || null,
+  } : null;
+  const followUp = useResultFollowUp(showResult && !pendingPaywall, reviewSubject);
 
   if (!currentResult?.score || !currentResult.age) {
     return <RecoveryScreen onHome={() => navigation.navigate("HomeMain")} />;
@@ -223,7 +238,7 @@ export const ResultsScreen = () => {
     softPulse();
     setShowShareSheet(false);
     try {
-      await shareRead({
+      const sent = await shareRead({
         ageClass: formatAgeClass(currentResult.explainableAge?.estimatedAge ?? age.estimatedAge),
         call: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
         minimum: currentResult.explainableAge?.minimumAgeThreshold ?? useDeerScoringStore.getState().propertyRules.minimumShooterAge,
@@ -232,6 +247,7 @@ export const ResultsScreen = () => {
         receiptId: currentResult.shotReceipt?.id,
         photoUri: currentResult.capturedFrames?.[0]?.imageUri,
       }, "anyone");
+      if (sent) followUp.noteSavedOrShared("share");
     } catch {
       // He closed the sheet.
     }
@@ -376,6 +392,7 @@ export const ResultsScreen = () => {
               huntLabel: activeHunt(useHunterProfile.getState()).label,
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
+            onKept={() => followUp.noteSavedOrShared("save")}
           />
           ) : null}
           <RegionHeadsUp />
@@ -388,6 +405,7 @@ export const ResultsScreen = () => {
             time={new Date(currentResult.timestamp).toLocaleString()}
             receiptId={currentResult.shotReceipt?.id}
             photoUri={currentResult.capturedFrames?.[0]?.imageUri}
+            onShared={() => followUp.noteSavedOrShared("share")}
           />
           ) : null}
           {/* Unified Metrics Card - Shows ALL key metrics */}
