@@ -169,8 +169,13 @@ export async function ageWithRouter(input: {
     : Promise.resolve(null);
   const walkBox = await walkTask;
   const walkResult = walkBox.ok ? walkBox.result : null;
-  if (walkResult?.kind === "harvested" || walkResult?.kind === "no_antlers") {
-    // Do not let a plain age replace this. A dead deer or a doe is not a buck to let walk.
+  if (
+    walkResult?.kind === "harvested"
+    || walkResult?.kind === "no_antlers"
+    || walkResult?.kind === "not_live"
+    || walkResult?.kind === "no_body"
+  ) {
+    // Do not let a plain age replace this. A dead deer, a doe, a mount, or a head-only photo is not a buck to let walk.
     side.abort();
     log({
       event: "age_router",

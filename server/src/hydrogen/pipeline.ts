@@ -13,7 +13,7 @@
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
 import type { WalkStep } from "../progress.js";
 import { RETAKE_MESSAGES, PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
-import { HARVESTED_MESSAGE, NO_ANTLERS_MESSAGE, parseSubject, subjectPrompt, subjectStop, type SubjectFacts } from "./subject.js";
+import { parseSubject, subjectHalt, subjectPrompt, type SubjectFacts } from "./subject.js";
 
 export interface ModelReply {
   text: string;
@@ -50,6 +50,8 @@ export type WalkResult =
   | { kind: "no_deer" }
   | { kind: "harvested"; message: string }
   | { kind: "no_antlers"; message: string }
+  | { kind: "not_live"; message: string }
+  | { kind: "no_body"; message: string }
   | { kind: "retake"; message: string; fails: string[] }
   | {
       kind: "age";
@@ -140,30 +142,42 @@ export async function walkHydrogen(
   }
   const quality = parseQuality(qualityText);
   if (!quality) {
-    const stop = subjectStop(await readSubject());
+    const blocked = subjectHalt(await readSubject());
     cancelRest();
     // A speck or unreadable frame often comes back as unstructured text.
     // Retake instead of stopping and falling through to a gateway backup
-    // that then fails as "couldn't finish this photo." A clear carcass still stops.
-    if (stop === "harvested") return { kind: "harvested", message: HARVESTED_MESSAGE };
+    // that then fails as "couldn't finish this photo." A clear carcass, a mount, or a head-only photo still stops.
+    if (blocked && blocked.kind !== "no_antlers") return blocked;
     return { kind: "retake", message: RETAKE_MESSAGES.deer_large_enough, fails: ["deer_large_enough"] };
   }
   const facts = await readSubject();
-  const stop = subjectStop(facts);
+  const blocked = subjectHalt(facts);
   const photo = decideQuality(quality);
-  const tooSmall = photo.fails.includes("deer_large_enough") || photo.fails.includes("contour_readable");
-  // Lying dead often fails "standing". That retake used to be replaced by a plain age.
-  if (stop === "harvested" && !tooSmall) {
+  const distant = photo.fails.includes("deer_large_enough");
+  const tooSmall = distant || photo.fails.includes("contour_readable");
+  // A mount, decoy, screen, or drawing is not aged, even when the photo check would.
+  if (blocked?.kind === "not_live") {
     cancelRest();
-    return { kind: "harvested", message: HARVESTED_MESSAGE };
+    return blocked;
+  }
+  // Lying dead often fails "standing". That retake used to be replaced by a plain age.
+  if (blocked?.kind === "harvested" && !tooSmall) {
+    cancelRest();
+    return blocked;
+  }
+  // A close head or neck must not become a plain age. The router keeps a size retake,
+  // so a distant speck still says get closer. A head that fills the frame does not.
+  if (blocked?.kind === "no_body" && !distant) {
+    cancelRest();
+    return blocked;
   }
   if (photo.decision === "RETAKE") {
     cancelRest();
     return { kind: "retake", message: photo.retake_message, fails: photo.fails };
   }
-  if (stop === "no_antlers") {
+  if (blocked?.kind === "no_antlers") {
     cancelRest();
-    return { kind: "no_antlers", message: NO_ANTLERS_MESSAGE };
+    return blocked;
   }
 
   step({ step: "gate", parallel: schedule.parallelStart });

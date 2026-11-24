@@ -34,6 +34,7 @@ import { BUTTON_BROWN, BUTTON_GREEN, CREAM } from "../theme/contrast";
 import { MIN_TAP, tapSquare } from "../theme/tap";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
 import { fittedPhotoHeight } from "../lib/photo-fit";
+import { RecoveryScreen } from "../components/RecoveryScreen";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -136,11 +137,13 @@ export const ResultsScreen = () => {
   // Leave for Home only while this screen is the one on top. A retake clears
   // the result and opens the next screen. Replacing the route from a screen
   // that is already covered sends that next screen back home.
+  const showable = Boolean(currentResult?.score && currentResult?.age);
+  // Same as the age screen: a missing result must not render null. That is a
+  // blank white window, and the hunter cannot leave it.
   useEffect(() => {
-    if (!currentResult && navigation.isFocused()) {
-      navigation.replace("HomeMain");
-    }
-  }, [currentResult, navigation]);
+    if (showable || !navigation.isFocused()) return;
+    navigation.replace("HomeMain");
+  }, [showable, navigation]);
 
   // Auto-save to history when result is available (only once)
   useEffect(() => {
@@ -160,8 +163,8 @@ export const ResultsScreen = () => {
   const recordsOn = showPreShotRecord(leaseRules, recordFlag);
   const followUp = useResultFollowUp(Boolean(currentResult), currentResult?.explainableAge?.fieldCall);
 
-  if (!currentResult) {
-    return null;
+  if (!currentResult?.score || !currentResult.age) {
+    return <RecoveryScreen onHome={() => navigation.navigate("HomeMain")} />;
   }
 
   const { score, age, scale, fusedFrameCount, processingTime, cloudRefinementUsed } = currentResult;

@@ -39,6 +39,7 @@ import {
   verdictKind,
   verdictWord,
 } from "../utils/blind-verdict";
+import { RecoveryScreen } from "../components/RecoveryScreen";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -93,25 +94,28 @@ export const AgeResultScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
+  const showable = Boolean(currentResult?.explainableAge);
   // Leave only while this screen is on top. A retake clears the result and
   // opens Processing. Replacing the route from a covered screen sends that
-  // Processing screen home.
+  // Processing screen home. A result with no age is the same blank screen:
+  // returning null paints nothing, and Android shows the white window.
   useEffect(() => {
-    if (currentResult || !navigation.isFocused()) return;
+    if (showable || !navigation.isFocused()) return;
     navigation.replace("HomeMain");
-  }, [currentResult, navigation]);
+  }, [showable, navigation]);
 
   useEffect(() => {
     if (!currentResult?.analysisId) return;
     softPulse();
   }, [currentResult?.analysisId]);
 
-  if (!currentResult || !currentResult.explainableAge) {
-    return null;
+  if (!currentResult?.explainableAge) {
+    return <RecoveryScreen onHome={() => navigation.navigate("HomeMain")} />;
   }
 
   const explainableAge = currentResult.explainableAge;
-  const imageUri = currentResult.capturedFrames[0]?.imageUri;
+  const frames = currentResult.capturedFrames ?? [];
+  const imageUri = frames[0]?.imageUri;
   const read = bodyRead({
     lookFor: explainableAge.lookFor,
     hunterCue: explainableAge.hunterCue,
@@ -142,7 +146,7 @@ export const AgeResultScreen = () => {
     ...(explainableAge.reasons ?? []),
     ...(explainableAge.cueBullets ?? []).map((bullet) => bullet.text),
   ].filter((line): line is string => typeof line === "string" && line.trim().length > 0).join("\n");
-  const overlays = withDescribeCues(explainableAge.bodyFeatureOverlays, describeSource);
+  const overlays = withDescribeCues(explainableAge.bodyFeatureOverlays ?? [], describeSource);
   const bodyNotes = extraBodyNotes(clues, overlays);
   const moreRows = regionRows(overlays).slice(3);
   const hasMinimum = minimumIsSet(explainableAge.minimumAgeThreshold);
@@ -184,7 +188,7 @@ export const AgeResultScreen = () => {
     setAnalysisMode("score");
     await new Promise((resolve) => setTimeout(resolve, 100));
     startCapture();
-    currentResult.capturedFrames.forEach((frame) => {
+    frames.forEach((frame) => {
       addFrame(frame);
     });
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -280,7 +284,7 @@ export const AgeResultScreen = () => {
           draft={{
             localId: currentResult.analysisId,
             mode: "age",
-            photoUris: currentResult.capturedFrames.map((frame) => frame.imageUri),
+            photoUris: frames.map((frame) => frame.imageUri),
             receipt: currentResult.shotReceipt ?? null,
             ageClass: currentResult.shotReceipt?.summary.ageClass || ageClassLabel,
             ageRange: currentResult.shotReceipt?.summary.ageRange || explainableAge.estimatedAge,
@@ -357,7 +361,7 @@ export const AgeResultScreen = () => {
                 scanId={currentResult.analysisId}
                 fieldCall={explainableAge.fieldCall || ""}
                 minimum={explainableAge.minimumAgeThreshold}
-                photos={currentResult.capturedFrames.map((frame) => frame.imageUri)}
+                photos={frames.map((frame) => frame.imageUri)}
                 snapshot={{
                   fieldCall: explainableAge.fieldCall,
                   ageYears: explainableAge.estimatedAgeYears,

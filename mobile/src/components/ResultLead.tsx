@@ -41,13 +41,18 @@ export function ResultLead({
 
   useEffect(() => {
     let live = true;
-    Image.getSize(
-      imageUri,
-      (width, height) => {
-        if (live) setPhotoSize({ width, height });
-      },
-      () => undefined,
-    );
+    if (!imageUri) return undefined;
+    try {
+      Image.getSize(
+        imageUri,
+        (width, height) => {
+          if (live && width > 0 && height > 0) setPhotoSize({ width, height });
+        },
+        () => undefined,
+      );
+    } catch {
+      // A bad thumbnail must not take down the result.
+    }
     return () => {
       live = false;
     };

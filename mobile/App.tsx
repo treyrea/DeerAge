@@ -21,6 +21,7 @@ import { configurePushHandling, refreshPushRegistration, subscribePushTokenRefre
 import { useCommunityStore } from "./src/state/communityStore";
 import { Appearance, AppState } from "react-native";
 import { OfflineChip } from "./src/components/OfflineChip";
+import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 
 // React Native 0.81 sets overrideUserInterfaceStyle on the current windows.
 // That darkens alerts, the keyboard, and share sheets without an app.json change.
@@ -130,16 +131,18 @@ function MainApp() {
   const showOfflineBanner = !isConnected || isInternetReachable === false;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {showOfflineBanner ? <OfflineChip onPress={openOfflineGuide} /> : null}
-        <NavigationContainer ref={navigationRef} onStateChange={(state) => setRouteName(leafRouteName(state))}>
-          <RootNavigator />
-          <CommunityPrompts routeName={routeName} />
-          <UpdateGate />
-          <StatusBar style="light" />
-        </NavigationContainer>
-      </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#121410" }}>
+      <AppErrorBoundary>
+        <SafeAreaProvider>
+          {showOfflineBanner ? <OfflineChip onPress={openOfflineGuide} /> : null}
+          <NavigationContainer ref={navigationRef} onStateChange={(state) => setRouteName(leafRouteName(state))}>
+            <RootNavigator />
+            <CommunityPrompts routeName={routeName} />
+            <UpdateGate />
+            <StatusBar style="light" />
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </AppErrorBoundary>
     </GestureHandlerRootView>
   );
 }

@@ -25,7 +25,7 @@ import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { ageWithRouter } from "./hydrogen/age-with-router.js";
 import { hydrogenFinishPlan, noDeerCopy, noDeerJobError, noDeerJobForMode } from "./hydrogen/no-deer.js";
-import { subjectJobError } from "./hydrogen/subject.js";
+import { subjectJobError, type SubjectStop } from "./hydrogen/subject.js";
 import { createScanBudget } from "./hydrogen/budget.js";
 import { loadRemoteConfig } from "./remote-config.js";
 import { leaseRulesOf, quickReserveUsd, runQuickHydrogen, toQuickShape, type QuickConfig, type QuickEngine } from "./quick-engine.js";
@@ -366,6 +366,13 @@ async function settleCost(usage: TokenUsage, reserved: number, mode: string, app
   return Number(estimatedCostUsd.toFixed(6));
 }
 
+/** Quick Check titles a retake "GET CLOSER". A mount is not a zoom problem, so that path uses not_deer and keeps this sentence. */
+function subjectWireError(mode: "quick" | "age", kind: SubjectStop, message: string): { code: "retake" | "no_antlers" | "no_body" | "not_deer"; message: string } {
+  const error = subjectJobError(kind, message);
+  if (mode === "quick" && kind === "not_live") return { code: "not_deer", message: error.message };
+  return error;
+}
+
 const STOP_MESSAGE = {
   not_deer: "This photo doesn't show a deer.",
   no_antlers: "No antlers are visible in this photo.",
@@ -461,17 +468,20 @@ async function finishJob(input: {
           await input.refund();
           await input.releaseFairUse();
         }
+        const gated = resolved.kind === "harvested" || resolved.kind === "no_antlers" || resolved.kind === "not_live" || resolved.kind === "no_body"
+          ? resolved
+          : null;
         const error = resolved.kind === "no_deer"
           ? noDeerJobError(noDeerCopy(remote.copy))
-          : resolved.kind === "harvested" || resolved.kind === "no_antlers"
-            ? subjectJobError(resolved.kind)
+          : gated
+            ? subjectWireError("age", gated.kind, gated.message)
             : resolved.kind === "retake"
               ? { code: "retake", message: resolved.message }
               : { code: "upstream", message: "DeerAge couldn't finish this photo. Try it once more." };
         await saveJob({
           ...input.job,
           status: "error",
-          provisional: resolved.kind === "no_deer" || resolved.kind === "harvested" || resolved.kind === "no_antlers" ? null : input.job.provisional,
+          provisional: resolved.kind === "no_deer" || gated ? null : input.job.provisional,
           error,
         });
         return;
@@ -652,10 +662,10 @@ async function finishQuickHydrogen(
     await saveJob({ ...input.job, status: "error", provisional: null, error: noDeerJobForMode("quick", noDeerCopy(remote.copy)) });
     return true;
   }
-  if (outcome.kind === "harvested" || outcome.kind === "no_antlers") {
+  if (outcome.kind === "harvested" || outcome.kind === "no_antlers" || outcome.kind === "not_live" || outcome.kind === "no_body") {
     await input.refund();
     await input.releaseFairUse();
-    await saveJob({ ...input.job, status: "error", provisional: null, error: subjectJobError(outcome.kind) });
+    await saveJob({ ...input.job, status: "error", provisional: null, error: subjectWireError("quick", outcome.kind, outcome.message) });
     return true;
   }
   if (outcome.kind === "retake") {
