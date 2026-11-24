@@ -231,11 +231,6 @@ export const ModeSelectScreen = () => {
             </Text>
           </View>
         </Pressable>
-
-        {/* RackScore™ AI Branding */}
-        <Text className="text-xs text-center mt-8" style={{ color: "#D4AF37" }}>
-          Scoring powered by RackScore™ AI
-        </Text>
       </View>
     </View>
   );

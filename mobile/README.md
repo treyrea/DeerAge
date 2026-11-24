@@ -3,7 +3,7 @@
 Analysis runs on the proxy in `server/`. The app only needs `EXPO_PUBLIC_REVENUECAT_APPLE_KEY` and `EXPO_PUBLIC_API_BASE_URL`. Do not add an OpenAI key to the app. See the repo README.
 
 **Tagline:** *Know before you pull the trigger.*
-**Powered by:** RackScore™ AI
+**AI-assisted** photo analysis for age and rack scoring
 
 A sophisticated mobile hunting companion that provides fast, trustworthy guidance for hunters both before and after the shot. DeerAge combines advanced AI analysis with official Boone & Crockett scoring to give you data-backed decisions in the field.
 
@@ -299,7 +299,7 @@ Every analysis (Age or Score mode) shows all key metrics:
 - **Single Image Analysis**: Process pre-captured deer photos
 - **Flexible Input**: Use photos taken with any camera
 
-### Advanced RackScore™ AI Analysis
+### Advanced AI Analysis
 - **GPT-4o Vision API**: Using OpenAI's GPT-4o vision model for comprehensive analysis
 - **Body Characteristics Analysis**: Evaluates chest, neck, posture, and facial features for age estimation
 - **Automatic Antler Detection**: AI detects and measures antlers for scoring
@@ -500,10 +500,10 @@ The app is architected to support Bluetooth rangefinder integration in a future 
 ### Branding
 - **App Logo**: DeerAge with deer icon
 - **Tagline**: "Know before you pull the trigger"
-- **Footer Branding**: "Scoring powered by RackScore™ AI" (displayed on every screen)
+- **Footer**: app version is displayed on Settings
 
 ### Navigation Flow
-1. **Splash Screen** → DeerAge logo with RackScore™ AI branding (2.5 seconds)
+1. **Splash Screen** → DeerAge logo (2.5 seconds)
 2. **Home Screen** → Choose between "Age My Deer" or "Score My Rack" + Settings/History
 3. **Mode Select** → Choose "Take Photo" or "Upload Photo"
 4. **Camera/Upload** → Capture or select image
@@ -591,7 +591,7 @@ src/
 │   ├── ZoomableImage.tsx                # Pinch-to-zoom image viewer
 │   └── BodyFeatureOverlay.tsx           # Interactive body feature overlays
 ├── screens/
-│   ├── SplashScreen.tsx                 # DeerAge intro with RackScore™ branding
+│   ├── SplashScreen.tsx                 # DeerAge intro splash
 │   ├── HomeScreen.tsx                   # Mode selection (Age vs Score)
 │   ├── ModeSelectScreen.tsx             # Photo source selection
 │   ├── DeerCameraScreen.tsx             # Burst capture camera with Pro Tips
@@ -623,7 +623,7 @@ src/
 1. **Select Mode**: User taps "Age My Deer" on home screen
 2. **Choose Input**: Select camera or upload photo
 3. **Capture/Upload**: Take broadside photo showing full deer body
-4. **AI Analysis**: RackScore™ AI analyzes body features using GPT-4o Vision:
+4. **AI Analysis**: DeerAge analyzes body features using GPT-4o Vision:
    - **Validates image suitability**: Checks if enough body parts are visible (rejects head-only, mounted deer, excessive occlusion)
    - Detects and labels only visible body features (neck, chest, brisket, backline, belly, legs, face, hindquarters)
    - Creates bounding box overlays for each visible feature
@@ -685,7 +685,7 @@ src/
 
 ## Future Enhancements (Multi-Species Ready)
 
-The app is architected to support additional species using the same RackScore™ AI engine:
+The app is architected to support additional species using the same AI engine:
 - **Elk** (Roosevelt, Rocky Mountain)
 - **Moose** (Alaska-Yukon, Canada, Shiras)
 - **Fallow Deer**
@@ -934,7 +934,7 @@ Shareable artifacts:
 - Burst mode provides higher confidence than single images
 - Shooter/Pass suggestions are guidelines based on age estimation
 - All measurements in inches per B&C standards
-- RackScore™ AI improves with continued use and feedback
+- Estimates improve with continued use and feedback
 
 ## Over-the-air updates
 
