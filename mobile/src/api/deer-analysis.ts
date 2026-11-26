@@ -12,12 +12,15 @@ import {
 } from "../types/deer-scoring";
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
+import { serverGrossForMissingTines } from "./score-gross";
 import { useHunterProfile } from "../state/hunterProfile";
 
 export { generateExplainableRackScoring } from "./explainable-rack";
 
 export let lastProxyScale: ScaleEstimation | null = null;
 export let lastProxyAgeYears: number | null = null;
+/** Gross from the server when it scored the rack but did not return tine lengths. */
+export let lastProxyGrossScore: number | null = null;
 export { lastShotReceipt } from "./proxy";
 
 export function rememberScale(scale: ScaleEstimation | null) {
@@ -91,6 +94,8 @@ function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
   lastProxyScale = toScale(result.scale);
   const ageYears = asNumber(result.ageYears);
   lastProxyAgeYears = ageYears > 0 ? ageYears : null;
+  // Empty tines must not become a 0" score when the server already sent a gross.
+  lastProxyGrossScore = serverGrossForMissingTines(left, right, abnormalPoints.length, result.grossScore);
 
   return {
     rightMainBeam: { length: rightBeam, side: "right" },
@@ -124,6 +129,7 @@ export async function fuseMultiFrameMeasurements(
   _scale?: ScaleEstimation,
   minimumShooterAge?: number,
 ): Promise<AntlerMeasurements> {
+  lastProxyGrossScore = null;
   if (frames.length === 0) {
     throw new AnalysisError("zero_frames");
   }

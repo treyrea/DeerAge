@@ -13,6 +13,7 @@ import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
 import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues";
 import { tapSquare } from "../theme/tap";
+import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
 import type { ReviewSubject } from "../lib/reviewPrompt";
@@ -53,9 +54,6 @@ export const AgeResultScreen = () => {
   const saveToHistory = useDeerScoringStore((s) => s.saveToHistory);
   const updateHistory = useDeerScoringStore((s) => s.updateHistory);
   const setAnalysisMode = useDeerScoringStore((s) => s.setAnalysisMode);
-  const startCapture = useDeerScoringStore((s) => s.startCapture);
-  const addFrame = useDeerScoringStore((s) => s.addFrame);
-  const processFrames = useDeerScoringStore((s) => s.processFrames);
   const [hasSaved, setHasSaved] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
@@ -195,14 +193,9 @@ export const AgeResultScreen = () => {
 
   const runRack = async () => {
     followUp.markRescan();
-    setAnalysisMode("score");
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    startCapture();
-    frames.forEach((frame) => {
-      addFrame(frame);
-    });
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const processPromise = processFrames();
+    const start = await prepareRackScore(frames);
+    if (!start) return;
+    const processPromise = start();
     navigation.navigate("Processing");
     try {
       await processPromise;

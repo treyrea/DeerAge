@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
 import { formatAgeClass, shownAge } from "../utils/age-class";
+import { hasRealScore } from "../utils/boone-crockett-calculator";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { ErrorModal } from "../components/ErrorModal";
 import { softPulse } from "../lib/haptics";
@@ -225,12 +226,16 @@ function rowHeadline(row: HistoryRow): string {
   }
   const result = row.result;
   if (row.kind === "score") {
+    if (!hasRealScore(result.score)) return "Not scored";
     const net = result.score?.recommendedCategory === "Typical" ? result.score?.netTypical : result.score?.netNonTypical;
     const scoreValue = typeof net === "number" ? net : net?.average;
     const points = (result.manualOverride && result.manualPointCount)
       ? result.manualPointCount
       : (result.score?.measurements?.totalPoints ?? 0) + (result.score?.measurements?.totalAbnormalPoints ?? 0);
-    return typeof scoreValue === "number" ? `${scoreValue.toFixed(1)} in · ${points} pt` : "Rack score";
+    if (typeof scoreValue === "number" && scoreValue > 0) {
+      return points > 0 ? `${scoreValue.toFixed(1)} in · ${points} pt` : `${scoreValue.toFixed(1)} in`;
+    }
+    return "Rack score";
   }
   const age = shownAge(result.explainableAge?.ageLabel, result.explainableAge?.estimatedAge || result.age?.estimatedAge);
   const minimum = result.explainableAge?.minimumAgeThreshold;

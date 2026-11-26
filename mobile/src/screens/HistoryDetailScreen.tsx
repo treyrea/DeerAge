@@ -2,13 +2,13 @@
  * History Detail Screen - View full scorecard from history
  */
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
+import { formatScore, hasAntlerMeasurements, hasCountedPoints, hasRealScore, meetsBooneAndCrockettMinimum, NOT_SCORED } from "../utils/boone-crockett-calculator";
 import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/deer-scoring";
 import { format } from "date-fns";
 import { shownAge } from "../utils/age-class";
@@ -21,6 +21,7 @@ import { useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
+import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
 import { fittedPhotoHeight } from "../lib/photo-fit";
@@ -34,6 +35,7 @@ export const HistoryDetailScreen = () => {
 
   const params = route.params as { result?: DeerScoringResult; shotId?: string };
   const result = params.result;
+  const scoringRack = useRef(false);
   const savedMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
   const linkedId = result?.analysisId ?? params.shotId ?? "";
   const linked = useShotRecordStore((s) => (linkedId ? s.records[linkedId] : undefined));
@@ -55,7 +57,12 @@ export const HistoryDetailScreen = () => {
   }
 
   const { score, age, scale, fusedFrameCount, processingTime, cloudRefinementUsed, timestamp, capturedFrames, manualPointCount, manualOverride, analysisMode, explainableAge, explainableRackScore } = result;
-  const bcMinimum = meetsBooneAndCrockettMinimum(score);
+  const rackScored = hasRealScore(score);
+  const pointsKnown = hasCountedPoints(score);
+  const itemized = hasAntlerMeasurements(score?.measurements);
+  const bcMinimum = score?.measurements
+    ? meetsBooneAndCrockettMinimum(score)
+    : { typical: false, nonTypical: false };
 
   // Determine if this is age mode or rack mode
   const isAgeMode = analysisMode === "age";
@@ -63,13 +70,33 @@ export const HistoryDetailScreen = () => {
   // Use manual count if override is active, otherwise use AI count
   const displayedPointCount = manualOverride && manualPointCount
     ? manualPointCount
-    : score.measurements.totalPoints + score.measurements.totalAbnormalPoints;
+    : (score?.measurements?.totalPoints ?? 0) + (score?.measurements?.totalAbnormalPoints ?? 0);
+
+  const canScoreRack = capturedFrames.some((frame) => frame.imageUri);
+  const scoreThisRack = async () => {
+    if (scoringRack.current) return;
+    scoringRack.current = true;
+    try {
+      const start = await prepareRackScore(capturedFrames);
+      if (!start) return;
+      const processPromise = start();
+      navigation.navigate("Home", { screen: "Processing" });
+      await processPromise;
+    } catch {
+      // The processing screen shows the failure.
+    } finally {
+      scoringRack.current = false;
+    }
+  };
 
   const getValue = (measurement: number | MeasurementRange | undefined): number => {
     if (!measurement) return 0;
     if (typeof measurement === "number") return measurement;
     return measurement.average;
   };
+  const netInches = score
+    ? getValue(score.recommendedCategory === "Typical" ? score.netTypical : score.netNonTypical)
+    : 0;
 
   const handleExportPDF = async () => {
     try {
@@ -239,22 +266,43 @@ export const HistoryDetailScreen = () => {
               {/* Quick Rack Summary */}
               <View className="bg-neutral-800 rounded-xl p-5 mb-6">
                 <Text className="text-white text-lg font-bold mb-4">Quick Rack Summary</Text>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-gray-400 text-sm">Estimated Points</Text>
-                  <Text className="text-white text-2xl font-bold">~{displayedPointCount}pt</Text>
-                </View>
-                <View className="flex-row items-center justify-between mt-3">
-                  <Text className="text-gray-400 text-sm">Estimated B&C Score</Text>
-                  <Text className="text-white text-lg font-semibold">
-                    ~{getValue(score.recommendedCategory === "Typical" ? score.netTypical : score.netNonTypical).toFixed(0)}&quot;
-                  </Text>
-                </View>
-                <Text className="text-gray-500 text-xs mt-3">
-                  Note: For precise scoring, use &quot;Score My Rack&quot; mode
-                </Text>
+                {score && rackScored && netInches > 0 ? (
+                  <>
+                    {pointsKnown ? (
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-gray-400 text-sm">Estimated Points</Text>
+                        <Text className="text-white text-2xl font-bold">~{displayedPointCount}pt</Text>
+                      </View>
+                    ) : null}
+                    <View className="flex-row items-center justify-between mt-3">
+                      <Text className="text-gray-400 text-sm">Estimated B&C Score</Text>
+                      <Text className="text-white text-lg font-semibold">
+                        ~{netInches.toFixed(0)}&quot;
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text className="text-white text-2xl font-bold">{NOT_SCORED}</Text>
+                    {canScoreRack ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Score this rack"
+                        onPress={() => { void scoreThisRack(); }}
+                        style={{ marginTop: 16, minHeight: 44, borderRadius: 12, backgroundColor: "#c2410c", alignItems: "center", justifyContent: "center", paddingHorizontal: 16 }}
+                      >
+                        <Text className="text-white text-base font-bold">Score this rack</Text>
+                      </Pressable>
+                    ) : (
+                      <Text className="text-gray-500 text-xs mt-3">
+                        Note: For precise scoring, use &quot;Score My Rack&quot; mode
+                      </Text>
+                    )}
+                  </>
+                )}
               </View>
             </>
-          ) : (
+          ) : score && rackScored ? (
             // RACK MODE SCORECARD
             <>
               {/* Primary Score Result */}
@@ -265,10 +313,14 @@ export const HistoryDetailScreen = () => {
                 </View>
                 <Text className="text-white text-3xl font-bold mb-2">{score.recommendedCategory}</Text>
                 <View className="flex-row items-baseline">
-                  <Text className="text-white text-5xl font-bold">
-                    {getValue(score.recommendedCategory === "Typical" ? score.netTypical : score.netNonTypical).toFixed(1)}
-                  </Text>
-                  <Text className="text-white/80 text-xl ml-2">inches</Text>
+                  {netInches > 0 ? (
+                    <>
+                      <Text className="text-white text-5xl font-bold">{netInches.toFixed(1)}</Text>
+                      <Text className="text-white/80 text-xl ml-2">inches</Text>
+                    </>
+                  ) : (
+                    <Text className="text-white text-5xl font-bold">{NOT_SCORED}</Text>
+                  )}
                 </View>
                 <Text className="text-white/70 text-sm mt-3">Net {score.recommendedCategory} Score</Text>
               </View>
@@ -293,15 +345,17 @@ export const HistoryDetailScreen = () => {
                       )}
                     </View>
                     <Text className="text-white text-4xl font-bold">
-                      {displayedPointCount}
+                      {pointsKnown ? displayedPointCount : "\u2014"}
                     </Text>
-                    <Text className="text-white/60 text-xs mt-1">
-                      {manualOverride ? (
-                        <>User verified count</>
-                      ) : (
-                        <>({score.measurements.totalPoints} normal + {score.measurements.totalAbnormalPoints} abnormal)</>
-                      )}
-                    </Text>
+                    {pointsKnown ? (
+                      <Text className="text-white/60 text-xs mt-1">
+                        {manualOverride ? (
+                          <>User verified count</>
+                        ) : (
+                          <>({score.measurements.totalPoints} normal + {score.measurements.totalAbnormalPoints} abnormal)</>
+                        )}
+                      </Text>
+                    ) : null}
                   </View>
                   {score.measurements.totalAbnormalPoints > 0 && (
                     <View className="flex-1 items-end">
@@ -352,7 +406,7 @@ export const HistoryDetailScreen = () => {
                 <ScoreRow label="Abnormal Points Total" value={formatScore(score.abnormalPointsTotal)} />
               </View>
 
-              {/* Component Measurements */}
+              {itemized ? (
               <View className="bg-neutral-800 rounded-xl p-5 mb-6">
                 <Text className="text-white text-lg font-bold mb-4">Component Totals</Text>
                 <ScoreRow label="Total Main Beam Length" value={formatScore(score.totalMainBeamLength)} />
@@ -360,6 +414,7 @@ export const HistoryDetailScreen = () => {
                 <ScoreRow label="Total Mass (Circumferences)" value={formatScore(score.totalMass)} />
                 <ScoreRow label="Inside Spread Credit" value={formatScore(score.spreadCredit)} />
               </View>
+              ) : null}
 
               {/* Quick Age Summary */}
               <View className="bg-neutral-800 rounded-xl p-5 mb-6">
@@ -398,6 +453,11 @@ export const HistoryDetailScreen = () => {
                 </View>
               </View>
             </>
+          ) : (
+            <View className="bg-neutral-800 rounded-xl p-5 mb-6">
+              <Text className="text-white text-lg font-bold mb-2">Rack Score</Text>
+              <Text className="text-white text-3xl font-bold">{NOT_SCORED}</Text>
+            </View>
           )}
 
           {/* Analysis Details - Common to both modes */}

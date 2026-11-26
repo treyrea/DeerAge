@@ -24,7 +24,7 @@ import { ShareableResultCard } from "../components/ShareableResultCard";
 import { ageCallFromClass, formatAgeClass } from "../utils/age-class";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { formatScore, meetsBooneAndCrockettMinimum } from "../utils/boone-crockett-calculator";
+import { formatScore, hasAntlerMeasurements, hasCountedPoints, hasRealScore, meetsBooneAndCrockettMinimum, NOT_SCORED } from "../utils/boone-crockett-calculator";
 import { ConfidenceLevel, MeasurementRange } from "../types/deer-scoring";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from "react-native-reanimated";
@@ -226,6 +226,15 @@ export const ResultsScreen = () => {
     if (typeof measurement === "number") return measurement;
     return measurement.average;
   };
+  const rackScored = hasRealScore(score);
+  const pointsKnown = hasCountedPoints(score);
+  const itemized = hasAntlerMeasurements(score.measurements);
+  const netInches = getValue(score.netNonTypical);
+  const categoryInches = getValue(score.recommendedCategory === "Typical" ? score.netTypical : score.netNonTypical);
+  const showNet = adjustedScore !== null || (rackScored && netInches > 0);
+  const showCategoryNet = adjustedScore !== null || (rackScored && categoryInches > 0);
+  const labeledNet = rackScored && typeof score.netTypical === "number" && score.netTypical > 0 ? score.netTypical : null;
+  const pointLabel = !rackScored ? NOT_SCORED : pointsKnown ? String(displayedPointCount) : "\u2014";
 
   const handleNewScore = () => {
     softPulse();
@@ -292,7 +301,7 @@ export const ResultsScreen = () => {
 
       <ScrollView ref={scrollViewRef} className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
         <View className="px-6 py-6">
-          {currentResult.capturedFrames?.[0]?.imageUri ? (
+          {rackScored && pointsKnown && currentResult.capturedFrames?.[0]?.imageUri ? (
             <ShareableResultCard
               compact
               data={{
@@ -325,7 +334,7 @@ export const ResultsScreen = () => {
           )}
 
           {/* Manual Count Suggestion Banner - Show when AI count is symmetrical (AI tends to impose symmetry) */}
-          {!showManualCounter && !manualOverride && score.measurements.leftSidePoints === score.measurements.rightSidePoints && currentResult.capturedFrames && currentResult.capturedFrames.length > 0 && (
+          {rackScored && pointsKnown && !showManualCounter && !manualOverride && score.measurements.leftSidePoints === score.measurements.rightSidePoints && currentResult.capturedFrames && currentResult.capturedFrames.length > 0 && (
             <Pressable
               onPress={() => {
                 softPulse();
@@ -359,7 +368,7 @@ export const ResultsScreen = () => {
               fallbackCues={currentResult.shotReceipt?.summary.cues}
               fieldCall={normalizeFieldCall(currentResult.explainableAge?.fieldCall ?? currentResult.shotReceipt?.summary.fieldCall)}
               note={currentResult.explainableAge?.fieldCallNote ?? currentResult.shotReceipt?.summary.fieldCallNote}
-              scoreLabel={typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : undefined}
+              scoreLabel={labeledNet != null ? `${labeledNet.toFixed(0)} in B&C, secondary to the age call` : undefined}
             />
           ) : null}
           <WrongCallCard
@@ -369,7 +378,7 @@ export const ResultsScreen = () => {
             snapshot={{
               fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall,
               ageYears: currentResult.explainableAge?.estimatedAgeYears,
-              grossScore: typeof score.netTypical === "number" ? score.netTypical : undefined,
+              grossScore: labeledNet ?? undefined,
               leaseMinimum,
             }}
           />
@@ -388,7 +397,7 @@ export const ResultsScreen = () => {
               fieldCall: currentResult.explainableAge?.fieldCall || currentResult.shotReceipt?.summary.fieldCall || "",
               fieldCallNote: currentResult.explainableAge?.fieldCallNote || currentResult.shotReceipt?.summary.fieldCallNote || "",
               cues: currentResult.shotReceipt?.summary.cues ?? [],
-              scoreLabel: typeof score.netTypical === "number" ? `${score.netTypical.toFixed(0)} in B&C, secondary to the age call` : null,
+              scoreLabel: labeledNet != null ? `${labeledNet.toFixed(0)} in B&C, secondary to the age call` : null,
               huntLabel: activeHunt(useHunterProfile.getState()).label,
             }}
             onNeedPlan={() => navigation.navigate("TierPaywall", { reason: "records" })}
@@ -432,13 +441,13 @@ export const ResultsScreen = () => {
               </View>
               <View className="flex-row items-baseline">
                 <Text className="text-3xl font-bold text-white">
-                  {adjustedScore !== null ? adjustedScore.toFixed(1) : getValue(score.netNonTypical).toFixed(1)}
+                  {showNet ? (adjustedScore !== null ? adjustedScore.toFixed(1) : netInches.toFixed(1)) : NOT_SCORED}
                 </Text>
-                <Text className="text-lg ml-2" style={{ color: "#E5D4B8" }}>inches</Text>
+                {showNet ? <Text className="text-lg ml-2" style={{ color: "#E5D4B8" }}>inches</Text> : null}
               </View>
-              {adjustedScore !== null && (
+              {adjustedScore !== null && showNet && (
                 <Text className="text-xs mt-1" style={{ color: "#D4AF37" }}>
-                  Original AI: {getValue(score.netNonTypical).toFixed(1)}&quot; • Adjusted for {manualCount} points
+                  Original AI: {netInches.toFixed(1)}&quot; • Adjusted for {manualCount} points
                 </Text>
               )}
             </View>
@@ -447,16 +456,16 @@ export const ResultsScreen = () => {
             <View className="mb-4">
               <View className="flex-row items-center justify-between mb-1">
                 <Text className="text-sm" style={{ color: "#E5D4B8" }}>Tine Count</Text>
-                {manualOverride && (
+                {manualOverride && pointsKnown && (
                   <View className="px-2 py-0.5 rounded" style={{ backgroundColor: "#5A6447" }}>
                     <Text className="text-white text-xs font-bold">Manual</Text>
                   </View>
                 )}
               </View>
-              <Text className="text-3xl font-bold text-white">{displayedPointCount}</Text>
+              <Text className="text-3xl font-bold text-white">{pointLabel}</Text>
             </View>
 
-            {/* Confidence */}
+            {rackScored ? (
             <View className="mb-4">
               <Text className="text-sm mb-2" style={{ color: "#E5D4B8" }}>Confidence</Text>
               <View className="flex-row items-center">
@@ -472,11 +481,14 @@ export const ResultsScreen = () => {
                 <Text className="text-white font-semibold">{score.overallConfidence}</Text>
               </View>
             </View>
+            ) : null}
 
           </View>
 
           {/* Overall Score Card */}
           <View className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 mb-6">
+            {showCategoryNet ? (
+            <>
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-white/80 text-sm font-medium">RECOMMENDED CATEGORY</Text>
               <View className="flex-row items-center">
@@ -491,17 +503,24 @@ export const ResultsScreen = () => {
             <Text className="text-white text-3xl font-bold mb-2">{score.recommendedCategory}</Text>
             <View className="flex-row items-baseline">
               <Text className="text-white text-5xl font-bold">
-                {adjustedScore !== null
-                  ? adjustedScore.toFixed(1)
-                  : getValue(score.recommendedCategory === "Typical" ? score.netTypical : score.netNonTypical).toFixed(1)}
+                {adjustedScore !== null ? adjustedScore.toFixed(1) : categoryInches.toFixed(1)}
               </Text>
               <Text className="text-white/80 text-xl ml-2">inches</Text>
             </View>
             <Text className="text-white/70 text-sm mt-3">
               {adjustedScore !== null ? "Adjusted " : ""}Net {score.recommendedCategory} Score
             </Text>
+            </>
+            ) : (
+              <>
+                <Text className="text-white/80 text-sm font-medium mb-2">RACK SCORE</Text>
+                <Text className="text-white text-5xl font-bold">{NOT_SCORED}</Text>
+              </>
+            )}
           </View>
 
+          {rackScored ? (
+          <>
           {/* Manual Point Override Section - Only show when manual override is active or user might need it */}
           {(manualOverride || score.measurements.totalAbnormalPoints > 0) && (
             <CollapsibleSection
@@ -988,6 +1007,8 @@ export const ResultsScreen = () => {
             </CollapsibleSection>
           )}
 
+          {itemized ? (
+          <>
           {/* Component Totals - Collapsible */}
           <CollapsibleSection
             title="Component Totals"
@@ -1106,6 +1127,8 @@ export const ResultsScreen = () => {
               <DetailRow label="Abnormal Points" value={score.measurements.totalAbnormalPoints.toString()} noUnit />
             </View>
           </CollapsibleSection>
+          </>
+          ) : null}
 
           {/* B&C Qualification - Collapsible */}
           <CollapsibleSection
@@ -1157,6 +1180,8 @@ export const ResultsScreen = () => {
               </View>
             </View>
           </CollapsibleSection>
+          </>
+          ) : null}
 
           {/* Analysis Details - Collapsible */}
           <CollapsibleSection
