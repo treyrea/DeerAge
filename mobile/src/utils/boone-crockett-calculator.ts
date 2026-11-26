@@ -285,15 +285,107 @@ export const calculateBooneAndCrockettScore = (
   };
 };
 
+/** Hunter-facing label when a rack was not scored. Never show this as 0.00. */
+export const NOT_SCORED = "Not scored";
+
+function positiveAmount(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : 0;
+  if (value && typeof value === "object" && "average" in value) {
+    const average = (value as { average?: unknown }).average;
+    return typeof average === "number" && Number.isFinite(average) && average > 0 ? average : 0;
+  }
+  return 0;
+}
+
+const TINE_KEYS = [
+  "rightG1", "rightG2", "rightG3", "rightG4", "rightG5", "rightG6",
+  "leftG1", "leftG2", "leftG3", "leftG4", "leftG5", "leftG6",
+] as const;
+
+function tineInches(tine: unknown): number {
+  if (!tine || typeof tine !== "object" || !("length" in tine)) return 0;
+  return positiveAmount((tine as { length?: unknown }).length);
+}
+
+/** True when a beam, tine, spread, or mass measurement is actually present. */
+export function hasAntlerMeasurements(measurements: AntlerMeasurements | null | undefined): boolean {
+  if (!measurements) return false;
+  if (positiveAmount(measurements.rightMainBeam?.length) > 0) return true;
+  if (positiveAmount(measurements.leftMainBeam?.length) > 0) return true;
+  if (positiveAmount(measurements.insideSpread) > 0) return true;
+  if (positiveAmount(measurements.greatestSpread) > 0) return true;
+  for (const key of TINE_KEYS) {
+    if (tineInches(measurements[key]) > 0) return true;
+  }
+  for (const point of measurements.abnormalPoints ?? []) {
+    if (tineInches(point) > 0) return true;
+  }
+  for (const side of [measurements.rightCircumferences, measurements.leftCircumferences]) {
+    if (!side) continue;
+    if (positiveAmount(side.h1) > 0 || positiveAmount(side.h2) > 0 || positiveAmount(side.h3) > 0 || positiveAmount(side.h4) > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True when the score job counted points. A missing count is not zero points. */
+export function hasCountedPoints(score: BooneAndCrockettScore | null | undefined): boolean {
+  const measurements = score?.measurements;
+  if (!measurements) return false;
+  return measurements.totalPoints > 0
+    || measurements.totalAbnormalPoints > 0
+    || measurements.leftSidePoints > 0
+    || measurements.rightSidePoints > 0;
+}
+
 /**
- * Format score for display (handles ranges)
+ * False for a missing score and for the all-zero score age scans used to save.
+ * True when any total or measurement is a real length.
+ */
+export function hasRealScore(score: BooneAndCrockettScore | null | undefined): boolean {
+  if (!score) return false;
+  const totals = [
+    score.grossTypical,
+    score.grossNonTypical,
+    score.netTypical,
+    score.netNonTypical,
+    score.spreadCredit,
+    score.totalMainBeamLength,
+    score.totalTineLength,
+    score.totalMass,
+    score.abnormalPointsTotal,
+  ];
+  if (totals.some((value) => positiveAmount(value) > 0)) return true;
+  return hasAntlerMeasurements(score.measurements);
+}
+
+/**
+ * Use the server gross when the tine list was empty. The local calculator
+ * would otherwise turn that into a score of 0.
+ */
+export function scoreFromServerGross(score: BooneAndCrockettScore, gross: number): BooneAndCrockettScore {
+  if (!(typeof gross === "number" && Number.isFinite(gross) && gross > 0)) return score;
+  return {
+    ...score,
+    grossTypical: gross,
+    grossNonTypical: gross,
+    netTypical: gross,
+    netNonTypical: gross,
+  };
+}
+
+/**
+ * Format score for display (handles ranges).
+ * Null and undefined are not a score of zero.
  */
 export const formatScore = (score: number | MeasurementRange | undefined | null): string => {
   if (score === undefined || score === null) {
-    return "0.00";
+    return NOT_SCORED;
   }
 
   if (typeof score === "number") {
+    if (!Number.isFinite(score)) return NOT_SCORED;
     return score.toFixed(2);
   }
 

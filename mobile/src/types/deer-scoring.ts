@@ -454,8 +454,8 @@ export interface DeerScoringResult {
   capturedFrames: DeerAnalysisFrame[];
   fusedFrameCount: number;
 
-  // Scoring
-  score: BooneAndCrockettScore;
+  // Scoring. Age scans leave this off. An all-zero score is not a score.
+  score?: BooneAndCrockettScore;
 
   // Scale estimation
   scale: ScaleEstimation;

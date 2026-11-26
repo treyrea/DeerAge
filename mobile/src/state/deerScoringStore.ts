@@ -11,16 +11,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
   DeerScoringResult,
   DeerAnalysisFrame,
-  AntlerMeasurements,
-  ScaleEstimation,
-  BooneAndCrockettScore,
   AgeEstimation,
   PropertyRules,
-  ExplainableAgeEstimation,
 } from "../types/deer-scoring";
-import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyScale, lastShotReceipt } from "../api/deer-analysis";
+import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyGrossScore, lastProxyScale, lastShotReceipt } from "../api/deer-analysis";
+import { createAgeResult } from "../lib/age-result";
 import { formatAgeClass } from "../utils/age-class";
-import { calculateBooneAndCrockettScore } from "../utils/boone-crockett-calculator";
+import { calculateBooneAndCrockettScore, hasAntlerMeasurements, hasRealScore, scoreFromServerGross } from "../utils/boone-crockett-calculator";
 import {
   estimateScaleFromMultiView,
   estimateDeerAge,
@@ -275,21 +272,6 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           ? lastProxyScale
           : estimateScaleFromMultiView(ageFrames, distanceInfoForScale);
 
-        const measurements: AntlerMeasurements = {
-          rightMainBeam: { length: 0, side: "right" },
-          leftMainBeam: { length: 0, side: "left" },
-          abnormalPoints: [],
-          rightCircumferences: {},
-          leftCircumferences: {},
-          insideSpread: 0,
-          totalPoints: 0,
-          leftSidePoints: 0,
-          rightSidePoints: 0,
-          totalAbnormalPoints: 0,
-        };
-        const score: BooneAndCrockettScore = calculateBooneAndCrockettScore(measurements);
-
-        const age = estimateDeerAge(measurements);
         const processingTime = Date.now() - startTime;
 
         // Compute distance adjustment for age mode (using variables declared earlier)
@@ -303,20 +285,13 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         const baseAgeConfidence = (explainableAge?.overallConfidence ?? 50) / 100;
         const analysisConfidenceAge = calculateOverallConfidence(baseAgeConfidence, distanceAdjustmentAge) / 100;
 
-        const result: DeerScoringResult = {
+        const result: DeerScoringResult = createAgeResult({
           analysisId: `deer-age-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           timestamp: new Date(),
-          analysisMode: "age",
           capturedFrames: ageFrames,
-          fusedFrameCount: 1,
-          score,
           scale,
-          age,
-          explainableAge, // New: explainable age data
+          explainableAge,
           processingTime,
-          onDeviceProcessing: true,
-          cloudRefinementUsed: false,
-          // Distance data
           distanceMeasurement: pendingDistanceAge ? {
             distanceYards: pendingDistanceAge.distanceYards,
             source: pendingDistanceAge.source,
@@ -328,7 +303,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
           analysisConfidence: analysisConfidenceAge,
           distanceAdjusted: !!pendingDistanceAge,
           shotReceipt: lastShotReceipt,
-        };
+        });
 
         // Record telemetry
         distanceState.recordTelemetry({
@@ -369,13 +344,18 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       let measurements = await fuseMultiFrameMeasurements(capturedFrames, fallbackScale, propertyRules.minimumShooterAge);
       const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0 ? lastProxyScale : fallbackScale;
 
-      // Step 3: Calculate B&C score
+      // Step 3: Calculate B&C score. A gross with no tines is the server's score, not 0.
       let score = calculateBooneAndCrockettScore(measurements);
+      if (lastProxyGrossScore != null && lastProxyGrossScore > 0) {
+        score = scoreFromServerGross(score, lastProxyGrossScore);
+      }
 
       const cloudRefinementUsed = true;
 
-      // Step 5: Generate explainable rack scoring
-      const explainableRackScore = generateExplainableRackScoring(score, measurements);
+      // Step 5: Explain a real rack. Do not narrate an all-zero score.
+      const explainableRackScore = hasRealScore(score) && hasAntlerMeasurements(measurements)
+        ? generateExplainableRackScoring(score, measurements)
+        : undefined;
 
       const age = lastProxyAgeYears
         ? {
