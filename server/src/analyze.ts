@@ -31,6 +31,7 @@ import { loadRemoteConfig } from "./remote-config.js";
 import { leaseRulesOf, quickReserveUsd, runQuickHydrogen, toQuickShape, type QuickConfig, type QuickEngine } from "./quick-engine.js";
 import { runScoreCall } from "./score-pipeline.js";
 import { consumeCredit, readCredits, returnCredit } from "./scan-credits.js";
+import { claimRescoreWaiver, isScoreJobId, releaseRescoreWaiver, saveRescoreTicket } from "./rescore-waiver.js";
 import { keepAlive, loadJob, newJobId, saveJob, saveProgress, type ScanJob } from "./jobs.js";
 import { ageProgress, initialProgress } from "./progress.js";
 import { prepareScanImages } from "./vignette-crop.js";
@@ -63,6 +64,10 @@ export interface AnalyzeBody {
   appVersion?: string;
   /** The app's Lease rules switch. Build 18 and older do not send it. */
   leaseRules?: boolean;
+  /** Angle names, one per image, when the hunter added sides of the same rack. */
+  angles?: unknown;
+  /** Finished score job this follow-up continues. One free pass, same hunter. */
+  rescoreOf?: unknown;
 }
 
 interface Auth {
@@ -198,7 +203,12 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   let access: AccessSnapshot | null = null;
   let creditHeld = false;
   let freeHeld = false;
-  if (!isEval) {
+  let waivedJob: string | null = null;
+  if (!isEval && mode === "score" && isScoreJobId(body.rescoreOf)) {
+    const claimed = await claimRescoreWaiver({ jobId: body.rescoreOf, appUserId, imageCount: images.length });
+    if (claimed) waivedJob = body.rescoreOf;
+  }
+  if (!isEval && !waivedJob) {
     if (!revenueCatConfigured()) {
       return fail(503, "not_configured", "Entitlement checks are not configured.");
     }
@@ -230,6 +240,11 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   }
 
   const refund = async () => {
+    if (waivedJob) {
+      const id = waivedJob;
+      waivedJob = null;
+      await releaseRescoreWaiver(id).catch(() => undefined);
+    }
     if (creditHeld) {
       creditHeld = false;
       try {
@@ -253,7 +268,7 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
   const usage = emptyUsage();
 
   try {
-    if (access?.entitled) {
+    if (access?.entitled && !waivedJob) {
       const fair = await reserveFairUse(appUserId);
       if (fair === "ok") {
         fairUseHeld = true;
@@ -311,6 +326,8 @@ export async function runAnalysis(body: AnalyzeBody, auth: Auth) {
       usage,
       engine,
       quick: quickHydrogen && quickConfig ? { config: quickConfig, engine: quickEngine as Exclude<QuickEngine, "gateway">, leaseRules } : null,
+      angles: body.angles,
+      issueRescoreTicket: mode === "score" && !waivedJob,
       refund,
       releaseFairUse: async () => {
         if (fairUseHeld) await releaseFairUse(appUserId);
@@ -389,6 +406,8 @@ async function finishJob(input: {
   usage: TokenUsage;
   engine: AgingEngine;
   quick?: { config: QuickConfig; engine: Exclude<QuickEngine, "gateway">; leaseRules: boolean | undefined } | null;
+  angles?: unknown;
+  issueRescoreTicket?: boolean;
   refund: () => Promise<void>;
   releaseFairUse: () => Promise<void>;
 }): Promise<void> {
@@ -399,7 +418,7 @@ async function finishJob(input: {
       // The plain read never came back (provider down). Fall through to the gateway pipeline below.
     }
     if (input.mode === "score") {
-      const score = await runScoreCall(input.images);
+      const score = await runScoreCall(input.images, input.angles);
       const usd = await settleCalls(score.costs, input.reserved, input.mode, input.appUserId, input.usage);
       if (score.noDeer || !score.result) {
         await input.refund();
@@ -420,6 +439,9 @@ async function finishJob(input: {
         result: score.result,
         minimum: input.minimum,
       });
+      if (input.issueRescoreTicket) {
+        await saveRescoreTicket(input.job.id, input.appUserId, input.images.length);
+      }
       await saveJob({
         ...input.job,
         status: "done",

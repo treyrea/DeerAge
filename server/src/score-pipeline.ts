@@ -5,7 +5,7 @@
 
 import { callModel, GatewayError, parseFinal, type ModelCall } from "./gateway.js";
 import { deerPresentValue, readingIsNoDeer } from "./hydrogen/no-deer.js";
-import { scorePromptPlain } from "./prompts.js";
+import { scorePromptForRequest } from "./score-angles.js";
 
 export interface ScoreOutcome {
   noDeer: boolean;
@@ -50,10 +50,10 @@ export function setScoreCallerForTests(next: ScoreCaller | null): void {
   scoreCaller = next ?? callModel;
 }
 
-async function once(role: "score" | "scoreFallback", images: string[], effort: "low" | "medium" | null, timeoutMs: number): Promise<ModelCall> {
+async function once(role: "score" | "scoreFallback", images: string[], angles: unknown, effort: "low" | "medium" | null, timeoutMs: number): Promise<ModelCall> {
   return scoreCaller({
     role,
-    prompt: scorePromptPlain(),
+    prompt: scorePromptForRequest(images.length, angles),
     images,
     maxTokens: 16_000,
     timeoutMs,
@@ -62,10 +62,10 @@ async function once(role: "score" | "scoreFallback", images: string[], effort: "
   });
 }
 
-export async function runScoreCall(images: string[]): Promise<ScoreOutcome> {
+export async function runScoreCall(images: string[], angles?: unknown): Promise<ScoreOutcome> {
   const costs: ModelCall[] = [];
   try {
-    const primary = await once("score", images, "medium", 120_000);
+    const primary = await once("score", images, angles, "medium", 120_000);
     costs.push(primary);
     const parsed = scoreFrom(primary.text, false);
     if (parsed === "no_deer") return { noDeer: true, result: null, costs, backup: false };
@@ -73,7 +73,7 @@ export async function runScoreCall(images: string[]): Promise<ScoreOutcome> {
   } catch (error) {
     if (!(error instanceof GatewayError)) throw error;
   }
-  const backup = await once("scoreFallback", images, null, 60_000);
+  const backup = await once("scoreFallback", images, angles, null, 60_000);
   costs.push(backup);
   const parsed = scoreFrom(backup.text, true);
   if (parsed === "no_deer") return { noDeer: true, result: null, costs, backup: true };

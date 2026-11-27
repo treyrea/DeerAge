@@ -22,6 +22,7 @@ export let lastProxyScale: ScaleEstimation | null = null;
 export let lastProxyAgeYears: number | null = null;
 /** Gross from the server when it scored the rack but did not return tine lengths. */
 export let lastProxyGrossScore: number | null = null;
+export let lastScoreJobId: string | null = null;
 export { lastShotReceipt } from "./proxy";
 
 export function rememberScale(scale: ScaleEstimation | null) {
@@ -130,8 +131,10 @@ export async function fuseMultiFrameMeasurements(
   frames: DeerAnalysisFrame[],
   _scale?: ScaleEstimation,
   minimumShooterAge?: number,
+  angles?: { labels?: string[]; rescoreOf?: string | null },
 ): Promise<AntlerMeasurements> {
   lastProxyGrossScore = null;
+  lastScoreJobId = null;
   if (frames.length === 0) {
     throw new AnalysisError("zero_frames");
   }
@@ -139,9 +142,12 @@ export async function fuseMultiFrameMeasurements(
   const response = await analyzeImages({
     mode: "score",
     imageUris: frames.map((frame) => frame.imageUri),
+    angles: angles?.labels,
+    rescoreOf: angles?.rescoreOf,
     species: profile.species,
     minimumShooterAge,
   });
+  lastScoreJobId = response.jobId ?? null;
   if (response.result.isValidDeer === false) {
     const reason = typeof response.result.invalidReason === "string" ? response.result.invalidReason : "no_antlers";
     throw new AnalysisError(reason === "not_deer" ? "not_deer" : "no_antlers");

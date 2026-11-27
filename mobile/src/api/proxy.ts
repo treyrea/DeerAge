@@ -207,6 +207,10 @@ export async function analyzeImages(input: {
   minimumShooterAge?: number;
   species?: string;
   distanceYards?: number;
+  /** Named angles, parallel to imageUris. Omitted for a one-angle burst. */
+  angles?: string[];
+  /** Finished score job this follow-up continues. */
+  rescoreOf?: string | null;
 }): Promise<ProxySuccess> {
   if (input.imageUris.length === 0) {
     throw new AnalysisError("zero_frames");
@@ -215,7 +219,7 @@ export async function analyzeImages(input: {
   if (!base) {
     throw new AnalysisError("not_configured");
   }
-  if (!useSubscriptionStore.getState().canStartAnalysis()) {
+  if (!input.rescoreOf && !useSubscriptionStore.getState().canStartAnalysis()) {
     throw new AnalysisError("quota");
   }
 
@@ -223,7 +227,11 @@ export async function analyzeImages(input: {
   const max = input.mode === "score" ? 4 : 1;
   lastShotReceipt = null;
   useScanProgress.getState().start(input.mode);
-  const images = await Promise.all(sampleFrames(input.imageUris, max).map((uri) => jpegBase64(uri)));
+  const indexes = sampleFrames(input.imageUris.map((_, index) => index), max);
+  const images = await Promise.all(indexes.map((index) => jpegBase64(input.imageUris[index])));
+  const angles = indexes
+    .map((index) => input.angles?.[index])
+    .filter((label): label is string => typeof label === "string" && label.trim().length > 0);
   const profile = useHunterProfile.getState();
   const hunt = activeHunt(profile);
   const home = homePlace(profile);
@@ -260,6 +268,8 @@ export async function analyzeImages(input: {
           month: new Date().getMonth() + 1,
           distanceYards: input.distanceYards,
         },
+        ...(angles.length > 1 ? { angles } : {}),
+        ...(input.rescoreOf ? { rescoreOf: input.rescoreOf } : {}),
       }),
     });
   } catch (error) {

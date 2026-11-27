@@ -22,6 +22,7 @@ import { useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
+import { offerRackScore } from "../lib/score-angles";
 import { bcMinimumStatus } from "../lib/score-estimate";
 import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
@@ -282,12 +283,12 @@ export const HistoryDetailScreen = () => {
                         ~{netInches.toFixed(0)}&quot;
                       </Text>
                     </View>
-                    <ScoreEstimateNote color="#9CA3AF" />
+                    <ScoreEstimateNote viewpoints={result.angleCount} color="#9CA3AF" />
                   </>
                 ) : (
                   <>
                     <Text className="text-white text-2xl font-bold">{NOT_SCORED}</Text>
-                    {canScoreRack ? (
+                    {canScoreRack && offerRackScore({ antlers: explainableAge?.antlers, stop: explainableAge?.stop }) ? (
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel="Score this rack"
@@ -325,7 +326,7 @@ export const HistoryDetailScreen = () => {
                     <Text className="text-white text-5xl font-bold">{NOT_SCORED}</Text>
                   )}
                 </View>
-                {netInches > 0 ? <ScoreEstimateNote color="rgba(255,255,255,0.72)" /> : null}
+                {netInches > 0 ? <ScoreEstimateNote viewpoints={result.angleCount} color="rgba(255,255,255,0.72)" /> : null}
                 <Text className="text-white/70 text-sm mt-3">Net {score.recommendedCategory} Score</Text>
               </View>
 

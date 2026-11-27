@@ -16,6 +16,7 @@ import { PhotoSelectScreen } from "../screens/PhotoSelectScreen";
 import { ProcessingScreen } from "../screens/ProcessingScreen";
 import { ResultsScreen } from "../screens/ResultsScreen";
 import { AgeResultScreen } from "../screens/AgeResultScreen";
+import { AddAnglesScreen } from "../screens/AddAnglesScreen";
 import { HistoryScreen } from "../screens/HistoryScreen";
 import { HistoryDetailScreen } from "../screens/HistoryDetailScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
@@ -41,6 +42,7 @@ export type HomeStackParamList = {
   PhotoSelect: undefined;
   Processing: undefined;
   Results: undefined;
+  AddAngles: undefined;
   AgeResults: undefined;
   OfflineAgeGuide: undefined;
   QuickCheckCamera: undefined;
@@ -89,6 +91,7 @@ const HomeStackNavigator = () => {
       <HomeStack.Screen name="PhotoSelect" component={PhotoSelectScreen} />
       <HomeStack.Screen name="Processing" component={ProcessingScreen} />
       <HomeStack.Screen name="Results" component={ResultsScreen} />
+      <HomeStack.Screen name="AddAngles" component={AddAnglesScreen} />
       <HomeStack.Screen name="AgeResults" component={AgeResultScreen} />
       <HomeStack.Screen name="OfflineAgeGuide" component={OfflineAgeGuideScreen} />
       <HomeStack.Screen name="QuickCheckCamera" component={QuickCheckCameraScreen} />
@@ -188,6 +191,7 @@ export const RootNavigator = () => {
               "PhotoSelect",
               "Processing",
               "Results",
+              "AddAngles",
               "AgeResults",
               "OfflineAgeGuide",
               "Onboarding",

@@ -13,6 +13,7 @@ import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
 import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues";
 import { tapSquare } from "../theme/tap";
+import { offerRackScore } from "../lib/score-angles";
 import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useResultFollowUp } from "../hooks/useResultFollowUp";
@@ -124,6 +125,7 @@ export const AgeResultScreen = () => {
   const explainableAge = currentResult.explainableAge;
   const frames = currentResult.capturedFrames ?? [];
   const imageUri = frames[0]?.imageUri;
+  const offerScore = Boolean(imageUri) && offerRackScore({ antlers: explainableAge.antlers, stop: explainableAge.stop });
   const read = bodyRead({
     lookFor: explainableAge.lookFor,
     hunterCue: explainableAge.hunterCue,
@@ -351,7 +353,6 @@ export const AgeResultScreen = () => {
         </Pressable>
         {showMore ? (
           <View style={{ paddingBottom: 12 }}>
-            <MoreRow label="Rack score" onPress={() => { void runRack(); }} />
             <MoreRow label={manualNotes ? "Notes" : "Add notes"} onPress={() => setShowNotesModal(true)} />
             {leaseRules ? (
             <View style={{ marginTop: 8 }}>
@@ -381,7 +382,19 @@ export const AgeResultScreen = () => {
         ) : null}
       </ScrollView>
 
-      <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, backgroundColor: BLIND.bg }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, backgroundColor: BLIND.bg }}>
+        {offerScore ? (
+          <Pressable
+            testID="age-score-rack"
+            accessibilityRole="button"
+            accessibilityLabel="Score this rack"
+            onPress={() => { void runRack(); }}
+            style={{ minHeight: 52, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", backgroundColor: "#1C1B17", alignItems: "center", justifyContent: "center", marginBottom: 12 }}
+          >
+            <Text style={{ color: BLIND.ink, fontSize: 17, fontWeight: "700" }}>Score this rack</Text>
+          </Pressable>
+        ) : null}
+        <View style={{ flexDirection: "row", gap: 12 }}>
         <Pressable
           testID="age-scan-again"
           onPress={() => leave("scan")}
@@ -396,6 +409,7 @@ export const AgeResultScreen = () => {
         >
           <Text style={{ color: BLIND.buttonInk, fontSize: 18, fontWeight: "700" }}>Done</Text>
         </Pressable>
+        </View>
       </View>
 
       <Modal visible={showModelCard} transparent animationType="slide" onRequestClose={() => setShowModelCard(false)}>
