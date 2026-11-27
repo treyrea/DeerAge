@@ -126,6 +126,7 @@ export function parseSubject(text: string): SubjectFacts | null {
 /**
  * A mount, decoy, or drawing stops before a carcass or a doe. A screen or print (PICTURE) does not stop.
  * Antlers NO stops only a deer that is still a live animal.
+ * A live full-body deer with antlers NO is the antlerless notes read (antlerless.ts).
  * Head-only or neck-only stops only after those, so a doe or a mount keeps its own message.
  * CANT_TELL and a missing field do not stop.
  */

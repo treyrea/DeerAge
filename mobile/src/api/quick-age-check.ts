@@ -2,14 +2,13 @@
  * Quick Check through the DeerAge proxy. One photo, one short vision call.
  */
 
-import { AgeClass } from "../types/deer-scoring";
+import { AgeClass, type AntlerlessRead, type BodyFeatureOverlay } from "../types/deer-scoring";
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
 import { quickConfidence, quickKeyFeature, requireQuickAge, type QuickKeyFeature } from "./quick-result";
 import { useHunterProfile } from "../state/hunterProfile";
 import { normalizeFieldCall } from "../utils/field-call";
 import { overlaysFrom } from "./body-overlays";
-import type { BodyFeatureOverlay } from "../types/deer-scoring";
 
 export interface QuickAgeResult {
   decision: "SHOOT" | "LET WALK";
@@ -41,6 +40,8 @@ export interface QuickAgeResult {
   betterAngle?: string;
   /** Body boxes, only when the server sent them. */
   overlays?: BodyFeatureOverlay[];
+  /** A doe or a possible young buck. Absent on a normal age. */
+  antlerless?: AntlerlessRead;
 }
 
 interface FeatureRead {
@@ -88,6 +89,24 @@ export async function quickAgeCheck(imageUri: string, minimumShooterAge: number 
       species: profile.species,
     });
   } catch (error) {
+    if (error instanceof AnalysisError && error.antlerless) {
+      return {
+        decision: "LET WALK",
+        isValidImage: true,
+        estimatedAgeClass: "1.5-2.5",
+        confidence: 0,
+        explanation: "",
+        features: {
+          neckBrisketIntegration: feature(null),
+          chestHindquarterRatio: feature(null),
+          legBodyProportion: feature(null),
+        },
+        canAnalyzeFurther: false,
+        imageQuality: "good",
+        disclaimer: DISCLAIMER,
+        antlerless: error.antlerless,
+      };
+    }
     if (error instanceof AnalysisError && (error.code === "not_deer" || error.code === "no_body" || error.code === "poor_quality" || error.code === "retake")) {
       const reason = error.code === "no_body" ? "no_body_visible" : error.code === "poor_quality" ? "poor_quality" : error.code === "retake" ? "too_small" : "not_deer";
       return {

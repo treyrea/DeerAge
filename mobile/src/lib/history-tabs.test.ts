@@ -9,6 +9,14 @@ describe("history tabs", () => {
     expect(counts.quick + counts.age + counts.score).toBe(counts.all);
   });
 
+  it("counts an antlerless Quick Check saved in analyses on the Quick tab", () => {
+    const counts = historyTabCounts(["age", "quick"], 2);
+    expect(counts.quick).toBe(3);
+    expect(counts.age).toBe(1);
+    expect(counts.all).toBe(4);
+    expect(tabsAddUp(counts)).toBe(true);
+  });
+
   it("keeps an unknown saved mode on All instead of dropping it", () => {
     const counts = historyTabCounts(["age", "score", "comprehensive"], 1);
     expect(counts.other).toBe(1);

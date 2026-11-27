@@ -16,6 +16,7 @@ import {
 } from "../types/deer-scoring";
 import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyGrossScore, lastProxyScale, lastShotReceipt } from "../api/deer-analysis";
 import { createAgeResult } from "../lib/age-result";
+import { antlerlessHistoryResult } from "../lib/antlerless";
 import { formatAgeClass } from "../utils/age-class";
 import { calculateBooneAndCrockettScore, hasAntlerMeasurements, hasRealScore, scoreFromServerGross } from "../utils/boone-crockett-calculator";
 import {
@@ -435,6 +436,23 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       });
     } catch (error) {
       const analysisError = error instanceof AnalysisError ? error : null;
+      if (analysisMode === "age" && analysisError?.antlerless) {
+        const frame = capturedFrames[0];
+        set({
+          currentResult: antlerlessHistoryResult({
+            imageUri: frame?.imageUri ?? "",
+            read: analysisError.antlerless,
+            mode: "age",
+          }),
+          isProcessing: false,
+          error: null,
+          errorCode: null,
+          errorTip: null,
+          errorLimit: null,
+          errorCreditsBypass: false,
+        });
+        return;
+      }
       const errorMessage = analysisError?.message
         || (error instanceof Error ? error.message : "Failed to analyze image. Please try again.");
       set({

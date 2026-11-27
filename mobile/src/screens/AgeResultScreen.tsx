@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { softPulse } from "../lib/haptics";
+import { AntlerlessRead } from "../components/AntlerlessRead";
 import { ResultLead } from "../components/ResultLead";
 import { extraBodyNotes, regionRows, withDescribeCues } from "../utils/body-cues";
 import { tapSquare } from "../theme/tap";
@@ -80,7 +81,7 @@ export const AgeResultScreen = () => {
     isRange: explainable.isRange,
     outcome: pendingPaywall ? "paywall" : explainable.betterAngle || null,
   } : null;
-  const followUp = useResultFollowUp(Boolean(explainable) && !pendingPaywall, reviewSubject);
+  const followUp = useResultFollowUp(Boolean(explainable) && !pendingPaywall && !currentResult?.antlerless, reviewSubject);
 
   useEffect(() => {
     if (currentResult && !hasSaved) {
@@ -102,7 +103,7 @@ export const AgeResultScreen = () => {
     }
   }, [currentResult, hasSaved, saveToHistory]);
 
-  const showable = Boolean(currentResult?.explainableAge);
+  const showable = Boolean(currentResult?.explainableAge || currentResult?.antlerless);
   // Leave only while this screen is on top. A retake clears the result and
   // opens Processing. Replacing the route from a covered screen sends that
   // Processing screen home. A result with no age is the same blank screen:
@@ -116,6 +117,57 @@ export const AgeResultScreen = () => {
     if (!currentResult?.analysisId) return;
     softPulse();
   }, [currentResult?.analysisId]);
+
+  if (currentResult?.antlerless) {
+    const read = currentResult.antlerless;
+    const frames = currentResult.capturedFrames ?? [];
+    const imageUri = frames[0]?.imageUri;
+    const close = (next: "home" | "scan") => {
+      softPulse();
+      setHasSaved(false);
+      if (next === "scan") {
+        setAnalysisMode("age");
+        if (huntConfirmedToday(useHunterProfile.getState())) navigation.navigate("Camera");
+        else navigation.navigate("ModeSelect", { mode: "age" });
+      } else {
+        navigation.navigate("HomeMain");
+      }
+      clearCurrentResult();
+    };
+    return (
+      <View style={{ flex: 1, backgroundColor: BLIND.bg, paddingTop: insets.top }}>
+        <StatusBar barStyle="light-content" />
+        <View style={{ paddingHorizontal: 8 }}>
+          <Pressable testID="age-close" accessibilityLabel="Close" onPress={() => close("home")} hitSlop={8} style={tapSquare}>
+            <Ionicons name="close" size={26} color={BLIND.muted} />
+          </Pressable>
+        </View>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}>
+          {imageUri ? (
+            <ResultLead imageUri={imageUri} onPressPhoto={() => { softPulse(); setPhotoOpen(true); }} />
+          ) : null}
+          <AntlerlessRead read={read} ink={BLIND.ink} muted={BLIND.muted} />
+        </ScrollView>
+        <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 12, backgroundColor: BLIND.bg }}>
+          <Pressable
+            testID="age-scan-again"
+            onPress={() => close("scan")}
+            style={{ flex: 1, minHeight: 60, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", backgroundColor: "#1C1B17", alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: BLIND.ink, fontSize: 18, fontWeight: "700" }}>Scan again</Text>
+          </Pressable>
+          <Pressable
+            testID="age-done"
+            onPress={() => close("home")}
+            style={{ flex: 1, minHeight: 60, borderRadius: 14, backgroundColor: BLIND.button, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: BLIND.buttonInk, fontSize: 18, fontWeight: "700" }}>Done</Text>
+          </Pressable>
+        </View>
+        {imageUri ? <PhotoViewer visible={photoOpen} imageUri={imageUri} onClose={() => setPhotoOpen(false)} /> : null}
+      </View>
+    );
+  }
 
   if (!currentResult?.explainableAge) {
     return <RecoveryScreen onHome={() => navigation.navigate("HomeMain")} />;

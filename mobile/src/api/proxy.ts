@@ -4,6 +4,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { decode as decodeJpeg } from "jpeg-js";
 import { Image } from "react-native";
 import { findCircularVignetteCrop, scaleCropRect } from "../lib/vignette-crop";
+import { antlerlessFromJobError } from "../lib/antlerless";
 import { AnalysisError, type AnalysisErrorCode } from "./errors";
 import { useScanProgress } from "../state/scanProgress";
 import { POLL_DEADLINE_MS, statusPollContinues, statusPollDelayMs } from "./poll-schedule";
@@ -195,7 +196,7 @@ async function pollJob(jobId: string, mode: string): Promise<{
         throw new AnalysisError("no_deer", job.error.message, job.error.tip);
       }
       const code = job.error?.code && CODES.has(job.error.code as AnalysisErrorCode) ? job.error.code as AnalysisErrorCode : "upstream";
-      throw new AnalysisError(code, job.error?.message);
+      throw new AnalysisError(code, job.error?.message, undefined, { antlerless: antlerlessFromJobError(job.error) });
     }
   }
   throw new AnalysisError("timeout");

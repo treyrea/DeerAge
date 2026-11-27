@@ -3,7 +3,7 @@
  */
 
 import React, { useRef, useState } from "react";
-import { View, Text, ScrollView, Pressable, Image } from "react-native";
+import { View, Text, ScrollView, Pressable, Image, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -23,8 +23,10 @@ import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
 import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
+import { AntlerlessRead } from "../components/AntlerlessRead";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
 import { fittedPhotoHeight } from "../lib/photo-fit";
+import { CREAM, SECONDARY } from "../theme/contrast";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -53,6 +55,34 @@ export const HistoryDetailScreen = () => {
         onBack={() => navigation.goBack()}
         onNeedPlan={() => navigation.navigate("Home", { screen: "TierPaywall", params: { reason: "records" } })}
       />
+    );
+  }
+
+  if (result.antlerless) {
+    const read = result.antlerless;
+    const photo = result.capturedFrames?.[0]?.imageUri;
+    const shareWords = () => {
+      const message = [read.headline, read.ageLine, read.reason, read.note].filter((line) => line && line.trim()).join("\n");
+      void Share.share({ message }).catch(() => undefined);
+    };
+    return (
+      <View style={{ flex: 1, backgroundColor: "#2B3420", paddingTop: insets.top }}>
+        <View className="px-6 py-4 border-b border-neutral-800">
+          <View className="flex-row items-center justify-between">
+            <Pressable accessibilityLabel="Back" onPress={() => navigation.goBack()} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </Pressable>
+            <Text className="text-white text-lg font-bold">Scorecard</Text>
+            <Pressable accessibilityLabel="Share" onPress={shareWords} hitSlop={8} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="share-outline" size={24} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+        <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
+          {photo ? <FittedPhoto uri={photo} /> : null}
+          <AntlerlessRead read={read} ink={CREAM} muted={SECONDARY} />
+        </ScrollView>
+      </View>
     );
   }
 

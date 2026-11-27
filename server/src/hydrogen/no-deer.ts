@@ -101,8 +101,13 @@ export function noDeerJobForMode(mode: "quick" | "age" | "score", copy: NoDeerCo
   return noDeerJobError(copy);
 }
 
-/** A no-deer scan is not an age. The caller refunds the credit and skips the record. */
+/**
+ * A finished age keeps the credit and the signed record.
+ * An antlerless read keeps the same one credit and does not sign an age record.
+ * Every other stop returns the credit.
+ */
 export function hydrogenFinishPlan(kind: string): { charge: boolean; saveRecord: boolean } {
   if (kind === "age") return { charge: true, saveRecord: true };
+  if (kind === "antlerless") return { charge: true, saveRecord: false };
   return { charge: false, saveRecord: false };
 }

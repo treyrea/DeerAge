@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { useShotRecordStore } from "../state/shotRecordStore";
 import type { ShotRecord } from "../types/shot-record";
+import { antlerlessListLine } from "../lib/antlerless";
 import { quickRecordsNewestFirst } from "../lib/quick-records";
 import { analysisKind, historyTabCounts, showsOnTab, timeMs, type HistoryKind, type HistoryTab } from "../lib/history-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -36,6 +37,7 @@ const TYPE: Record<HistoryKind, { label: string; icon: keyof typeof Ionicons.gly
 
 type HistoryRow =
   | { key: string; kind: "quick"; time: number; record: ShotRecord }
+  | { key: string; kind: "quick"; time: number; result: DeerScoringResult }
   | { key: string; kind: Exclude<HistoryKind, "quick">; time: number; result: DeerScoringResult };
 
 export const HistoryScreen = () => {
@@ -62,9 +64,17 @@ export const HistoryScreen = () => {
     }));
     const analysisRows: HistoryRow[] = history.map((result) => {
       const kind = analysisKind(result.analysisMode);
+      if (kind === "quick") {
+        return {
+          key: `analysis-${result.analysisId}`,
+          kind: "quick",
+          time: timeMs(result.timestamp),
+          result,
+        };
+      }
       return {
         key: `analysis-${result.analysisId}`,
-        kind: kind === "quick" ? "other" : kind,
+        kind,
         time: timeMs(result.timestamp),
         result,
       };
@@ -149,13 +159,14 @@ export const HistoryScreen = () => {
                 key={row.key}
                 row={row}
                 onPress={() => {
-                  if (row.kind === "quick") navigation.navigate("HistoryDetail", { shotId: row.record.localId });
-                  else handleViewDetails(row.result);
+                  if (row.kind === "quick" && "result" in row) handleViewDetails(row.result);
+                  else if (row.kind === "quick" && "record" in row) navigation.navigate("HistoryDetail", { shotId: row.record.localId });
+                  else if ("result" in row) handleViewDetails(row.result);
                 }}
-                onDelete={row.kind === "quick" ? undefined : () => {
+                onDelete={"result" in row ? () => {
                   setDeleteTargetId(row.result.analysisId);
                   setShowDeleteModal(true);
-                }}
+                } : undefined}
               />
             ))}
           </View>
@@ -220,11 +231,14 @@ function HistoryTabButton({ label, selected, onPress }: { label: string; selecte
 }
 
 function rowHeadline(row: HistoryRow): string {
-  if (row.kind === "quick") {
+  if (row.kind === "quick" && "result" in row && row.result.antlerless) return antlerlessListLine(row.result.antlerless);
+  if (row.kind === "quick" && "record" in row) {
     const age = row.record.ageClass || "Age class";
     return row.record.fieldCall ? `${age} · ${row.record.fieldCall}` : age;
   }
+  if (row.kind === "quick") return "Quick Check";
   const result = row.result;
+  if (result.antlerless) return antlerlessListLine(result.antlerless);
   if (row.kind === "score") {
     if (!hasRealScore(result.score)) return "Not scored";
     const net = result.score?.recommendedCategory === "Typical" ? result.score?.netTypical : result.score?.netNonTypical;
@@ -249,8 +263,10 @@ function rowHeadline(row: HistoryRow): string {
 }
 
 function rowPhoto(row: HistoryRow): string | null {
-  if (row.kind === "quick") return row.record.photoUris?.find((uri) => uri.trim()) ?? null;
-  return row.result.capturedFrames?.[0]?.imageUri ?? null;
+  if (row.kind === "quick" && "result" in row) return row.result.capturedFrames?.[0]?.imageUri ?? null;
+  if (row.kind === "quick" && "record" in row) return row.record.photoUris?.find((uri) => uri.trim()) ?? null;
+  if ("result" in row) return row.result.capturedFrames?.[0]?.imageUri ?? null;
+  return null;
 }
 
 function rowWhen(row: HistoryRow): string {
