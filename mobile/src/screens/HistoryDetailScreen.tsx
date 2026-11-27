@@ -13,6 +13,7 @@ import { ConfidenceLevel, MeasurementRange, DeerScoringResult } from "../types/d
 import { format } from "date-fns";
 import { shownAge } from "../utils/age-class";
 import { HarvestPanel } from "../components/HarvestPanel";
+import { ScoreEstimateNote } from "../components/ScoreEstimateNote";
 import { WrongCallCard } from "../components/WrongCallCard";
 import { PreShotBar, ShotRecordPage } from "../components/PreShotBar";
 import { LeaseManagerButton, shareRead } from "../components/LeaseManagerButton";
@@ -21,6 +22,7 @@ import { useHunterProfile } from "../state/hunterProfile";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { showPreShotRecord } from "../lib/lease-rules";
 import { fieldRead, normalizeFieldCall } from "../utils/field-call";
+import { bcMinimumStatus } from "../lib/score-estimate";
 import { prepareRackScore } from "../lib/score-this-rack";
 import { useDeerScoringStore } from "../state/deerScoringStore";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
@@ -280,6 +282,7 @@ export const HistoryDetailScreen = () => {
                         ~{netInches.toFixed(0)}&quot;
                       </Text>
                     </View>
+                    <ScoreEstimateNote color="#9CA3AF" />
                   </>
                 ) : (
                   <>
@@ -322,6 +325,7 @@ export const HistoryDetailScreen = () => {
                     <Text className="text-white text-5xl font-bold">{NOT_SCORED}</Text>
                   )}
                 </View>
+                {netInches > 0 ? <ScoreEstimateNote color="rgba(255,255,255,0.72)" /> : null}
                 <Text className="text-white/70 text-sm mt-3">Net {score.recommendedCategory} Score</Text>
               </View>
 
@@ -438,7 +442,7 @@ export const HistoryDetailScreen = () => {
                     color={bcMinimum.typical ? "#22c55e" : "#666"}
                   />
                   <Text className={`ml-2 text-sm ${bcMinimum.typical ? "text-green-400" : "text-gray-500"}`}>
-                    Typical Minimum (160&quot;): {bcMinimum.typical ? "Qualified" : "Not Qualified"}
+                    Typical Minimum (160&quot;): {bcMinimumStatus(bcMinimum.typical, "Not Qualified")}
                   </Text>
                 </View>
                 <View className="flex-row items-center">
@@ -448,7 +452,7 @@ export const HistoryDetailScreen = () => {
                     color={bcMinimum.nonTypical ? "#22c55e" : "#666"}
                   />
                   <Text className={`ml-2 text-sm ${bcMinimum.nonTypical ? "text-green-400" : "text-gray-500"}`}>
-                    Non-Typical Minimum (185&quot;): {bcMinimum.nonTypical ? "Qualified" : "Not Qualified"}
+                    Non-Typical Minimum (185&quot;): {bcMinimumStatus(bcMinimum.nonTypical, "Not Qualified")}
                   </Text>
                 </View>
               </View>
