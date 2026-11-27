@@ -24,6 +24,7 @@ import * as Haptics from "expo-haptics";
 import { softPulse } from "../lib/haptics";
 import ViewShot from "react-native-view-shot";
 import * as MediaLibrary from "expo-media-library";
+import { SHARE_ESTIMATE_LINE, shareMinimumLabel } from "../lib/score-estimate";
 import { formatAgeClass } from "../utils/age-class";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
 import { fittedPhotoHeight } from "../lib/photo-fit";
@@ -292,6 +293,10 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
           </View>
         </View>
 
+        <Text className="text-xs mb-3" style={{ color: "#C9B48F" }}>
+          {SHARE_ESTIMATE_LINE}
+        </Text>
+
         {/* B&C Qualification badge */}
         {data.meetsMinimum && (
           <View
@@ -300,7 +305,7 @@ const ScoreResultCardContent: React.FC<ScoreResultCardContentProps> = ({
           >
             <Ionicons name="trophy" size={20} color="#D4AF37" />
             <Text className="text-white font-bold ml-2">
-              Meets B&C Minimum ({data.category === "Typical" ? '160"' : '185"'})
+              {shareMinimumLabel(data.category)}
             </Text>
           </View>
         )}

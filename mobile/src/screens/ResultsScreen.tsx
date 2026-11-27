@@ -31,7 +31,9 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } fr
 import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
+import { ScoreEstimateNote } from "../components/ScoreEstimateNote";
 import { softPulse } from "../lib/haptics";
+import { bcMinimumStatus, bcMinimumSummary, qualificationHeading, qualificationNote, qualificationSummary } from "../lib/score-estimate";
 import { BUTTON_BROWN, BUTTON_GREEN, CREAM } from "../theme/contrast";
 import { MIN_TAP, tapSquare } from "../theme/tap";
 import { usePhotoAspect } from "../hooks/usePhotoAspect";
@@ -445,6 +447,7 @@ export const ResultsScreen = () => {
                 </Text>
                 {showNet ? <Text className="text-lg ml-2" style={{ color: "#E5D4B8" }}>inches</Text> : null}
               </View>
+              {showNet && !showCategoryNet ? <ScoreEstimateNote color="rgba(229,212,184,0.85)" /> : null}
               {adjustedScore !== null && showNet && (
                 <Text className="text-xs mt-1" style={{ color: "#D4AF37" }}>
                   Original AI: {netInches.toFixed(1)}&quot; • Adjusted for {manualCount} points
@@ -507,6 +510,7 @@ export const ResultsScreen = () => {
               </Text>
               <Text className="text-white/80 text-xl ml-2">inches</Text>
             </View>
+            <ScoreEstimateNote color="rgba(255,255,255,0.72)" />
             <Text className="text-white/70 text-sm mt-3">
               {adjustedScore !== null ? "Adjusted " : ""}Net {score.recommendedCategory} Score
             </Text>
@@ -672,9 +676,10 @@ export const ResultsScreen = () => {
               iconColor="#D4AF37"
               isExpanded={expandedSections.whyThisScore}
               onToggle={() => toggleSection("whyThisScore")}
-              summary={currentResult.explainableRackScore.qualifies
-                ? `B&C ${currentResult.explainableRackScore.category} Qualified`
-                : `${currentResult.explainableRackScore.category} • Below B&C minimum`}
+              summary={qualificationSummary(
+                currentResult.explainableRackScore.qualifies,
+                currentResult.explainableRackScore.category,
+              )}
             >
               <View className="-mt-2">
                 {/* Measurement Quality Notice */}
@@ -717,15 +722,19 @@ export const ResultsScreen = () => {
                       color="white"
                     />
                     <Text className="text-white font-bold text-lg ml-3">
-                      {currentResult.explainableRackScore.qualifies
-                        ? `B&C ${currentResult.explainableRackScore.category} Qualified!`
-                        : `${currentResult.explainableRackScore.category} (Below B&C Minimum)`}
+                      {qualificationHeading(
+                        currentResult.explainableRackScore.qualifies,
+                        currentResult.explainableRackScore.category,
+                      )}
                     </Text>
                   </View>
                   <Text className="text-white text-sm leading-5">
-                    {currentResult.explainableRackScore.qualifies
-                      ? `This rack meets the Boone & Crockett minimum of ${currentResult.explainableRackScore.minimumThreshold}" for ${currentResult.explainableRackScore.category} scoring. This is a trophy-class buck.`
-                      : `This rack scores ${currentResult.explainableRackScore.netScore.toFixed(1)}", which is below the B&C minimum of ${currentResult.explainableRackScore.minimumThreshold}" for ${currentResult.explainableRackScore.category} bucks.`}
+                    {qualificationNote({
+                      qualifies: currentResult.explainableRackScore.qualifies,
+                      netScore: currentResult.explainableRackScore.netScore,
+                      minimumThreshold: currentResult.explainableRackScore.minimumThreshold,
+                      category: currentResult.explainableRackScore.category,
+                    })}
                   </Text>
                 </View>
 
@@ -1141,11 +1150,7 @@ export const ResultsScreen = () => {
             }
             isExpanded={expandedSections.bcQualification}
             onToggle={() => toggleSection("bcQualification")}
-            summary={
-              adjustedScore !== null
-                ? (adjustedScore >= 185 ? "Non-Typical Qualified (Adjusted)" : adjustedScore >= 160 ? "Typical Qualified (Adjusted)" : "Below minimum (Adjusted)")
-                : (bcMinimum.typical ? "Typical Qualified" : bcMinimum.nonTypical ? "Non-Typical Qualified" : "Below minimum")
-            }
+            summary={bcMinimumSummary(adjustedScore, bcMinimum.typical, bcMinimum.nonTypical)}
           >
             <View className="-mt-2">
               {adjustedScore !== null && (
@@ -1165,7 +1170,7 @@ export const ResultsScreen = () => {
                   color={(adjustedScore !== null ? adjustedScore >= 160 : bcMinimum.typical) ? "#22c55e" : "#666"}
                 />
                 <Text className={`ml-2 ${(adjustedScore !== null ? adjustedScore >= 160 : bcMinimum.typical) ? "text-green-500" : "text-gray-500"}`}>
-                  Typical Minimum (160&quot;): {(adjustedScore !== null ? adjustedScore >= 160 : bcMinimum.typical) ? "Qualified" : "Not Met"}
+                  Typical Minimum (160&quot;): {bcMinimumStatus(adjustedScore !== null ? adjustedScore >= 160 : bcMinimum.typical)}
                 </Text>
               </View>
               <View className="flex-row items-center">
@@ -1175,7 +1180,7 @@ export const ResultsScreen = () => {
                   color={(adjustedScore !== null ? adjustedScore >= 185 : bcMinimum.nonTypical) ? "#22c55e" : "#666"}
                 />
                 <Text className={`ml-2 ${(adjustedScore !== null ? adjustedScore >= 185 : bcMinimum.nonTypical) ? "text-green-500" : "text-gray-500"}`}>
-                  Non-Typical Minimum (185&quot;): {(adjustedScore !== null ? adjustedScore >= 185 : bcMinimum.nonTypical) ? "Qualified" : "Not Met"}
+                  Non-Typical Minimum (185&quot;): {bcMinimumStatus(adjustedScore !== null ? adjustedScore >= 185 : bcMinimum.nonTypical)}
                 </Text>
               </View>
             </View>

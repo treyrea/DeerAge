@@ -33,6 +33,7 @@ import {
   guideFrameSize,
 } from "../lib/frame-fill";
 import { BURST_INTERVAL_MS, burstFrameCount } from "../lib/burst";
+import { SCORE_PRO_TIP_STEADY, SCORE_PRO_TIP_WHY, SCORE_PRO_TIP_WHY_TITLE } from "../lib/score-estimate";
 
 type NavigationProp = NativeStackNavigationProp<any>;
 
@@ -471,7 +472,7 @@ export const DeerCameraScreen = () => {
                       <View className="flex-row items-start mb-2">
                         <Ionicons name="checkmark-circle" size={16} color="#22c55e" style={{ marginTop: 2 }} />
                         <Text className="text-white text-sm ml-2 flex-1">
-                          Deer moving head? Perfect! Burst captures different angles for better 3D measurements
+                          {SCORE_PRO_TIP_STEADY}
                         </Text>
                       </View>
                       <View className="flex-row items-start mb-2">
@@ -508,10 +509,10 @@ export const DeerCameraScreen = () => {
                     ) : (
                       <>
                         <Text className="text-blue-400 text-xs font-semibold mb-1">
-                          WHY MOVEMENT HELPS:
+                          {SCORE_PRO_TIP_WHY_TITLE}
                         </Text>
                         <Text className="text-gray-300 text-xs leading-5">
-                          Natural head movement during the 2-second burst gives the AI multiple perspectives. This helps overcome occlusions (branches, overlapping tines) and improves 3D depth estimation using parallax - the same way your eyes judge distance.
+                          {SCORE_PRO_TIP_WHY}
                         </Text>
                       </>
                     )}

@@ -13,6 +13,7 @@ import {
 import { AnalysisError } from "./errors";
 import { analyzeImages } from "./proxy";
 import { serverGrossForMissingTines } from "./score-gross";
+import { withoutScoreRange } from "../lib/score-estimate";
 import { useHunterProfile } from "../state/hunterProfile";
 
 export { generateExplainableRackScoring } from "./explainable-rack";
@@ -74,14 +75,15 @@ function toScale(raw: unknown): ScaleEstimation {
 }
 
 function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
-  const beams = (result.beams ?? {}) as Record<string, unknown>;
-  const tines = (result.tines ?? {}) as Record<string, unknown>;
-  const massRaw = (result.mass ?? {}) as Record<string, unknown>;
+  const source = withoutScoreRange(result);
+  const beams = (source.beams ?? {}) as Record<string, unknown>;
+  const tines = (source.tines ?? {}) as Record<string, unknown>;
+  const massRaw = (source.mass ?? {}) as Record<string, unknown>;
   const left = sideRecord(tines.left);
   const right = sideRecord(tines.right);
   const leftBeam = asNumber(beams.left);
   const rightBeam = asNumber(beams.right);
-  const abnormalRaw = Array.isArray(result.abnormal) ? result.abnormal : [];
+  const abnormalRaw = Array.isArray(source.abnormal) ? source.abnormal : [];
   const abnormalPoints: TinePoint[] = [];
   for (const item of abnormalRaw) {
     const row = item as Record<string, unknown>;
@@ -91,11 +93,11 @@ function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
     abnormalPoints.push({ length, side, isAbnormal: true });
   }
 
-  lastProxyScale = toScale(result.scale);
-  const ageYears = asNumber(result.ageYears);
+  lastProxyScale = toScale(source.scale);
+  const ageYears = asNumber(source.ageYears);
   lastProxyAgeYears = ageYears > 0 ? ageYears : null;
   // Empty tines must not become a 0" score when the server already sent a gross.
-  lastProxyGrossScore = serverGrossForMissingTines(left, right, abnormalPoints.length, result.grossScore);
+  lastProxyGrossScore = serverGrossForMissingTines(left, right, abnormalPoints.length, source.grossScore);
 
   return {
     rightMainBeam: { length: rightBeam, side: "right" },
@@ -115,12 +117,12 @@ function toMeasurements(result: Record<string, unknown>): AntlerMeasurements {
     abnormalPoints,
     rightCircumferences: mass(massRaw.right),
     leftCircumferences: mass(massRaw.left),
-    insideSpread: asNumber(result.insideSpread),
+    insideSpread: asNumber(source.insideSpread),
     totalPoints: countSide(leftBeam, left) + countSide(rightBeam, right),
     leftSidePoints: countSide(leftBeam, left),
     rightSidePoints: countSide(rightBeam, right),
     totalAbnormalPoints: abnormalPoints.length,
-    pointEnumeration: typeof result.pointEnumeration === "string" ? result.pointEnumeration : undefined,
+    pointEnumeration: typeof source.pointEnumeration === "string" ? source.pointEnumeration : undefined,
   };
 }
 
