@@ -1,3 +1,5 @@
+import type { AntlerlessRead } from "../types/deer-scoring";
+
 export type AnalysisErrorCode =
   | "invalid_request"
   | "not_configured"
@@ -48,14 +50,17 @@ export class AnalysisError extends Error {
   readonly limit: FairUseLimit | null;
   /** True only when this server will spend a pack credit to pass the cap. */
   readonly creditsBypass: boolean;
+  /** A doe or possible young buck sent beside the no_antlers code. Null on today's stop. */
+  readonly antlerless: AntlerlessRead | null;
 
-  constructor(code: AnalysisErrorCode, message?: string, tip?: string, extra?: { limit?: FairUseLimit | null; creditsBypass?: boolean }) {
+  constructor(code: AnalysisErrorCode, message?: string, tip?: string, extra?: { limit?: FairUseLimit | null; creditsBypass?: boolean; antlerless?: AntlerlessRead | null }) {
     super(message && message.trim().length > 0 ? message : FALLBACK[code]);
     this.name = "AnalysisError";
     this.code = code;
     this.tip = tip?.trim() ?? "";
     this.limit = extra?.limit === "daily" || extra?.limit === "monthly" ? extra.limit : null;
     this.creditsBypass = extra?.creditsBypass === true;
+    this.antlerless = extra?.antlerless ?? null;
   }
 }
 

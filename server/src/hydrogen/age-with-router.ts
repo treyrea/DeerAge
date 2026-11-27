@@ -172,6 +172,7 @@ export async function ageWithRouter(input: {
   if (
     walkResult?.kind === "harvested"
     || walkResult?.kind === "no_antlers"
+    || walkResult?.kind === "antlerless"
     || walkResult?.kind === "not_live"
     || walkResult?.kind === "no_body"
   ) {

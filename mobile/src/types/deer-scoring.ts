@@ -440,11 +440,22 @@ export interface DeerAnalysisFrame {
   partialOcclusion: boolean;
 }
 
+/** A live deer with no antlers. Older saved results omit this. */
+export interface AntlerlessRead {
+  sex: "probably_doe" | "buck_possible";
+  age: "fawn" | "cant_tell" | null;
+  headline: string;
+  ageLine: string | null;
+  reason: string | null;
+  note: string | null;
+}
+
 export interface DeerScoringResult {
   // Identification
   analysisId: string;
   timestamp: Date;
-  analysisMode: "age" | "score"; // Track which mode was used
+  /** quick is an antlerless Quick Check saved on this phone. */
+  analysisMode: "age" | "score" | "quick";
 
   // Deer Identification (for future linking of age + rack analyses)
   deerIdentifier?: string; // Optional unique ID for linking multiple analyses of same deer
@@ -465,6 +476,9 @@ export interface DeerScoringResult {
 
   // Explainable age estimation (new for Age My Deer mode)
   explainableAge?: ExplainableAgeEstimation;
+
+  /** Set when this scan is a doe or a possible young buck, not a buck age. */
+  antlerless?: AntlerlessRead;
 
   // TPWD-Compliant age analysis (warden-defensible)
   tpwdCompliantAge?: TPWDCompliantAgeAnalysis;

@@ -28,9 +28,11 @@ import { bulletsFrom, normalizeFieldCall } from "../utils/field-call";
 import { notLiveTips, quickCheckRejectionTitle } from "../utils/not-live";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { softPulse } from "../lib/haptics";
+import { AntlerlessRead } from "../components/AntlerlessRead";
 import { ResultLead } from "../components/ResultLead";
+import { antlerlessHistoryResult } from "../lib/antlerless";
 import { withDescribeCues } from "../utils/body-cues";
-import { INK, SECONDARY } from "../theme/contrast";
+import { CREAM, INK, SECONDARY } from "../theme/contrast";
 import { tapSquare } from "../theme/tap";
 
 type NavigationProp = NativeStackNavigationProp<any>;
@@ -48,13 +50,15 @@ export const QuickCheckResultScreen = () => {
   };
 
   const setAnalysisMode = useDeerScoringStore((s) => s.setAnalysisMode);
+  const saveToHistory = useDeerScoringStore((s) => s.saveToHistory);
+  const savedAntlerless = React.useRef(false);
   const addFrame = useDeerScoringStore((s) => s.addFrame);
   const startCapture = useDeerScoringStore((s) => s.startCapture);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
 
   const isShoot = result.decision === "SHOOT";
   // A result with no age is a failed read. Show the retake screen, never the lease minimum as an age.
-  const missingAge = result.isValidImage !== false && (typeof result.ageYears !== "number" || !(result.ageYears > 0));
+  const missingAge = !result.antlerless && result.isValidImage !== false && (typeof result.ageYears !== "number" || !(result.ageYears > 0));
   const isInvalidImage = result.isValidImage === false || missingAge;
   const ageClassLabel = formatAgeClass(result.estimatedAgeClass);
   const leaseMinimum = useDeerScoringStore((s) => s.propertyRules.minimumShooterAge);
@@ -71,7 +75,7 @@ export const QuickCheckResultScreen = () => {
         ? "paywall"
         : result.betterAngle || null,
   };
-  const followUp = useResultFollowUp(!isInvalidImage && !pendingPaywall, reviewSubject);
+  const followUp = useResultFollowUp(!isInvalidImage && !pendingPaywall && !result.antlerless, reviewSubject);
   const shootOrPass = useRemoteConfig((s) => s.flags.shootOrPass);
   const recordFlag = useRemoteConfig((s) => s.flags.preShotRecord);
   const leaseRules = useHunterProfile((s) => s.leaseRules);
@@ -81,6 +85,12 @@ export const QuickCheckResultScreen = () => {
   React.useEffect(() => {
     softPulse();
   }, [isShoot, isInvalidImage]);
+
+  React.useEffect(() => {
+    if (!result.antlerless || savedAntlerless.current) return;
+    savedAntlerless.current = true;
+    void saveToHistory(antlerlessHistoryResult({ imageUri, read: result.antlerless, mode: "quick" }));
+  }, [imageUri, result.antlerless, saveToHistory]);
 
   const handleFullAnalysis = () => {
     followUp.markRescan();
@@ -104,6 +114,40 @@ export const QuickCheckResultScreen = () => {
     // Pop all screens and go back to HomeMain
     navigation.popToTop();
   };
+
+  if (result.antlerless) {
+    const read = result.antlerless;
+    return (
+      <View style={{ flex: 1, backgroundColor: "#2B3420" }}>
+        <LinearGradient
+          colors={["#2B3420", "#1a1f16"]}
+          style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
+        >
+          <Pressable accessibilityLabel="Close" onPress={handleHome} hitSlop={8} style={[tapSquare, { marginLeft: 8 }]}>
+            <Ionicons name="close" size={28} color="white" />
+          </Pressable>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+            <ResultLead imageUri={imageUri} />
+            <AntlerlessRead read={read} ink={CREAM} muted={SECONDARY} />
+          </ScrollView>
+          <View style={{ flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+            <Pressable
+              onPress={handleNewCheck}
+              style={{ flex: 1, minHeight: 56, borderRadius: 14, borderWidth: 1.5, borderColor: "#3A3832", alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: CREAM, fontSize: 17, fontWeight: "700" }}>Scan again</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleHome}
+              style={{ flex: 1, minHeight: 56, borderRadius: 14, backgroundColor: "#D4AF37", alignItems: "center", justifyContent: "center" }}
+            >
+              <Text style={{ color: INK, fontSize: 17, fontWeight: "700" }}>Done</Text>
+            </Pressable>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   // Handle invalid image case
   if (isInvalidImage) {

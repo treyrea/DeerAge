@@ -17,6 +17,7 @@ export interface HistoryCounts {
 }
 
 export function analysisKind(mode: string | null | undefined): HistoryKind {
+  if (mode === "quick") return "quick";
   if (mode === "age") return "age";
   if (mode === "score") return "score";
   return "other";
@@ -26,13 +27,15 @@ export function historyTabCounts(modes: readonly (string | null | undefined)[], 
   let age = 0;
   let score = 0;
   let other = 0;
+  let quickReads = 0;
   for (const mode of modes) {
     const kind = analysisKind(mode);
     if (kind === "age") age += 1;
     else if (kind === "score") score += 1;
+    else if (kind === "quick") quickReads += 1;
     else other += 1;
   }
-  const quick = Math.max(0, quickCount);
+  const quick = Math.max(0, quickCount) + quickReads;
   return { all: age + score + quick + other, quick, age, score, other };
 }
 

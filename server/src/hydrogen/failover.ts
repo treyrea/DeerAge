@@ -44,6 +44,7 @@ export type AgeResolution =
   | { kind: "no_deer" }
   | { kind: "harvested"; message: string }
   | { kind: "no_antlers"; message: string }
+  | { kind: "antlerless"; sex: "probably_doe" | "buck_possible"; age: "fawn" | "cant_tell" | null; message: string }
   | { kind: "not_live"; message: string }
   | { kind: "no_body"; message: string }
   | { kind: "retake"; message: string }
@@ -73,6 +74,9 @@ export async function resolveHydrogenAge(input: {
     const outcome = await input.primary();
     await input.note(true);
     if (outcome.kind === "no_deer") return { kind: "no_deer" };
+    if (outcome.kind === "antlerless") {
+      return { kind: "antlerless", sex: outcome.sex, age: outcome.age, message: outcome.message };
+    }
     if (outcome.kind === "harvested" || outcome.kind === "no_antlers" || outcome.kind === "not_live" || outcome.kind === "no_body") {
       return { kind: outcome.kind, message: outcome.message };
     }

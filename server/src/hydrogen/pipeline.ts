@@ -13,6 +13,7 @@
 import { buildCloserPrompt, hydrogenPrompts } from "./prompts.js";
 import type { WalkStep } from "../progress.js";
 import { RETAKE_MESSAGES, PAIRS, allowRange, decideQuality, deerAnswer, formatFinal, parseCloser, parseGate, parseQuality } from "./rules.js";
+import { antlerlessEligible, readAntlerless } from "./antlerless.js";
 import { parseSubject, subjectHalt, subjectPrompt, type SubjectFacts } from "./subject.js";
 
 export interface ModelReply {
@@ -50,6 +51,7 @@ export type WalkResult =
   | { kind: "no_deer" }
   | { kind: "harvested"; message: string }
   | { kind: "no_antlers"; message: string }
+  | { kind: "antlerless"; sex: "probably_doe" | "buck_possible"; age: "fawn" | "cant_tell" | null; message: string }
   | { kind: "not_live"; message: string }
   | { kind: "no_body"; message: string }
   | { kind: "retake"; message: string; fails: string[] }
@@ -177,6 +179,8 @@ export async function walkHydrogen(
   }
   if (blocked?.kind === "no_antlers") {
     cancelRest();
+    // Live, full body, antlers NO only. A head, a carcass, or a mount already returned.
+    if (antlerlessEligible(facts)) return readAntlerless(call);
     return blocked;
   }
 

@@ -13,7 +13,15 @@ export interface ScanJob {
   mode: "quick" | "age" | "score";
   provisional: unknown;
   final: unknown;
-  error: { code: string; message: string; kind?: string; tip?: string } | null;
+  error: {
+    code: string;
+    message: string;
+    kind?: string;
+    tip?: string;
+    /** Set only beside code no_antlers, for a live full-body deer. Older apps ignore it. */
+    sex?: "probably_doe" | "buck_possible";
+    age?: "fawn" | "cant_tell" | null;
+  } | null;
   /** Which step is running and the expected time left, for the waiting screen. */
   progress?: ScanProgress | null;
 }

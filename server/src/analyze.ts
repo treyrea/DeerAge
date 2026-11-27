@@ -24,6 +24,7 @@ import { geminiCaller } from "./hydrogen/gemini.js";
 import { circuitNote, circuitOpen } from "./hydrogen/circuit.js";
 import { resolveHydrogenAge } from "./hydrogen/failover.js";
 import { ageWithRouter } from "./hydrogen/age-with-router.js";
+import { antlerlessJobError } from "./hydrogen/antlerless.js";
 import { hydrogenFinishPlan, noDeerCopy, noDeerJobError, noDeerJobForMode } from "./hydrogen/no-deer.js";
 import { subjectJobError, type SubjectStop } from "./hydrogen/subject.js";
 import { createScanBudget } from "./hydrogen/budget.js";
@@ -462,6 +463,21 @@ async function finishJob(input: {
         ms: Date.now() - started,
         backup: resolved.kind === "age" && resolved.backup,
       }));
+      if (resolved.kind === "antlerless") {
+        const plan = hydrogenFinishPlan(resolved.kind);
+        if (!plan.charge) {
+          await input.refund();
+          await input.releaseFairUse();
+        }
+        await settleHydrogen(input.usage, input.reserved, input.mode, input.appUserId);
+        await saveJob({
+          ...input.job,
+          status: "error",
+          provisional: null,
+          error: antlerlessJobError(resolved),
+        });
+        return;
+      }
       if (resolved.kind !== "age") {
         const plan = hydrogenFinishPlan(resolved.kind);
         if (!plan.charge) {
@@ -660,6 +676,15 @@ async function finishQuickHydrogen(
     await input.refund();
     await input.releaseFairUse();
     await saveJob({ ...input.job, status: "error", provisional: null, error: noDeerJobForMode("quick", noDeerCopy(remote.copy)) });
+    return true;
+  }
+  if (outcome.kind === "antlerless") {
+    const plan = hydrogenFinishPlan(outcome.kind);
+    if (!plan.charge) {
+      await input.refund();
+      await input.releaseFairUse();
+    }
+    await saveJob({ ...input.job, status: "error", provisional: null, error: antlerlessJobError(outcome) });
     return true;
   }
   if (outcome.kind === "harvested" || outcome.kind === "no_antlers" || outcome.kind === "not_live" || outcome.kind === "no_body") {
