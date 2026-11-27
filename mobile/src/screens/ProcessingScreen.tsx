@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { softPulse } from "../lib/haptics";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { BLIND, NO_DEER_TIP, NO_DEER_TITLE, verdictWord } from "../utils/blind-verdict";
+import { isNotLiveRejection, notLiveTips, rejectionTitle } from "../utils/not-live";
 import { type AnalysisErrorCode, messageForCode } from "../api/errors";
 import { shouldAdvanceToResult } from "../lib/result-navigation";
 import { FairUseLimitView } from "../components/FairUseLimit";
@@ -100,10 +101,18 @@ export const ProcessingScreen = () => {
     if (!error && !errorCode) return null;
     const category: ErrorCategory = errorCode ?? "unknown";
     const display = getErrorDisplayInfo(category, analysisMode);
+    const notLive = isNotLiveRejection(category, error);
+    const jawbone = notLive ? notLiveTips(error) : null;
+    const notLiveColors: [string, string, string] = ["#78350f", "#451a03", "#1a1a1a"];
     return {
       category,
       ...display,
+      title: rejectionTitle(category, error, display.title),
       subtitle: error || display.subtitle,
+      tips: jawbone ?? display.tips,
+      icon: notLive ? "paw" : display.icon,
+      iconColor: notLive ? "#f59e0b" : display.iconColor,
+      bgColors: notLive ? notLiveColors : display.bgColors,
     };
   }, [error, errorCode, analysisMode]);
 
@@ -158,8 +167,10 @@ export const ProcessingScreen = () => {
     navigation.navigate("ModeSelect", { mode: analysisMode });
   };
 
+  // A mount or a harvested deer is retake on Age, which would otherwise say
+  // "NEED A BETTER LOOK". That photo is not a zoom problem.
   const needsAnotherLook = Boolean(
-    errorInfo && analysisMode === "age" && (
+    errorInfo && analysisMode === "age" && !isNotLiveRejection(errorCode, error) && (
       errorInfo.category === "retake"
       || errorInfo.category === "poor_quality"
       || errorInfo.category === "unreadable"

@@ -25,6 +25,7 @@ import { LeaseManagerButton } from "../components/LeaseManagerButton";
 import { activeHunt, useHunterProfile } from "../state/hunterProfile";
 import type { ShotDraft } from "../types/shot-record";
 import { bulletsFrom, normalizeFieldCall } from "../utils/field-call";
+import { notLiveTips, quickCheckRejectionTitle } from "../utils/not-live";
 import { useRemoteConfig } from "../state/remoteConfig";
 import { softPulse } from "../lib/haptics";
 import { ResultLead } from "../components/ResultLead";
@@ -106,6 +107,12 @@ export const QuickCheckResultScreen = () => {
 
   // Handle invalid image case
   if (isInvalidImage) {
+    const invalidTitle = quickCheckRejectionTitle({
+      missingAge,
+      reason: result.invalidImageReason,
+      message: result.invalidImageMessage,
+    });
+    const harvestedTips = missingAge ? null : notLiveTips(result.invalidImageMessage);
     return (
       <View style={{ flex: 1, backgroundColor: "#1a1a1a" }}>
         <LinearGradient
@@ -141,17 +148,7 @@ export const QuickCheckResultScreen = () => {
 
             {/* Invalid Image Title */}
             <Text className="text-3xl font-black mb-2 text-amber-400">
-              {missingAge
-                ? "NO AGE READ"
-                : result.invalidImageReason === "head_mount"
-                ? "HEAD MOUNT DETECTED"
-                : result.invalidImageReason === "not_deer"
-                ? "NOT A DEER"
-                : result.invalidImageReason === "no_body_visible"
-                ? "BODY NOT VISIBLE"
-                : result.invalidImageReason === "too_small" || result.invalidImageReason === "retake"
-                ? "GET CLOSER OR ZOOM IN"
-                : "POOR IMAGE QUALITY"}
+              {invalidTitle}
             </Text>
 
             {/* Explanation */}
@@ -164,10 +161,18 @@ export const QuickCheckResultScreen = () => {
             {/* Tips */}
             <View className="bg-white/10 rounded-xl p-4 mb-8 mx-4">
               <Text className="text-amber-400 font-semibold mb-2">For accurate results:</Text>
-              <Text className="text-white/70 text-sm mb-1">• Use a photo of a live deer</Text>
-              <Text className="text-white/70 text-sm mb-1">• Show full body in broadside view</Text>
-              <Text className="text-white/70 text-sm mb-1">• Ensure good lighting conditions</Text>
-              <Text className="text-white/70 text-sm">• Avoid mounted heads or antlers only</Text>
+              {harvestedTips ? (
+                harvestedTips.map((tip) => (
+                  <Text key={tip} className="text-white/70 text-sm">• {tip}</Text>
+                ))
+              ) : (
+                <>
+                  <Text className="text-white/70 text-sm mb-1">• Use a photo of a live deer</Text>
+                  <Text className="text-white/70 text-sm mb-1">• Show full body in broadside view</Text>
+                  <Text className="text-white/70 text-sm mb-1">• Ensure good lighting conditions</Text>
+                  <Text className="text-white/70 text-sm">• Avoid mounted heads or antlers only</Text>
+                </>
+              )}
             </View>
 
           </View>
