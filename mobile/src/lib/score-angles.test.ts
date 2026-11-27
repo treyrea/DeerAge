@@ -1,4 +1,4 @@
-import { angleScoreMatches, beginAngleScore, consumeAngleScore, offerRackScore, scoreSetFromFrames } from "./score-angles";
+import { angleScoreMatches, beginAngleScore, canAddMoreAngles, consumeAngleScore, MULTI_ANGLE_ENABLED, offerRackScore, scoreSetFromFrames } from "./score-angles";
 
 describe("rack angles", () => {
   it("keeps a burst as one angle and reads a pending multi-angle score once", () => {
@@ -41,3 +41,14 @@ describe("rack angles", () => {
     expect(offerRackScore(null)).toBe(false);
   });
 });
+
+  it("hides Add more angles while MULTI_ANGLE_ENABLED is off", () => {
+    expect(MULTI_ANGLE_ENABLED).toBe(false);
+    expect(canAddMoreAngles({ angleCount: 1, imageUri: "file://a" })).toBe(false);
+    expect(canAddMoreAngles({ angleCount: 3, imageUri: "file://a" })).toBe(false);
+  });
+
+  it("still offers Score this rack on a finished antlered age", () => {
+    expect(offerRackScore({ antlers: "YES" })).toBe(true);
+  });
+

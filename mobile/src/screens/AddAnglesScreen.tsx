@@ -2,7 +2,7 @@
  * Extra stills of the same rack. One photo per angle, not another burst.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +15,7 @@ import {
   ANGLE_HINTS,
   FIRST_ANGLE,
   MAX_SCORE_IMAGES,
+  MULTI_ANGLE_ENABLED,
   beginAngleScore,
   nextExtraAngle,
   scoreSetFromFrames,
@@ -40,6 +41,11 @@ export const AddAnglesScreen = () => {
   const stopCapture = useDeerScoringStore((s) => s.stopCapture);
   const processFrames = useDeerScoringStore((s) => s.processFrames);
 
+  useEffect(() => {
+    if (!MULTI_ANGLE_ENABLED) navigation.goBack();
+  }, [navigation]);
+
+
   const [shots, setShots] = useState<AngleShot[]>(() => scoreSetFromFrames(result?.capturedFrames ?? []));
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -48,6 +54,8 @@ export const AddAnglesScreen = () => {
   const nextLabel = nextExtraAngle(shots.map((shot) => shot.angleLabel));
   const hint = nextLabel && nextLabel in ANGLE_HINTS ? ANGLE_HINTS[nextLabel as keyof typeof ANGLE_HINTS] : "";
   const extras = shots.filter((shot) => shot.angleLabel !== FIRST_ANGLE).length;
+
+  if (!MULTI_ANGLE_ENABLED) return null;
 
   const keep = (uri: string) => {
     if (!nextLabel) return;

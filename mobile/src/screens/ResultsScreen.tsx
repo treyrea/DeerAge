@@ -32,6 +32,7 @@ import { AnnotatedImage } from "../components/AnnotatedImage";
 import { ManualPointCounter } from "../components/ManualPointCounter";
 import { ScoreAdjustmentModal } from "../components/ScoreAdjustmentModal";
 import { ScoreEstimateNote } from "../components/ScoreEstimateNote";
+import { canAddMoreAngles } from "../lib/score-angles";
 import { softPulse } from "../lib/haptics";
 import { bcMinimumStatus, bcMinimumSummary, qualificationHeading, qualificationNote, qualificationSummary } from "../lib/score-estimate";
 import { BUTTON_BROWN, BUTTON_GREEN, CREAM } from "../theme/contrast";
@@ -511,7 +512,7 @@ export const ResultsScreen = () => {
               <Text className="text-white/80 text-xl ml-2">inches</Text>
             </View>
             <ScoreEstimateNote viewpoints={currentResult.angleCount} color="rgba(255,255,255,0.72)" />
-            {(currentResult.angleCount ?? 1) < 4 && currentResult.capturedFrames?.[0]?.imageUri ? (
+            {canAddMoreAngles({ angleCount: currentResult.angleCount, imageUri: currentResult.capturedFrames?.[0]?.imageUri }) ? (
               <Pressable
                 testID="add-angles"
                 accessibilityRole="button"
