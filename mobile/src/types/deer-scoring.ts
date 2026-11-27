@@ -301,6 +301,10 @@ export interface ExplainableAgeEstimation {
   pipeline?: "hydrogen" | "openai";
   /** Server job id of this scan; used to add a real age to a shared scan. */
   scanJobId?: string;
+  /** Subject check, when the server sent one. NO hides Score this rack. */
+  antlers?: "YES" | "NO" | "CANT_TELL";
+  /** Stop code, when a result still carries one. no_antlers and not_live hide the rack score. */
+  stop?: string;
 }
 
 export interface PropertyRules {
@@ -438,6 +442,8 @@ export interface DeerAnalysisFrame {
   detectedAntlers: boolean;
   confidence: ConfidenceLevel;
   partialOcclusion: boolean;
+  /** Set when this photo is one side of a multi-angle rack score. A burst leaves it off. */
+  angleLabel?: string;
 }
 
 export interface DeerScoringResult {
@@ -453,6 +459,10 @@ export interface DeerScoringResult {
   // Multi-frame data
   capturedFrames: DeerAnalysisFrame[];
   fusedFrameCount: number;
+  /** Distinct rack angles. A burst stays 1. */
+  angleCount?: number;
+  /** Server score job. A follow-up with more angles can reuse this pass. */
+  scoreJobId?: string;
 
   // Scoring. Age scans leave this off. An all-zero score is not a score.
   score?: BooneAndCrockettScore;

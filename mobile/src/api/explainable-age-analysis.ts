@@ -135,5 +135,7 @@ export async function analyzeExplainableAge(
       : undefined,
     pipeline: hydrogen ? "hydrogen" : "openai",
     scanJobId: response.jobId,
+    antlers: result.antlers === "YES" || result.antlers === "NO" || result.antlers === "CANT_TELL" ? result.antlers : undefined,
+    stop: typeof result.stop === "string" ? result.stop : undefined,
   };
 }

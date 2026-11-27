@@ -14,7 +14,8 @@ import {
   AgeEstimation,
   PropertyRules,
 } from "../types/deer-scoring";
-import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyGrossScore, lastProxyScale, lastShotReceipt } from "../api/deer-analysis";
+import { fuseMultiFrameMeasurements, generateExplainableRackScoring, lastProxyAgeYears, lastProxyGrossScore, lastProxyScale, lastScoreJobId, lastShotReceipt } from "../api/deer-analysis";
+import { angleScoreMatches, consumeAngleScore, distinctAngleCount, peekAngleScore } from "../lib/score-angles";
 import { createAgeResult } from "../lib/age-result";
 import { formatAgeClass } from "../utils/age-class";
 import { calculateBooneAndCrockettScore, hasAntlerMeasurements, hasRealScore, scoreFromServerGross } from "../utils/boone-crockett-calculator";
@@ -233,7 +234,9 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       return;
     }
 
-    if (!useSubscriptionStore.getState().canStartAnalysis()) {
+    const queuedFollowUp = peekAngleScore();
+    const followUpMatches = angleScoreMatches(queuedFollowUp, capturedFrames);
+    if (!(followUpMatches && queuedFollowUp?.rescoreOf) && !useSubscriptionStore.getState().canStartAnalysis()) {
       set({
         error: "You've used your 3 free analyses.",
         errorCode: "quota",
@@ -340,8 +343,28 @@ export const useDeerScoringStore = create<DeerScoringState>()(
       // Step 1: Estimate scale from multi-view (or single frame) with distance info
       const fallbackScale = estimateScaleFromMultiView(capturedFrames, distanceInfoForScale);
 
-      // Step 2: Fuse measurements from the sampled frames on the proxy
-      let measurements = await fuseMultiFrameMeasurements(capturedFrames, fallbackScale, propertyRules.minimumShooterAge);
+      // Step 2: Fuse measurements from the sampled frames on the proxy.
+      // A follow-up with named angles sends those stills, not the whole burst.
+      const queued = consumeAngleScore();
+      const angleScore = angleScoreMatches(queued, capturedFrames) ? queued : null;
+      const scoreFrames: DeerAnalysisFrame[] = angleScore
+        ? angleScore.shots.map((shot, index) => ({
+          frameIndex: index,
+          imageUri: shot.imageUri,
+          angleLabel: shot.angleLabel,
+          detectedAntlers: true,
+          confidence: "Med",
+          partialOcclusion: false,
+        }))
+        : capturedFrames;
+      let measurements = await fuseMultiFrameMeasurements(
+        scoreFrames,
+        fallbackScale,
+        propertyRules.minimumShooterAge,
+        angleScore
+          ? { labels: angleScore.shots.map((shot) => shot.angleLabel), rescoreOf: angleScore.rescoreOf }
+          : undefined,
+      );
       const scale = lastProxyScale && lastProxyScale.pixelsPerInch > 0 ? lastProxyScale : fallbackScale;
 
       // Step 3: Calculate B&C score. A gross with no tines is the server's score, not 0.
@@ -373,7 +396,7 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         : estimateDeerAge(measurements);
 
       // Step 7: Count frames used - use total captured frames since we don't update detectedAntlers flag
-      const fusedFrameCount = capturedFrames.length;
+      const fusedFrameCount = scoreFrames.length;
 
       const processingTime = Date.now() - startTime;
 
@@ -393,8 +416,10 @@ export const useDeerScoringStore = create<DeerScoringState>()(
         analysisId: `deer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         timestamp: new Date(),
         analysisMode: "score",
-        capturedFrames,
+        capturedFrames: scoreFrames,
         fusedFrameCount,
+        angleCount: distinctAngleCount(scoreFrames.map((frame) => frame.angleLabel)),
+        scoreJobId: lastScoreJobId ?? undefined,
         score,
         scale,
         age,

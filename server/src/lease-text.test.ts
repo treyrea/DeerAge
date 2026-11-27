@@ -49,3 +49,10 @@ test("remote copy replaces the lease text", () => {
   }, "{call} on a {minimum} lease in the {region}. {link}");
   assert.equal(text, "BORDERLINE on a 4.5 lease in the Pineywoods. https://api.example.com/api/verify-record?id=rec_0123456789abcdef");
 });
+
+test("the server copy of lease-text matches shared/lease-text.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const shared = readFileSync(new URL("../../shared/lease-text.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("./lease-text.ts", import.meta.url), "utf8");
+  assert.equal(copy.endsWith(shared), true);
+});

@@ -41,3 +41,10 @@ test("the age prompt does not tell the model it is the rut", () => {
   assert.ok(prompt.includes("FINAL"));
   assert.ok(prompt.includes("4.5"));
 });
+
+test("the server copy of regions matches shared/regions.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const shared = readFileSync(new URL("../../shared/regions.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("./regions.ts", import.meta.url), "utf8");
+  assert.equal(copy.endsWith(shared), true);
+});

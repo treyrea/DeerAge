@@ -447,7 +447,7 @@ export const ResultsScreen = () => {
                 </Text>
                 {showNet ? <Text className="text-lg ml-2" style={{ color: "#E5D4B8" }}>inches</Text> : null}
               </View>
-              {showNet && !showCategoryNet ? <ScoreEstimateNote color="rgba(229,212,184,0.85)" /> : null}
+              {showNet && !showCategoryNet ? <ScoreEstimateNote viewpoints={currentResult.angleCount} color="rgba(229,212,184,0.85)" /> : null}
               {adjustedScore !== null && showNet && (
                 <Text className="text-xs mt-1" style={{ color: "#D4AF37" }}>
                   Original AI: {netInches.toFixed(1)}&quot; • Adjusted for {manualCount} points
@@ -510,7 +510,23 @@ export const ResultsScreen = () => {
               </Text>
               <Text className="text-white/80 text-xl ml-2">inches</Text>
             </View>
-            <ScoreEstimateNote color="rgba(255,255,255,0.72)" />
+            <ScoreEstimateNote viewpoints={currentResult.angleCount} color="rgba(255,255,255,0.72)" />
+            {(currentResult.angleCount ?? 1) < 4 && currentResult.capturedFrames?.[0]?.imageUri ? (
+              <Pressable
+                testID="add-angles"
+                accessibilityRole="button"
+                accessibilityLabel="Add more angles for a better estimate"
+                onPress={() => {
+                  softPulse();
+                  navigation.navigate("AddAngles");
+                }}
+                style={{ marginTop: 4, minHeight: 44, justifyContent: "center" }}
+              >
+                <Text style={{ color: "rgba(255,255,255,0.88)", fontSize: 15, fontWeight: "600" }}>
+                  Add more angles for a better estimate
+                </Text>
+              </Pressable>
+            ) : null}
             <Text className="text-white/70 text-sm mt-3">
               {adjustedScore !== null ? "Adjusted " : ""}Net {score.recommendedCategory} Score
             </Text>
