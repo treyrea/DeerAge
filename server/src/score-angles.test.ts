@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { angleNamesFor, cleanAngleName, distinctAngleCount, nextExtraAngle, offerRackScore, scoreSetFromFrames, withExtraAngle } from "../../shared/score-angles.js";
+import { angleNamesFor, cleanAngleName, distinctAngleCount, EXTRA_ANGLES, FIRST_ANGLE, MAX_SCORE_IMAGES, nextExtraAngle, offerRackScore, scoreSetFromFrames, withExtraAngle } from "./score-angles-shared.js";
 import { scorePromptPlain } from "./prompts.js";
 import { runScoreCall, setScoreCallerForTests } from "./score-pipeline.js";
 import { scorePromptForAngles, scorePromptForRequest } from "./score-angles.js";
@@ -89,4 +89,16 @@ test("the score call uses the multi prompt only when angles were named", async (
   assert.equal(seen[0], scorePromptPlain());
   assert.match(seen[1] ?? "", /different angles of the same rack/);
   assert.match(seen[1] ?? "", /Image 2: Other side/);
+});
+
+test("the server copy of the angle lists matches shared/score-angles.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const shared = readFileSync(new URL("../../shared/score-angles.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("./score-angles-shared.ts", import.meta.url), "utf8");
+  assert.equal(copy.endsWith(shared), true);
+  assert.equal(FIRST_ANGLE, "First angle");
+  assert.deepEqual([...EXTRA_ANGLES], ["Other side", "Front (facing you)", "Three-quarter view"]);
+  assert.equal(MAX_SCORE_IMAGES, 4);
+  assert.match(shared, new RegExp(`export const FIRST_ANGLE = "${FIRST_ANGLE}"`));
+  assert.match(shared, /export const EXTRA_ANGLES = \[[^\]]*"Other side"[^\]]*"Front \(facing you\)"[^\]]*"Three-quarter view"/s);
 });

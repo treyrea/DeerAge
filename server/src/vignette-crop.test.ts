@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
-import { findCircularVignetteCrop, scaleCropRect } from "../../shared/vignette-crop.js";
+import { findCircularVignetteCrop, scaleCropRect } from "./vignette-crop-math.js";
 import { prepareScanImage, SCAN_IMAGE_WIDTH } from "./vignette-crop.js";
 
 const W = 400;

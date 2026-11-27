@@ -3,7 +3,7 @@
  * Named extra angles tell the model those photos are one rack.
  */
 
-import { angleNamesFor } from "../../shared/score-angles.js";
+import { angleNamesFor } from "./score-angles-shared.js";
 import { scorePromptPlain } from "./prompts.js";
 
 export function scorePromptForAngles(angleNames: readonly string[]): string {

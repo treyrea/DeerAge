@@ -22,3 +22,10 @@ test("a longer url still fits and an oversized one does not", () => {
   assert.ok(qrMatrix(longer));
   assert.equal(qrMatrix("x".repeat(200)), null);
 });
+
+test("the server copy of qr matches shared/qr.ts", async () => {
+  const { readFileSync } = await import("node:fs");
+  const shared = readFileSync(new URL("../../shared/qr.ts", import.meta.url), "utf8");
+  const copy = readFileSync(new URL("./qr.ts", import.meta.url), "utf8");
+  assert.equal(copy.endsWith(shared), true);
+});
